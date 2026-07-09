@@ -46,7 +46,7 @@ next-env.d.ts
 design_unzip/
 home_design_unzip/
 send_receive_swap_design/
-logo/
+/logo/
 recovery_file_*.dat
 swap_debug.json
 scratch_*.mjs
