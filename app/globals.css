@@ -1,0 +1,491 @@
+@import "tailwindcss";
+/* ── Theme tokens ─────────────────────────────────────────────────── */
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Dark theme values (default) */
+  --color-mp-bg:      #070a18;
+  --color-mp-card:    #111829;
+  --color-mp-sidebar: #0c1130;
+  --color-mp-primary: #7c6bf5;
+  --color-mp-text:    var(--c-text);
+  --color-mp-muted:   var(--c-muted);
+  --color-mp-success: var(--c-success);
+  --color-mp-warning: #f59e0b;
+  --color-mp-danger:  #ef4444;
+}
+
+/* ── CSS Custom Properties — dùng trong inline styles để light mode hoạt động ── */
+:root {
+  --c-page:           #070a18;
+  --c-chat:           #07071a;
+  --c-panel:          #12122a;
+  --c-sidebar:        #0e0e24;
+  --c-text:           #e8edf8;
+  --c-muted:          #8090b8;
+  --c-muted2:         #4a5a7a;
+  --c-border:         rgba(255,255,255,0.06);
+  --c-border-strong:  rgba(255,255,255,0.14);
+  --c-input:          rgba(255,255,255,0.05);
+  --c-input-border:   rgba(255,255,255,0.08);
+  --c-panel-2:        rgba(255,255,255,0.07);
+  --c-warning:        #f5b748;
+  --grad-primary:     linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%);
+  --glow-primary:     0 0 22px rgba(99,102,241,0.42), 0 6px 20px rgba(99,102,241,0.28);
+  --c-on-primary:     #ffffff;
+  --dur-fast:         150ms;
+  --c-ai-bubble:      rgba(255,255,255,0.06);
+  --c-nav-text:       rgba(255,255,255,0.6);
+  --c-nav-muted:      rgba(255,255,255,0.35);
+  --c-success:        #22c55e;
+  --c-wallet-number:      #ffffff;
+  --c-wallet-btn-text:    #ffffff;
+  --c-wallet-btn-border:  rgba(255,255,255,0.25);
+  --c-purple-accent:  #a78bfa;
+  --c-purple-light:   #c084fc;
+  --c-purple-mid:     #c4b5fd;
+  --c-indigo-light:   #a5b4fc;
+  --c-blue-accent:    #60a5fa;
+  /* Wallet cards */
+  --c-wallet-main:    #06102a;
+  --c-wallet-agent:   #1a0533;
+  --c-wallet-status:  #0c0c1e;
+  --c-wallet-main-text:   #a0c0e8;
+  --c-wallet-agent-text:  #c4a0e8;
+  --c-wallet-status-text: #a0a8f0;
+  /* RGB triplet for translucent overlays — swap 255,255,255 (dark) for 0,0,0
+     (light) so any inline rgba(var(--c-fg-rgb),X) flips automatically,
+     no matter what opacity X is used at the call site. */
+  --c-fg-rgb:         255,255,255;
+  /* Main/Agent wallet summary card backgrounds (Home + Wallet tabs). Tuned
+     against a near-black page; on the light page (already lavender-tinted)
+     the same opacity stacks into a heavy, near-identical purple for both
+     cards, so light gets its own lighter/more separated values below. */
+  --wc-blue-grad:     linear-gradient(135deg,rgba(99,102,241,.22),rgba(67,56,202,.14));
+  --wc-blue-border:   rgba(99,102,241,.32);
+  --wc-purple-grad:   linear-gradient(135deg,rgba(139,124,255,.24),rgba(99,102,241,.14));
+  --wc-purple-border: rgba(139,124,255,.32);
+}
+:root.light {
+  --c-page:           #f0eeff;
+  --c-chat:           #f8f6ff;
+  --c-panel:          #ffffff;
+  --c-sidebar:        #ede9ff;
+  --c-text:           #0a0718;
+  --c-muted:          #3d4870;
+  --c-muted2:         #566490;
+  --c-border:         rgba(0,0,0,0.10);
+  --c-input:          rgba(0,0,0,0.05);
+  --c-input-border:   rgba(0,0,0,0.12);
+  --c-ai-bubble:      rgba(109,79,240,0.09);
+  --c-nav-text:       #1a0a4e;
+  --c-nav-muted:      rgba(26,10,78,0.5);
+  --c-success:        #15803d;
+  --c-wallet-number:      #0a0718;
+  --c-wallet-btn-text:    #0a0718;
+  --c-wallet-btn-border:  rgba(0,0,0,0.20);
+  --c-purple-accent:  #5b21b6;
+  --c-purple-light:   #6d28d9;
+  --c-purple-mid:     #7c3aed;
+  --c-indigo-light:   #3730a3;
+  --c-blue-accent:    #1d4ed8;
+  /* Wallet cards — light backgrounds */
+  --c-wallet-main:    #dbeafe;
+  --c-wallet-agent:   #ede9ff;
+  --c-wallet-status:  #e0e7ff;
+  --c-wallet-main-text:   #1e40af;
+  --c-wallet-agent-text:  #6d28d9;
+  --c-wallet-status-text: #4338ca;
+  --c-panel-2:        rgba(0,0,0,0.05);
+  --c-border-strong:  rgba(0,0,0,0.16);
+  --c-fg-rgb:         0,0,0;
+  /* Opaque pastels (not translucent overlays) so Main Wallet (blue) and
+     Agent Wallet (purple) read as clearly distinct, light card colors
+     instead of both washing into the same purple over the lavender page. */
+  --wc-blue-grad:     linear-gradient(135deg,#dbeafe,#eff6ff);
+  --wc-blue-border:   rgba(37,99,235,.22);
+  --wc-purple-grad:   linear-gradient(135deg,#ede9fe,#f5f3ff);
+  --wc-purple-border: rgba(124,58,237,.22);
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+html, body {
+  background: var(--c-page);
+  color: var(--c-text);
+}
+
+/* ── SRS Modal Animations ─────────────────────────────────────────── */
+@keyframes srsScrim { from { opacity: 0 } to { opacity: 1 } }
+@keyframes srsUp { from { opacity: 0; transform: translateY(34px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes srsSpin { to { transform: rotate(360deg) } }
+@keyframes srsPop { 0% { transform: scale(.5); opacity: 0 } 60% { transform: scale(1.08) } 100% { transform: scale(1); opacity: 1 } }
+@keyframes srsStep { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.srs-pad::-webkit-scrollbar { width: 0 }
+
+/* ── Panels: flat color + subtle top highlight + depth shadow ─────── */
+/* Cards are FLAT like the design — depth comes from shadow, not gradient */
+.bg-mp-card {
+  background: #111829 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),   /* top edge highlight */
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Sidebar: distinctly darker + slight purple tint */
+.bg-mp-sidebar {
+  background: #0c1130 !important;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.bg-mp-bg {
+  background: #070a18 !important;
+}
+
+/* ── Light theme ──────────────────────────────────────────────────── */
+:root.light body {
+  background: #f0eeff;
+  color: #070a18;
+}
+:root.light .bg-mp-card {
+  background: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 4px 20px rgba(124, 107, 245, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+}
+:root.light .bg-mp-sidebar {
+  background: #eae6ff !important;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.06);
+}
+:root.light .bg-mp-bg {
+  background: #f0eeff !important;
+}
+
+/* ── Light mode: flip white/black opacity utilities ───────────────── */
+:root.light .border-white\/8  { border-color: rgba(0, 0, 0, 0.08); }
+:root.light .border-white\/10 { border-color: rgba(0, 0, 0, 0.10); }
+:root.light .border-white\/12 { border-color: rgba(0, 0, 0, 0.12); }
+:root.light .border-white\/15 { border-color: rgba(0, 0, 0, 0.15); }
+:root.light .divide-white\/8 > * + * { border-color: rgba(0, 0, 0, 0.08); }
+:root.light .bg-white\/2  { background-color: rgba(0, 0, 0, 0.02); }
+:root.light .bg-white\/5  { background-color: rgba(0, 0, 0, 0.04); }
+:root.light .bg-white\/8  { background-color: rgba(0, 0, 0, 0.06); }
+:root.light .bg-white\/10 { background-color: rgba(0, 0, 0, 0.07); }
+:root.light .bg-white\/12 { background-color: rgba(0, 0, 0, 0.08); }
+
+/* ── Chat section light mode (độc lập, không ảnh hưởng website) ──── */
+.chat-section.chat-light {
+  --c-chat:      #f5f3ff;
+  --c-text:      #0a0718;
+  --c-muted:     #3d4870;
+  --c-ai-bubble: rgba(109,79,240,0.08);
+  --c-border:    rgba(0,0,0,0.09);
+  --c-input:     rgba(109,79,240,0.06);
+}
+
+/* ── Light mode: Sidebar text override ───────────────────────────── */
+:root.light aside .text-white\/60,
+:root.light aside .text-white\/70,
+:root.light aside .text-white\/90 { color: var(--c-nav-text) !important; }
+:root.light aside .text-white\/40,
+:root.light aside .text-white\/50,
+:root.light aside .text-white\/30 { color: var(--c-nav-muted) !important; }
+:root.light aside .text-white { color: var(--c-nav-text) !important; }
+:root.light aside p.text-white\/50,
+:root.light aside p.text-white\/30 { color: var(--c-nav-muted) !important; }
+
+/* ── Wallet card hover effects ────────────────────────────────────── */
+/* border + shadow ở CSS class (không dùng inline style) để hover work */
+.wallet-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+}
+.wallet-card:hover {
+  transform: translateY(-3px) scale(1.02);
+}
+
+.wallet-card-blue {
+  border: 1px solid #1a56db;
+  box-shadow: 0 4px 24px rgba(26, 86, 219, 0.2);
+}
+.wallet-card-blue:hover {
+  border-color: #4d8ef7;
+  box-shadow: 0 12px 40px rgba(26, 86, 219, 0.45), 0 0 0 1px rgba(77, 142, 247, 0.6);
+}
+
+.wallet-card-purple {
+  border: 1px solid #7c3aed;
+  box-shadow: 0 4px 24px rgba(124, 58, 237, 0.2);
+}
+.wallet-card-purple:hover {
+  border-color: #a370f7;
+  box-shadow: 0 12px 40px rgba(124, 58, 237, 0.5), 0 0 0 1px rgba(163, 112, 247, 0.6);
+}
+
+.wallet-card-cyan {
+  border: 1px solid #06b6d4;
+  box-shadow: 0 4px 24px rgba(6, 182, 212, 0.15);
+}
+.wallet-card-cyan:hover {
+  border-color: #22d3ee;
+  box-shadow: 0 12px 40px rgba(6, 182, 212, 0.45), 0 0 0 1px rgba(34, 211, 238, 0.6);
+}
+
+.wallet-card-amber {
+  border: 1px solid #d97706;
+  box-shadow: 0 4px 24px rgba(217, 119, 6, 0.15);
+}
+.wallet-card-amber:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 12px 40px rgba(217, 119, 6, 0.45), 0 0 0 1px rgba(251, 191, 36, 0.6);
+}
+
+.wallet-card-indigo {
+  border: 1px solid #6366f1;
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.18);
+}
+.wallet-card-indigo:hover {
+  border-color: #818cf8;
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.45), 0 0 0 1px rgba(129, 140, 248, 0.6);
+}
+
+/* ── Ẩn mũi tên tăng giảm của input number ───────────────────────── */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ── Brand logo: swap dark/light lockup with the theme class, no JS needed ── */
+.mp-logo-dark { display: block; }
+.mp-logo-light { display: none; }
+:root.light .mp-logo-dark { display: none; }
+:root.light .mp-logo-light { display: block; }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--c-fg-rgb), .18) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(var(--c-fg-rgb), .18);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--c-fg-rgb), .3);
+}
+
+/* ── Sidebar nav hover ─────────────────────────────────────────────── */
+.mp-nav-item {
+  transition: background var(--dur-fast), color var(--dur-fast);
+  color: var(--c-muted);
+}
+.mp-nav-item:hover {
+  background: var(--c-input) !important;
+  color: var(--c-text) !important;
+}
+.mp-nav-item svg {
+  color: var(--c-muted);
+  transition: color var(--dur-fast);
+}
+.mp-nav-item:hover svg {
+  color: var(--c-text);
+}
+
+/* ── Button hover effects ──────────────────────────────────────────── */
+.mp-btn-primary {
+  transition: filter var(--dur-fast), transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.mp-btn-primary:hover {
+  filter: brightness(1.14);
+  transform: translateY(-1px);
+}
+.mp-btn-primary:active {
+  transform: scale(0.97) !important;
+  filter: brightness(0.96) !important;
+}
+
+.mp-btn-ghost {
+  transition: background var(--dur-fast), transform var(--dur-fast);
+}
+.mp-btn-ghost:hover {
+  background: rgba(255,255,255,.10) !important;
+}
+.mp-btn-ghost:active {
+  transform: scale(0.97);
+}
+
+/* Lucky Pool confetti animation */
+@keyframes confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.animate-confetti {
+  animation: confetti-fall linear forwards;
+}
+
+/* ── Landing page design tokens ────────────────────────────────────── */
+:root {
+  --c-overlay:      rgba(6,4,16,0.74);
+  --glass-bg:       rgba(28,24,58,0.55);
+  --glass-border:   rgba(255,255,255,0.10);
+  --glass-hi:       rgba(255,255,255,0.07);
+  --glass-blur:     18px;
+  --shadow-lg:      0 24px 64px rgba(3,8,20,0.55);
+  --glow-primary:   0 8px 30px rgba(99,102,241,0.42);
+  --grad-primary:   linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%);
+  /* Landing page neutrals — brand/feature accent colors (indigo, teal, cyan,
+     amber, rose...) intentionally stay constant across themes, only these
+     structural neutrals flip. */
+  --lp-bg:          #0c0a17;
+  --lp-text:        #ececf8;
+  --lp-muted:       #9c98c2;
+  --lp-muted2:      #615d85;
+  --lp-terminal-bg:   rgba(10,8,20,.72);
+  --lp-terminal-text: #c9c6e6;
+  --lp-star:        #c7d2fe;
+  --lp-success:     #2dd4bf;
+}
+:root.light {
+  --c-overlay:      rgba(240,238,255,0.82);
+  --glass-bg:       rgba(255,255,255,0.55);
+  --glass-border:   rgba(10,7,24,0.10);
+  --shadow-lg:      0 24px 64px rgba(60,50,120,0.16);
+  --lp-bg:          #f0eeff;
+  --lp-text:        #0a0718;
+  --lp-muted:       #4a4670;
+  --lp-muted2:      #8f89ad;
+  --lp-success:     #0d9488;
+  --lp-terminal-bg:   rgba(255,255,255,.85);
+  --lp-terminal-text: #4a4670;
+  --lp-star:        #6d63b0;
+}
+
+/* ── Home page animations ──────────────────────────────────────────── */
+@keyframes mpSpin    { to{transform:rotate(360deg)} }
+@keyframes mpFloat   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+@keyframes mpTwinkle { 0%,100%{opacity:.18} 50%{opacity:.9} }
+@keyframes mpBlink   { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes mpBounce  { 0%,80%,100%{transform:translateY(0);opacity:.45} 40%{transform:translateY(-5px);opacity:1} }
+@keyframes mpPulse   { 0%,100%{box-shadow:0 0 0 0 rgba(45,212,191,.5)} 70%{box-shadow:0 0 0 9px rgba(45,212,191,0)} }
+@keyframes mpPop     { from{opacity:0;transform:translateY(8px) scale(.96)} to{opacity:1;transform:none} }
+@keyframes mpMarquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+@keyframes mpDrift1  { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(7vw,5vh) scale(1.18)} }
+@keyframes mpDrift2  { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-6vw,7vh) scale(1.12)} }
+@keyframes mpDrift3  { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(5vw,-6vh) scale(1.2)} }
+@keyframes mpCue     { 0%,100%{transform:translateY(0);opacity:.5} 50%{transform:translateY(7px);opacity:1} }
+@keyframes mpPay {
+  0%  { left:12%;top:67.86%;opacity:0 }
+  4%  { left:12%;top:67.86%;opacity:1 }
+  18% { left:31%;top:45.1% }
+  32% { left:50%;top:37.5% }
+  46% { left:69%;top:45.1% }
+  60% { left:88%;top:67.86%;opacity:1 }
+  65% { left:88%;top:67.86%;opacity:0 }
+  100%{ left:88%;top:67.86%;opacity:0 }
+}
+@keyframes mpPayDone {
+  0%,58% { opacity:0;transform:scale(.4) }
+  62%    { opacity:1;transform:scale(1.12) }
+  66%,90%{ opacity:1;transform:scale(1) }
+  100%   { opacity:0;transform:scale(.4) }
+}
+
+/* ── Agent mascot (AgentAvatar) ────────────────────────────────────── */
+@keyframes agentBob   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+@keyframes agentBlink { 0%,90%,100%{transform:scaleY(1)} 95%{transform:scaleY(.12)} }
+@keyframes agentMouth { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(.4)} }
+
+.rv   { opacity:0;transform:translateY(42px);transition:opacity 1s cubic-bezier(.22,1,.36,1),transform 1s cubic-bezier(.22,1,.36,1) }
+.rv.in  { opacity:1;transform:none }
+.rv-l { opacity:0;transform:translateX(-46px);transition:opacity 1s cubic-bezier(.22,1,.36,1),transform 1s cubic-bezier(.22,1,.36,1) }
+.rv-l.in{ opacity:1;transform:none }
+.rv-r { opacity:0;transform:translateX(46px);transition:opacity 1s cubic-bezier(.22,1,.36,1),transform 1s cubic-bezier(.22,1,.36,1) }
+.rv-r.in{ opacity:1;transform:none }
+.rv-s { opacity:0;transform:scale(.9);transition:opacity 1s cubic-bezier(.22,1,.36,1),transform 1s cubic-bezier(.22,1,.36,1) }
+.rv-s.in{ opacity:1;transform:none }
+
+.mp-track { display:flex!important;width:max-content!important;animation:mpMarquee 34s linear infinite!important }
+.mp-marquee { overflow:hidden }
+.mp-marquee:hover .mp-track { animation-play-state:paused!important }
+.mp-logo  { opacity:.72;transition:opacity .2s,transform .2s }
+.mp-logo:hover { opacity:1;transform:translateY(-2px) }
+
+.activity-row { transition:background-color .15s ease,transform .15s ease; border-radius:8px }
+.activity-row:hover { background-color:rgba(255,255,255,.05) }
+.activity-row:hover .activity-track { animation-play-state:paused!important }
+.mp-nav-link { position:relative;transition:color .18s;text-decoration:none }
+.mp-nav-link::after { content:"";position:absolute;left:0;right:100%;bottom:-5px;height:2px;background:#818cf8;border-radius:2px;transition:right .22s cubic-bezier(.22,1,.36,1) }
+.mp-nav-link:hover { color:#ececf8!important }
+.mp-nav-link:hover::after { right:0 }
+.mp-btn  { transition:transform .16s cubic-bezier(.22,1,.36,1),filter .16s,box-shadow .2s }
+.mp-btn:hover  { filter:brightness(1.07);box-shadow:0 12px 38px rgba(99,102,241,.5) }
+.mp-btn:active { transform:scale(.97) }
+.ic-google-logo { filter:grayscale(1); transition:filter .18s ease }
+.mp-btn:hover .ic-google-logo { filter:grayscale(0) }
+.mp-feat-row { transition:transform .3s cubic-bezier(.22,1,.36,1) }
+.mp-feat-row:hover { transform:translateY(-3px) }
+.mp-feat-row:hover .mp-feat-ic { transform:scale(1.07) rotate(-4deg) }
+.mp-feat-ic { transition:transform .3s cubic-bezier(.22,1,.36,1) }
+.mp-iconbtn { transition:transform .16s,color .16s,background .16s }
+.mp-iconbtn:hover { transform:translateY(-1px);color:#ececf8 }
+.mp-foot-link { transition:color .18s;text-decoration:none }
+.mp-foot-link:hover { color:#ececf8!important }
+.mp-pay     { animation:mpPay 4.4s cubic-bezier(.4,0,.4,1) infinite }
+.mp-paydone { animation:mpPayDone 4.4s ease-in-out infinite }
+.rm .mp-pay     { animation:none;left:88%;top:67.86%;opacity:0 }
+.rm .mp-paydone { animation:none;opacity:1;transform:scale(1) }
+.rm .mp-loop    { animation:none!important }
+
+/* ── Orb animations (CSS classes — never inline, avoids Tailwind conflicts) ── */
+.orb-sphere  { animation:mpFloat 8s ease-in-out infinite }
+.orb-limb    { animation:mpSpin 16s linear infinite }
+.orb-outer   { animation:mpSpin 26s linear infinite }
+.orb-outer-coin { animation:mpSpin 26s linear infinite reverse }
+.orb-inner   { animation:mpSpin 18s linear infinite reverse }
+.orb-inner-coin { animation:mpSpin 18s linear infinite }
+.mp-cue      { animation:mpCue 1.8s ease-in-out infinite }
+.mp-twinkle  { animation:mpTwinkle var(--dur,2.6s) ease-in-out var(--delay,0s) infinite }
+.mp-drift1   { animation:mpDrift1 26s ease-in-out infinite }
+.mp-drift2   { animation:mpDrift2 30s ease-in-out infinite }
+.mp-drift3   { animation:mpDrift3 34s ease-in-out infinite }
+.mp-pulse    { animation:mpPulse 2.4s infinite }
+.mp-pulse-fast { animation:mpPulse 2s infinite }
+.mp-blink    { animation:mpBlink 1s step-end infinite }
+.mp-cursor   { display:inline-block;width:1.5px;height:15px;background:#818cf8;vertical-align:-2px;margin-left:1px;animation:mpBlink 1s step-end infinite }
+.mp-bounce-0 { animation:mpBounce 1.1s 0s infinite }
+.mp-bounce-1 { animation:mpBounce 1.1s .18s infinite }
+.mp-bounce-2 { animation:mpBounce 1.1s .36s infinite }
+.mp-blink-teal { display:inline-block;width:7.5px;height:15px;background:#2dd4bf;vertical-align:-2px;animation:mpBlink 1s step-end infinite }
+.mp-spinner    { animation:mpSpin .7s linear infinite }
+
+/* prefers-reduced-motion: giữ nguyên animations vì design intentionally loop-driven.
+   Chỉ tắt scroll-reveal transitions để tránh layout shift khi navigate. */
+@media (prefers-reduced-motion:reduce) {
+  .rv,.rv-l,.rv-r,.rv-s { transition:none!important;opacity:1!important;transform:none!important }
+}
+
+
+
