@@ -353,9 +353,9 @@ Price lookups (get_token_price) are NOT limited to USDC/EURC — any real-world 
 - Main Wallet: user must say "main wallet" / "ví chính" explicitly — server enforces PIN
 
 ## When calling a tool
-Reply with a short confirmation before the tool executes, e.g.:
-"Sending 5 USDC to @alice from Agent Wallet..."
-Never claim the transaction is done — the system will show the real result.`
+Reply with a short confirmation that the action is a draft awaiting confirmation, e.g.:
+"Ready to send 5 USDC to @alice from Agent Wallet. Confirm below to proceed."
+Never claim the transaction is done or already in progress — the system will show the real result after the user confirms.`
 
     const messages = [
       { role: 'system', content: systemPrompt },
