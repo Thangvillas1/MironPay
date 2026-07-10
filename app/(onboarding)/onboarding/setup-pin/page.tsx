@@ -111,29 +111,21 @@ function SetupPinContent() {
       return
     }
 
-    const walletRes = await fetch('/api/create-wallet', { method: 'POST' })
+    // Wallet creation + persisting the address to the profile both happen
+    // server-side in one request, so an F5/crash right after this call can't
+    // strand a wallet that already exists on-chain — retrying just returns
+    // the same wallet instead of minting a new one.
+    const walletRes = await fetch('/api/create-wallet', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
     if (!walletRes.ok) {
       const { error } = await walletRes.json()
       resetToEntering(error ?? 'Could not create wallet. Try again.')
       return
     }
 
-    const { address, walletId: circleWalletId, agentAddress, agentWalletId } = await walletRes.json()
-    const [{ error: walletDbError }, { error: walletRowError }] = await Promise.all([
-      supabase.from('profiles').update({
-        wallet_address: address,
-        circle_wallet_id: circleWalletId,
-        agent_wallet_address: agentAddress,
-        agent_wallet_id: agentWalletId,
-      }).eq('id', session.user.id),
-      supabase.from('wallets').insert({ user_id: session.user.id, balance: 0, currency: 'USD' }),
-    ])
-
-    if (walletDbError || walletRowError) {
-      resetToEntering((walletDbError ?? walletRowError)!.message)
-      return
-    }
-
+    const { address, agentAddress } = await walletRes.json()
     const params = new URLSearchParams({ username, main: address, agent: agentAddress })
     router.replace(`/onboarding/complete?${params.toString()}`)
   }
