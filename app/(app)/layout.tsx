@@ -7,7 +7,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-mp-bg">
       <DailyLoginTracker />
       <Sidebar />
-      <div className="lg:ml-[236px]">
+      <div className="lg:ml-[236px] mp-app-content-pad">
         {children}
       </div>
       <BottomTabBar />
