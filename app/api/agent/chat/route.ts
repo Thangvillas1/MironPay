@@ -336,6 +336,7 @@ Price lookups (get_token_price) are NOT limited to USDC/EURC — any real-world 
 - get_trending_tokens: use ONLY for a general "what's trending" question with no specific coin named — never when a coin symbol/name appears in the message
 - save_memory: use when user shares a preference or habit worth remembering
 - When any required info is missing, ask ONE concise question — never guess or fill in blanks
+- A message that is JUST a 0x address or contract, with no verb and no amount, is NEVER a send/swap/deposit command — never invent an amount (e.g. "1") to make a tool call fit. Ask the user what they want to do with that address (e.g. "look up this token, or send funds to it? If sending, how much?").
 
 ## Disambiguation rules
 - "all" / "hết" / "max" → ask user to confirm the exact amount from their balance
@@ -398,6 +399,26 @@ Never claim the transaction is done — the system will show the real result.`
       | null = null
     let sentimentData: { value: number; classification: string } | null = null
 
+    // Does the user's RAW text contain a standalone number the model could
+    // legitimately have read as an amount? Strips 0x addresses and @handles
+    // first, since a hex address is full of digits but is never an amount.
+    // This is a hard server-side check the model cannot talk its way around —
+    // it exists because the model can otherwise hallucinate a tool call (and
+    // an amount) from something as bare as a pasted contract address.
+    function hasExplicitAmount(raw: string): boolean {
+      const stripped = raw.replace(/0x[a-fA-F0-9]+/g, ' ').replace(/@\w+/g, ' ')
+      return /\b\d+(\.\d+)?\b/.test(stripped)
+    }
+    const SEND_VERBS = ['send', 'transfer', 'pay', 'gửi', 'gui', 'chuyển', 'chuyen']
+    const SWAP_VERBS = ['swap', 'exchange', 'convert', 'đổi', 'doi']
+    const DEPOSIT_VERBS = ['deposit', 'top up', 'topup', 'nạp', 'nap']
+    const WITHDRAW_VERBS = ['withdraw', 'rút', 'rut']
+    const CONTRIBUTE_VERBS = ['contribute', 'buy', 'invest', 'mua', 'góp', 'gop', 'đầu tư', 'dau tu']
+    function hasAnyKeyword(raw: string, keywords: string[]): boolean {
+      const lower = raw.toLowerCase()
+      return keywords.some(k => lower.includes(k))
+    }
+
     if (choice?.finish_reason === 'tool_calls' && assistantMsg?.tool_calls?.length > 0) {
       for (const toolCall of assistantMsg.tool_calls) {
         const fnName = toolCall.function?.name
@@ -410,25 +431,50 @@ Never claim the transaction is done — the system will show the real result.`
           'vi cua toi', 'ví user', 'vi user', 'từ ví chính', 'tu vi chinh'].some(k => lowerMsg.includes(k))
         const walletSource = isMain ? 'main' : 'agent'
 
+        // Guard shared by every money-moving tool: refuse to propose a
+        // transaction unless the raw message actually contains the signal
+        // the model claims justified it. A pasted address alone is never
+        // enough — this is what stops the model from turning "here's a
+        // contract address" into a fabricated $1 transfer.
+        const moneyToolGuards: Partial<Record<string, () => string | null>> = {
+          execute_send: () => !hasAnyKeyword(message, SEND_VERBS) ? 'no send verb in the user message'
+            : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
+          execute_swap: () => !hasAnyKeyword(message, SWAP_VERBS) ? 'no swap verb in the user message'
+            : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
+          execute_gateway_deposit: () => !hasAnyKeyword(message, DEPOSIT_VERBS) ? 'no deposit verb in the user message'
+            : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
+          execute_gateway_withdraw: () => !hasAnyKeyword(message, WITHDRAW_VERBS) ? 'no withdraw verb in the user message'
+            : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
+          execute_launchpad_contribute: () => !hasAnyKeyword(message, CONTRIBUTE_VERBS) ? 'no contribute verb in the user message'
+            : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
+        }
+        const guard = moneyToolGuards[fnName]
+        const blockReason = guard?.()
+        if (blockReason) {
+          console.warn(`[agent/chat] blocked hallucinated tool call ${fnName} (${blockReason}):`, message.slice(0, 200))
+          reply = "I can't tell exactly what you want to do with that — please tell me the action (send/swap/deposit/etc), the amount, and the recipient explicitly, and I'll draft it for you to confirm."
+          continue
+        }
+
         if (fnName === 'execute_send') {
           action = { type: 'send', to: args.to, amount: args.amount, token: args.token ?? 'USDC', walletSource }
           reply = isMain
-            ? `🔒 Main Wallet — PIN required\n⏳ Sending ${args.amount} ${args.token ?? 'USDC'} to ${args.to}...`
-            : `⏳ Sending ${args.amount} ${args.token ?? 'USDC'} to ${args.to} from Agent Wallet (${onChainBalance.toFixed(2)} USDC)...`
+            ? `🔒 Main Wallet — PIN required\nReady to send ${args.amount} ${args.token ?? 'USDC'} to ${args.to}. Confirm below to proceed.`
+            : `Ready to send ${args.amount} ${args.token ?? 'USDC'} to ${args.to} from Agent Wallet (${onChainBalance.toFixed(2)} USDC). Confirm below to proceed.`
         } else if (fnName === 'execute_swap') {
           action = { type: 'swap', tokenIn: args.tokenIn, tokenOut: args.tokenOut, amount: args.amount, walletSource }
           reply = isMain
-            ? `🔒 Main Wallet — PIN required\n⏳ Swapping ${args.amount} ${args.tokenIn} → ${args.tokenOut}...`
-            : `⏳ Swapping ${args.amount} ${args.tokenIn} → ${args.tokenOut} from Agent Wallet...`
+            ? `🔒 Main Wallet — PIN required\nReady to swap ${args.amount} ${args.tokenIn} → ${args.tokenOut}. Confirm below to proceed.`
+            : `Ready to swap ${args.amount} ${args.tokenIn} → ${args.tokenOut} from Agent Wallet. Confirm below to proceed.`
         } else if (fnName === 'execute_gateway_deposit') {
           action = { type: 'gateway_deposit', amount: args.amount }
-          reply = `⏳ Depositing ${args.amount} USDC into the X402 reserve...`
+          reply = `Ready to deposit ${args.amount} USDC into the X402 reserve. Confirm below to proceed.`
         } else if (fnName === 'execute_gateway_withdraw') {
           action = { type: 'gateway_withdraw', amount: args.amount }
-          reply = `⏳ Withdrawing ${args.amount} USDC from the X402 reserve...`
+          reply = `Ready to withdraw ${args.amount} USDC from the X402 reserve. Confirm below to proceed.`
         } else if (fnName === 'execute_launchpad_contribute') {
           action = { type: 'launchpad_contribute', projectId: args.projectId, amount: args.amount }
-          reply = `⏳ Contributing ${args.amount} USDC to ${args.projectId} sale from Agent Wallet...`
+          reply = `Ready to contribute ${args.amount} USDC to ${args.projectId} sale from Agent Wallet. Confirm below to proceed.`
         } else if (fnName === 'get_token_price') {
           let toolResultContent: string
           const symbol = (args.symbol ?? '').trim()
