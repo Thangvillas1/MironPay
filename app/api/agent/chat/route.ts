@@ -337,6 +337,7 @@ Price lookups (get_token_price) are NOT limited to USDC/EURC — any real-world 
 - save_memory: use when user shares a preference or habit worth remembering
 - When any required info is missing, ask ONE concise question — never guess or fill in blanks
 - A message that is JUST a 0x address or contract, with no verb and no amount, is NEVER a send/swap/deposit command — never invent an amount (e.g. "1") to make a tool call fit. Ask the user what they want to do with that address (e.g. "look up this token, or send funds to it? If sending, how much?").
+- Money-moving tools only fire on an explicit, unambiguous instruction from the user (action + amount + recipient, all stated by them, not inferred). The user is responsible for stating commands clearly — if their message is vague, partial, or could be read multiple ways, you must ask instead of guessing, no matter how "obvious" the likely intent seems.
 
 ## Disambiguation rules
 - "all" / "hết" / "max" → ask user to confirm the exact amount from their balance
@@ -452,7 +453,7 @@ Never claim the transaction is done or already in progress — the system will s
         const blockReason = guard?.()
         if (blockReason) {
           console.warn(`[agent/chat] blocked hallucinated tool call ${fnName} (${blockReason}):`, message.slice(0, 200))
-          reply = "I can't tell exactly what you want to do with that — please tell me the action (send/swap/deposit/etc), the amount, and the recipient explicitly, and I'll draft it for you to confirm."
+          reply = "I won't guess on money-moving actions. Please state the action (send/swap/deposit/etc), the exact amount, and the recipient explicitly — I'll draft it for you to confirm once your instruction is unambiguous."
           continue
         }
 
