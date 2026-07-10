@@ -6,14 +6,19 @@ import { supabase } from '@/app/lib/supabase'
 import { useAuthStore } from '@/app/store/auth'
 import AuthShell from '@/app/components/AuthShell'
 
+// An account only "exists" once wallets are created (last onboarding step).
+// If a user dropped off before that — even if they'd already picked a
+// username — treat them as brand new and restart onboarding from scratch,
+// rather than resuming mid-flow with a half-created profile.
 async function resolvePostLoginRoute(userId: string): Promise<'/dashboard' | '/onboarding/username'> {
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username')
+    .select('username, pin_hash, wallet_address')
     .eq('id', userId)
     .single()
 
-  return profile?.username ? '/dashboard' : '/onboarding/username'
+  const isComplete = !!(profile?.username && profile?.pin_hash && profile?.wallet_address)
+  return isComplete ? '/dashboard' : '/onboarding/username'
 }
 
 function CallbackHandler() {

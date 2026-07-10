@@ -39,9 +39,12 @@ function UsernameContent() {
   const [status, setStatus] = useState<ValidationStatus>('idle')
   const [reason, setReason] = useState('')
 
+  const [userId, setUserId] = useState<string | null>(null)
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace('/')
+      if (!data.session) { router.replace('/'); return }
+      setUserId(data.session.user.id)
     })
   }, [router])
 
@@ -53,12 +56,14 @@ function UsernameContent() {
 
     setStatus('validating')
     const timer = setTimeout(async () => {
+      // Exclude the current user's own row — restarting onboarding after a
+      // failed wallet-creation attempt should let them re-pick the same handle.
       const { data } = await supabase.from('profiles').select('id').eq('username', username).maybeSingle()
-      setStatus(data ? 'taken' : 'available')
+      setStatus(!data || data.id === userId ? 'available' : 'taken')
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [username])
+  }, [username, userId])
 
   function handleInput(value: string) {
     setUsername(value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))
