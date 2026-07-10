@@ -102,10 +102,25 @@ export default function Sidebar() {
   const { tokenList, setWallet, setTransactions, setTokenList, setWalletAddress, setLastFetched } = useWalletStore()
 
   const [isDark, setIsDark] = useState(true)
+  const [username, setUsername] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setIsDark(localStorage.getItem('theme') !== 'light')
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    supabase.from('profiles').select('username').eq('id', user.id).single()
+      .then(({ data }) => setUsername(data?.username ?? null))
+  }, [user?.id])
+
+  function handleCopyUsername() {
+    if (!username) return
+    navigator.clipboard.writeText(`@${username}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
 
   function toggleTheme() {
     const newDark = !isDark
@@ -219,14 +234,7 @@ export default function Sidebar() {
 
       {/* ── Bottom card ── */}
       <div style={{ padding: 13, borderRadius: 14, background: 'var(--c-panel)', border: '1px solid var(--c-border)' }}>
-        {/* User info */}
-        <button
-          onClick={handleSignOut}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 11,
-            width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
           <div style={{
             width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
             background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)',
@@ -239,15 +247,55 @@ export default function Sidebar() {
               : <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>{initials}</span>
             }
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--c-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
-              {handle}
-            </div>
+
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <button
+              onClick={handleCopyUsername}
+              disabled={!username}
+              title={username ? 'Copy @username' : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'none', border: 'none', padding: 0,
+                cursor: username ? 'pointer' : 'default', width: '100%',
+              }}
+            >
+              <span style={{
+                fontSize: 13.5, fontWeight: 600, color: 'var(--c-text)', fontFamily: 'var(--font-mono)',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left',
+              }}>
+                {username ? `@${username}` : handle}
+              </span>
+              {username && (
+                copied ? (
+                  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--c-success)" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--c-muted)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" />
+                  </svg>
+                )
+              )}
+            </button>
             <div style={{ fontSize: 12, color: 'var(--c-muted)', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user?.email}
             </div>
           </div>
-        </button>
+
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            className="mp-iconbtn"
+            style={{
+              flexShrink: 0, width: 28, height: 28, borderRadius: 8, border: 'none', background: 'none',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-muted)',
+            }}
+          >
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
       </div>
     </aside>
   )
