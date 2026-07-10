@@ -1114,9 +1114,9 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, color: '#fff', background: `linear-gradient(140deg, ${liveIdo.accent}, ${liveIdo.accent}bb)` }}>{liveIdo.mark}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)' }}>{liveIdo.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--c-muted)', fontWeight: 500 }}>${liveIdo.sym}</span></div>
-                    <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>{fmtUsd(liveIdo.raised)} raised of {fmtUsd(liveIdo.target)}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{liveIdo.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--c-muted)', fontWeight: 500 }}>${liveIdo.sym}</span></div>
+                    <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fmtUsd(liveIdo.raised)} raised of {fmtUsd(liveIdo.target)}</div>
                   </div>
                 </div>
                 <div style={{ height: 6, borderRadius: 9999, background: 'rgba(var(--c-fg-rgb),.05)', marginTop: 12, overflow: 'hidden', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>

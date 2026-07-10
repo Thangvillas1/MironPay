@@ -84,10 +84,10 @@ export default function MironScorePanel() {
         Top 100 get early IDO whitelist access
       </p>
 
-      {/* Leaderboard */}
+      {/* Leaderboard — top 4 only, full board is a separate view (coming later) */}
       <div className="flex flex-col gap-1">
         {loading ? (
-          Array.from({ length: 5 }).map((_, i) => (
+          Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-7 bg-white/5 rounded-[8px] animate-pulse" />
           ))
         ) : leaderboard.length === 0 ? (
@@ -95,7 +95,7 @@ export default function MironScorePanel() {
             No data yet. Make transactions to get on the board!
           </p>
         ) : (
-          leaderboard.map(item => (
+          leaderboard.slice(0, 4).map(item => (
             <div key={item.rank}
               className="flex items-center gap-2 px-2 py-1.5 rounded-[8px] transition-all"
               style={{ background: item.isMe ? 'rgba(34,197,94,0.08)' : 'transparent' }}>
@@ -118,9 +118,12 @@ export default function MironScorePanel() {
         )}
       </div>
 
-      <button className="mt-3 w-full py-2 rounded-[8px] text-xs font-semibold transition-all hover:brightness-110"
-        style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: 'var(--c-success)' }}>
-        View full leaderboard →
+      <button
+        disabled
+        title="Coming soon"
+        className="mt-3 w-full py-2 rounded-[8px] text-xs font-semibold cursor-not-allowed"
+        style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.12)', color: 'var(--c-muted)' }}>
+        View full leaderboard — coming soon
       </button>
     </div>
   )
