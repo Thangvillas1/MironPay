@@ -14,7 +14,7 @@ export default function SettingsPage() {
   useEffect(() => {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.replace('/login'); return }
+      if (!session) { router.replace('/'); return }
       if (!user) setUser(session.user)
       const { data: profile } = await supabase.from('profiles').select('pin_hash').eq('id', session.user.id).single()
       setHasPIN(!!profile?.pin_hash)

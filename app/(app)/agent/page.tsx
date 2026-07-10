@@ -625,7 +625,7 @@ export default function AgentPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { router.replace('/login'); return }
+      if (!data.session) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
       await loadWallet(data.session.access_token)
       await loadHistory(data.session.access_token)

@@ -83,7 +83,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { router.replace('/login'); return }
+      if (!data.session) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
       const { data: profile } = await supabase
         .from('profiles').select('username, pin_hash').eq('id', data.session.user.id).single()

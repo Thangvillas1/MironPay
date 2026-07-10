@@ -62,7 +62,7 @@ function CompleteContent() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace('/login')
+      if (!data.session) router.replace('/')
     })
     const t = setTimeout(() => setPop(true), 30)
     return () => clearTimeout(t)

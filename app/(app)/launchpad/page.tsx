@@ -117,7 +117,7 @@ export default function LaunchpadPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { router.replace('/login'); return }
+      if (!data.session) { router.replace('/'); return }
       const res = await fetch('/api/launchpad/sales')
       if (res.ok) {
         const d = await res.json()

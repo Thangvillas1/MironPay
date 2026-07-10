@@ -57,7 +57,7 @@ function SetupPinContent() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) { router.replace('/login'); return }
+      if (!data.session) { router.replace('/'); return }
       if (!username) router.replace('/onboarding/username')
     })
   }, [router, username])
@@ -97,7 +97,7 @@ function SetupPinContent() {
     setError('')
 
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { router.replace('/login'); return }
+    if (!session) { router.replace('/'); return }
 
     const setPinRes = await fetch('/api/auth/pin/set', {
       method: 'POST',

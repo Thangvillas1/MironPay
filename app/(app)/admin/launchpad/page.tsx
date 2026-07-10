@@ -43,7 +43,7 @@ export default function AdminLaunchpadPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) { router.replace('/login'); return }
+      if (!data.session) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
       load(data.session.access_token)
     })

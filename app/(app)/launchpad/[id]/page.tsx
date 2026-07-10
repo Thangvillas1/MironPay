@@ -62,7 +62,7 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.replace('/login'); return }
+      if (!session) { router.replace('/'); return }
       const res = await fetch(`/api/launchpad/sales/${id}`, { headers: { Authorization: `Bearer ${session.access_token}` } })
       if (res.ok) setProject(await res.json())
       setWatched(!!readWatchlist()[id])
