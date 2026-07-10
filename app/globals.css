@@ -480,6 +480,8 @@ input[type="number"] {
 .mp-bounce-2 { animation:mpBounce 1.1s .36s infinite }
 .mp-blink-teal { display:inline-block;width:7.5px;height:15px;background:#2dd4bf;vertical-align:-2px;animation:mpBlink 1s step-end infinite }
 .mp-spinner    { animation:mpSpin .7s linear infinite }
+@keyframes mpShake { 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
+.mp-shake      { animation:mpShake 420ms cubic-bezier(.22,1,.36,1) }
 
 /* prefers-reduced-motion: giữ nguyên animations vì design intentionally loop-driven.
    Chỉ tắt scroll-reveal transitions để tránh layout shift khi navigate. */

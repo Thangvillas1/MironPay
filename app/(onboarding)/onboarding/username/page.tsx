@@ -1,15 +1,41 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { validateUsernameFormat } from '@/app/lib/username'
+import AuthShell from '@/app/components/AuthShell'
+import OnboardingProgress from '@/app/components/OnboardingProgress'
 
 type ValidationStatus = 'idle' | 'validating' | 'invalid' | 'taken' | 'available'
 
-export default function UsernamePage() {
+function StatusIcon({ status }: { status: ValidationStatus }) {
+  if (status === 'validating') {
+    return <span className="mp-spinner" style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid var(--c-border)', borderTopColor: '#818cf8', display: 'inline-block' }} />
+  }
+  if (status === 'available') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--lp-success)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 13l4 4L19 7" />
+      </svg>
+    )
+  }
+  if (status === 'invalid' || status === 'taken') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-error, #fb6f84)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    )
+  }
+  return null
+}
+
+function UsernameContent() {
   const router = useRouter()
-  const [username, setUsername] = useState('')
+  const searchParams = useSearchParams()
+  const [username, setUsername] = useState(() => (searchParams.get('username') ?? '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))
   const [status, setStatus] = useState<ValidationStatus>('idle')
   const [reason, setReason] = useState('')
 
@@ -44,23 +70,63 @@ export default function UsernamePage() {
   }
 
   const borderColor =
-    status === 'invalid' || status === 'taken' ? 'border-mp-danger/50 focus:ring-mp-danger/30' :
-    status === 'available' ? 'border-mp-success/50 focus:ring-mp-success/30' :
-    'border-white/15 focus:ring-mp-primary/40'
+    status === 'invalid' || status === 'taken' ? 'var(--c-error, #fb6f84)' :
+    status === 'available' ? 'var(--lp-success)' :
+    status === 'validating' ? '#818cf8' :
+    'var(--c-border)'
+
+  const helperText =
+    status === 'validating' ? 'Checking…' :
+    status === 'invalid' ? reason :
+    status === 'taken' ? `@${username} is already taken` :
+    status === 'available' ? `@${username} is available` :
+    '3–20 characters: lowercase letters, numbers, underscores.'
+
+  const helperColor =
+    status === 'invalid' || status === 'taken' ? 'var(--c-error, #fb6f84)' :
+    status === 'available' ? 'var(--lp-success)' :
+    'var(--lp-muted)'
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="text-center mb-8">
-        <div className="w-14 h-14 bg-mp-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-        </div>
-        <h1 className="text-xl font-bold text-mp-text">Choose a username</h1>
-        <p className="text-mp-muted text-sm mt-1">3-20 characters. Letters, numbers and _ only</p>
-      </div>
+    <AuthShell step="username" cardWidth={460} cardPadding={36}>
+      <OnboardingProgress index={0} />
 
-      <div className="bg-mp-card border border-white/8 rounded-[12px] p-6">
+      <span
+        className="inline-flex items-center justify-center"
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 15,
+          background: 'var(--grad-primary)',
+          boxShadow: 'var(--glow-primary)',
+          color: '#fff',
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 700,
+          fontSize: 22,
+          marginTop: 26,
+        }}
+      >
+        @
+      </span>
+
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--lp-text)', marginTop: 18 }}>Choose your username</h1>
+      <p style={{ fontSize: 14, color: 'var(--lp-muted)', marginTop: 6 }}>
+        This is how friends find and pay you on MironPay.
+      </p>
+
+      <div
+        className="flex items-center"
+        style={{
+          marginTop: 22,
+          height: 54,
+          borderRadius: 14,
+          background: 'var(--c-input)',
+          border: `1.5px solid ${borderColor}`,
+          padding: '0 16px',
+          transition: 'border-color 180ms',
+        }}
+      >
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 17, color: 'var(--lp-muted2)' }}>@</span>
         <input
           type="text"
           value={username}
@@ -70,29 +136,43 @@ export default function UsernamePage() {
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
-          className={`w-full bg-white/5 border ${borderColor} rounded-[8px] px-3 py-2.5 text-sm text-mp-text placeholder:text-mp-muted mb-1 focus:outline-none focus:ring-2 transition-colors`}
+          className="flex-1 bg-transparent outline-none min-w-0"
+          style={{ fontFamily: 'var(--font-mono)', fontSize: 17, color: 'var(--lp-text)', padding: '0 8px' }}
         />
-
-        <div className="h-5 mb-4">
-          {status === 'validating' && <p className="text-xs text-mp-muted">Checking...</p>}
-          {status === 'invalid' && <p className="text-xs text-mp-danger">{reason}</p>}
-          {status === 'taken' && <p className="text-xs text-mp-danger">@{username} is already taken</p>}
-          {status === 'available' && <p className="text-xs text-mp-success">@{username} is available</p>}
-        </div>
-
-        {username && (
-          <p className="text-3xl font-bold text-mp-text text-center mb-5">@{username}</p>
-        )}
-
-        <button
-          type="button"
-          onClick={handleContinue}
-          disabled={status !== 'available'}
-          className="w-full bg-mp-primary text-white rounded-[8px] py-3 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-600 active:bg-blue-700 transition-colors"
-        >
-          Continue
-        </button>
+        <StatusIcon status={status} />
       </div>
-    </div>
+
+      <div style={{ height: 20, marginTop: 8 }}>
+        <p style={{ fontSize: 12.5, color: helperColor }}>{helperText}</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleContinue}
+        disabled={status !== 'available'}
+        className="mp-btn w-full"
+        style={{
+          marginTop: 14,
+          height: 52,
+          borderRadius: 14,
+          background: status === 'available' ? 'var(--grad-primary)' : 'var(--c-input)',
+          boxShadow: status === 'available' ? 'var(--glow-primary)' : 'none',
+          color: status === 'available' ? '#fff' : 'var(--lp-muted2)',
+          fontSize: 15,
+          fontWeight: 600,
+          cursor: status === 'available' ? 'pointer' : 'not-allowed',
+        }}
+      >
+        Continue
+      </button>
+    </AuthShell>
+  )
+}
+
+export default function UsernamePage() {
+  return (
+    <Suspense fallback={null}>
+      <UsernameContent />
+    </Suspense>
   )
 }
