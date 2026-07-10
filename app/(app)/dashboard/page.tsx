@@ -159,6 +159,14 @@ export default function DashboardPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'tx' | 'agent'>('all')
+  const [mobileIsDark, setMobileIsDark] = useState(true)
+  useEffect(() => { setMobileIsDark(localStorage.getItem('theme') !== 'light') }, [])
+  function toggleMobileTheme() {
+    const newDark = !mobileIsDark
+    setMobileIsDark(newDark)
+    localStorage.setItem('theme', newDark ? 'dark' : 'light')
+    document.documentElement.classList.toggle('light', !newDark)
+  }
 
   // Agent on-chain identity
   const [agentIdentity, setAgentIdentity] = useState<{ agent_id: number; tx_hash: string } | null>(null)
@@ -682,101 +690,194 @@ export default function DashboardPage() {
   return (
     <>
       {/* ══════════════════════ MOBILE ══════════════════════ */}
-      <div className="lg:hidden min-h-screen flex flex-col pb-20" style={{ background: 'var(--c-page)' }}>
-        <div className="px-4 pt-10 pb-4 flex items-center justify-between">
-          <div>
-            <p className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Hello, {firstName} 👋</p>
-            {username && <p className="text-sm mt-0.5" style={{ color: 'var(--c-muted)' }}>@{username}</p>}
+      <div className="lg:hidden min-h-screen flex flex-col" style={{ background: 'var(--mpm-page)' }}>
+        <div className="px-[18px] pt-10 pb-1 flex items-center justify-between">
+          <div className="flex items-center gap-[11px]">
+            <span className="p-[2px] rounded-full inline-flex shrink-0" style={{ background: 'var(--mpm-grad-primary)' }}>
+              <span className="w-[42px] h-[42px] rounded-full flex items-center justify-center overflow-hidden" style={{ background: 'var(--mpm-panel)' }}>
+                {avatarUrl
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  : <span style={{ color: 'var(--mpm-text)', fontSize: 15, fontWeight: 700 }}>{userInitial}</span>}
+              </span>
+            </span>
+            <div>
+              <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)' }}>Welcome back</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--mpm-text)' }}>{username ? `@${username}` : firstName}</div>
+            </div>
           </div>
-          <button onClick={() => router.push('/agent')}
-            className="text-xs font-semibold px-3 py-1.5 rounded-[8px]"
-            style={{ background: '#6d4ff0', color: '#fff' }}>
-            Agent
+          <button onClick={toggleMobileTheme} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-muted)' }}>
+            {mobileIsDark
+              ? <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+              : <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>}
           </button>
         </div>
 
-        {/* Wallet card */}
-        <div className="mx-4 rounded-[14px] p-5 relative overflow-hidden"
-          style={{ background: 'var(--c-panel)', border: '1px solid rgba(109,79,240,0.25)', boxShadow: '0 0 20px rgba(109,79,240,0.1)' }}>
-          <div className="absolute top-0 inset-x-0 h-0.5 rounded-t" style={{ background: 'linear-gradient(90deg, #2563eb, #6d4ff0)' }} />
-          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--c-muted)' }}>Main Wallet</p>
-          <div className="flex items-end gap-1.5 mb-0.5">
-            <span className="text-3xl font-bold" style={{ color: 'var(--c-text)' }}>{formatUSD(mainBalance)}</span>
-            <span className="text-sm mb-1" style={{ color: 'var(--c-muted)' }}>USDC</span>
+        <div className="px-[18px]" style={{ paddingBottom: 90 }}>
+          {/* Total balance hero */}
+          <div className="relative overflow-hidden mt-4" style={{
+            padding: '26px 24px 22px', borderRadius: 'var(--mpm-radius-xl)',
+            background: 'linear-gradient(150deg, rgba(47,107,255,0.24), rgba(109,108,255,0.06) 55%), var(--mpm-glass-bg)',
+            backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
+            border: '1px solid var(--mpm-glass-border)', boxShadow: 'var(--mpm-glow-blue), var(--mpm-shadow-lg), inset 0 1px 0 var(--mpm-glass-hi)',
+          }}>
+            <div className="absolute pointer-events-none" style={{ top: -60, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,108,255,0.28), transparent 70%)' }} />
+            <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--mpm-muted)', letterSpacing: '0.03em' }}>Total balance</div>
+            <div className="flex items-end gap-2.5 mt-1.5">
+              <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--mpm-text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                ${formatUSD(totalUsd)}
+              </div>
+              {mainDelta24h !== 0 && (
+                <span className="inline-flex items-center gap-1 mb-1" style={{
+                  padding: '4px 9px', borderRadius: 'var(--mpm-radius-full)', fontSize: 12.5, fontWeight: 600,
+                  background: mainDelta24h > 0 ? 'rgba(43,212,164,0.16)' : 'rgba(255,93,108,0.14)',
+                  color: mainDelta24h > 0 ? 'var(--mpm-success)' : 'var(--mpm-error)',
+                }}>
+                  {mainDelta24h > 0 ? '+' : ''}{mainDeltaPct.toFixed(2)}%
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--mpm-muted2)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>Across 2 wallets · ARC network</div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => setSrsMode('send')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[8px] text-sm font-semibold transition-all hover:brightness-110 active:scale-95" style={{ background: '#7c6bf5', color: '#fff', boxShadow: '0 0 14px rgba(124,107,245,0.4)' }}>
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg> Send
-            </button>
-            <button onClick={() => setSrsMode('receive')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[8px] text-sm font-semibold transition-all hover:brightness-110 active:scale-95" style={{ background: '#7c6bf5', color: '#fff', boxShadow: '0 0 14px rgba(124,107,245,0.4)' }}>
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v14M7 12l5 5 5-5" /><path d="M3 21h18" /></svg> Receive
-            </button>
+
+          {/* Wallet cards — horizontal scroll */}
+          <div className="flex items-center justify-between mt-5 mb-2.5 mx-1">
+            <h3 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--mpm-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your wallets</h3>
           </div>
-        </div>
-
-        {/* Quick actions */}
-        <div className="px-4 mt-4">
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-            {QUICK_ACTIONS.map(a => (
-              <button key={a.label} onClick={() => {
-                if (a.href === 'modal:send') setSrsMode('send')
-                else if (a.href === 'modal:swap') setSrsMode('swap')
-                else if (a.href !== '#') router.push(a.href)
-              }}
-                className="flex flex-col items-center gap-1.5 shrink-0">
-                <div className="w-12 h-12 rounded-[12px] flex items-center justify-center text-white"
-                  style={{ background: a.iconBg, boxShadow: `0 0 12px rgba(${a.iconGlow},0.4)` }}>
-                  {a.icon}
-                </div>
-                <span className="text-[11px] font-medium" style={{ color: 'var(--c-text)' }}>{a.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Miron Score */}
-        <div className="px-4 mt-5">
-          <MironScoreCard />
-        </div>
-
-        {/* Recent activity */}
-        <div className="mx-4 mt-5 rounded-[14px] overflow-hidden" style={{ background: 'var(--c-panel)' }}>
-          <p className="text-xs font-semibold uppercase tracking-widest px-4 py-3 border-b" style={{ color: 'var(--c-muted)', borderColor: 'var(--c-border)' }}>Recent Activity</p>
-          {transactions.slice(0, 5).map(tx => {
-            const hasMemo = !!tx.memo
-            return (
-              <div key={tx.id} className="flex items-center gap-3 px-4 py-3 border-b last:border-0" style={{ borderColor: 'var(--c-border)' }}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                  style={{
-                    background: hasMemo ? 'rgba(124,107,245,0.18)' : tx.type === 'credit' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                    border: hasMemo ? '1px solid rgba(124,107,245,0.35)' : '1px solid transparent',
-                  }}>
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
-                    style={{ color: hasMemo ? 'var(--c-purple-accent)' : tx.type === 'credit' ? '#22c55e' : '#ef4444' }}>
-                    {tx.type === 'credit' ? <path d="M12 2v14M7 12l5 5 5-5" /> : <path d="M12 22V8M7 12l5-5 5 5" />}
+          <div className="flex gap-3.5 overflow-x-auto scrollbar-hide" style={{ margin: '0 -18px', padding: '0 18px 4px' }}>
+            <div className="shrink-0" style={{ minWidth: 230, padding: 16, borderRadius: 'var(--mpm-radius-lg)', background: 'var(--mpm-grad-sapphire)', border: '1px solid rgba(47,107,255,0.28)' }}>
+              <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Main Wallet</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--mpm-text)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>${formatUSD(totalUsd)}</div>
+              <div style={{ height: 34, marginTop: 8 }}><SparklineChart values={chartValues} color={mainDelta24h >= 0 ? '#2dd4bf' : '#fb6f84'} id="spk-main-m" /></div>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setSrsMode('send')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-grad-primary)', color: '#fff' }}>Send</button>
+                <button onClick={() => setSrsMode('receive')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Receive</button>
+                <button
+                  disabled
+                  title="Scan & Pay — coming soon"
+                  className="w-9 flex items-center justify-center rounded-[8px]"
+                  style={{ background: 'var(--mpm-input)', color: 'var(--mpm-muted)' }}
+                >
+                  <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
+                    <path d="M14 14h3v3M14 21h3M21 14v3M21 21v.01" />
                   </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{tx.description}</p>
-                    {hasMemo && (
-                      <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="var(--c-purple-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-xs truncate" style={{ color: 'var(--c-muted)' }}>
-                    {new Date(tx.created_at).toLocaleDateString('en-US')}
-                    {hasMemo && <span style={{ color: 'var(--c-purple-accent)', opacity: 0.8 }}> · {tx.memo}</span>}
-                  </p>
-                </div>
-                <span className="text-sm font-semibold shrink-0" style={{ color: tx.type === 'credit' ? '#22c55e' : '#ef4444' }}>
-                  {tx.type === 'credit' ? '+' : '-'}{tx.amount.toFixed(2)} USDC
+                </button>
+              </div>
+            </div>
+            <div className="shrink-0" style={{ minWidth: 230, padding: 16, borderRadius: 'var(--mpm-radius-lg)', background: 'linear-gradient(135deg,rgba(109,108,255,0.16),rgba(13,28,64,0.04))', border: '1px solid rgba(109,108,255,0.28)' }}>
+              <div className="flex items-center justify-between">
+                <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Agent Wallet</div>
+                <span className="inline-flex items-center gap-1" style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--mpm-success)' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--mpm-success)' }} />Active
                 </span>
               </div>
-            )
-          })}
-          {transactions.length === 0 && <p className="text-sm text-center py-8" style={{ color: 'var(--c-muted)' }}>No transactions</p>}
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--mpm-text)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>${formatUSD(agentTotalUsd)}</div>
+              <div style={{ marginTop: 10 }}>
+                <div className="flex justify-between" style={{ fontSize: 11, color: 'var(--mpm-muted)', marginBottom: 6 }}>
+                  <span>Daily spent</span><span>${formatUSD(agentWallet?.daily_spent ?? 0)} / ${formatUSD(agentWallet?.daily_limit ?? 5)}</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 9999, background: 'var(--mpm-input)', overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.min(spentPct, 100)}%`, height: '100%', borderRadius: 9999, background: 'linear-gradient(90deg,#6d6cff,#2f6bff)' }} />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => { setShowFund(true); setModalAmount(''); setModalError('') }} className="flex-1 flex items-center justify-center py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Fund</button>
+                <button onClick={() => { setShowWithdraw(true); setModalAmount(''); setModalError('') }} className="flex-1 flex items-center justify-center py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Withdraw</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div className="mt-5 mb-2 px-1.5">
+            <div className="flex justify-between">
+              {QUICK_ACTIONS.map(a => (
+                <button key={a.label} onClick={() => {
+                  if (a.href === 'modal:send') setSrsMode('send')
+                  else if (a.href === 'modal:swap') setSrsMode('swap')
+                  else if (a.href !== '#') router.push(a.href)
+                }}
+                  className="flex flex-col items-center gap-1.5">
+                  <div className="w-12 h-12 rounded-[12px] flex items-center justify-center text-white"
+                    style={{ background: a.iconBg, boxShadow: `0 0 12px rgba(${a.iconGlow},0.4)` }}>
+                    {a.icon}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--mpm-text)' }}>{a.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Miron Score */}
+          <div className="mt-5">
+            <MironScoreCard />
+          </div>
+
+          {/* Recent activity */}
+          <div className="flex items-center justify-between mt-6 mb-2.5 mx-1">
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--mpm-text)' }}>Recent activity</h3>
+          </div>
+          <div style={{
+            background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
+            borderRadius: 'var(--mpm-radius-lg)', border: '1px solid var(--mpm-glass-border)', boxShadow: 'inset 0 1px 0 var(--mpm-glass-hi)', padding: 6,
+          }}>
+            {transactions.slice(0, 5).map(tx => {
+              const hasMemo = !!tx.memo
+              return (
+                <div key={tx.id} className="flex items-center gap-3 px-2.5 py-2.5" style={{ borderBottom: '1px solid var(--mpm-border)' }}>
+                  <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0" style={{
+                    background: hasMemo ? 'rgba(109,108,255,0.16)' : tx.type === 'credit' ? 'rgba(43,212,164,0.14)' : 'var(--mpm-input)',
+                    color: hasMemo ? 'var(--mpm-purple-accent)' : tx.type === 'credit' ? 'var(--mpm-success)' : 'var(--mpm-muted)',
+                  }}>
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                      {tx.type === 'credit' ? <path d="M12 2v14M7 12l5 5 5-5" /> : <path d="M12 22V8M7 12l5-5 5 5" />}
+                    </svg>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                    <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>
+                      {new Date(tx.created_at).toLocaleDateString('en-US')}
+                      {hasMemo && <span style={{ color: 'var(--mpm-purple-accent)', opacity: .8 }}> · {tx.memo}</span>}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 14.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: tx.type === 'credit' ? 'var(--mpm-success)' : 'var(--mpm-text)', flexShrink: 0 }}>
+                    {tx.type === 'credit' ? '+' : '-'}{tx.amount.toFixed(2)} USDC
+                  </span>
+                </div>
+              )
+            })}
+            {transactions.length === 0 && <p className="text-sm text-center py-8" style={{ color: 'var(--mpm-muted)' }}>No transactions</p>}
+          </div>
+
+          {/* Holdings */}
+          {tokenList.length > 0 && (
+            <>
+              <div className="flex items-center justify-between mt-6 mb-2.5 mx-1">
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--mpm-text)' }}>Holdings</h3>
+              </div>
+              <div style={{
+                background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
+                borderRadius: 'var(--mpm-radius-lg)', border: '1px solid var(--mpm-glass-border)', boxShadow: 'inset 0 1px 0 var(--mpm-glass-hi)', padding: 6,
+              }}>
+                {tokenList.map((t, i) => (
+                  <div key={t.symbol} className="flex items-center gap-3 px-2.5 py-2.5" style={{ borderBottom: i < tokenList.length - 1 ? '1px solid var(--mpm-border)' : 'none' }}>
+                    {t.logoUrl
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={t.logoUrl} alt={t.symbol} className="w-9 h-9 rounded-full shrink-0" />
+                      : <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--mpm-input)', fontSize: 11, fontWeight: 700, color: 'var(--mpm-text)' }}>{t.symbol.slice(0, 2)}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)' }}>{t.symbol}</div>
+                      <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>{t.name}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)', fontVariantNumeric: 'tabular-nums' }}>{parseFloat(t.amount).toFixed(4)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>${(t.usdValue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
