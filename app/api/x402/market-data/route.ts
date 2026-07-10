@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { createX402GetHandler } from '@/app/lib/x402-seller'
 import { resolveCoinGeckoId, fetchWithRetry } from '@/app/lib/coingecko'
+import { fetchBinancePrice, fetchBinanceChart24h } from '@/app/lib/binance'
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
@@ -8,7 +9,7 @@ function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, '').trim()
 }
 
-async function fetchTokenPrice(symbol: string) {
+async function fetchFromCoinGecko(symbol: string) {
   const { id, name } = await resolveCoinGeckoId(symbol)
 
   // Sequenced, not Promise.all — CoinGecko's free tier rate-limits per IP,
@@ -49,6 +50,44 @@ async function fetchTokenPrice(symbol: string) {
     github_commits_4w: coin.developer_data?.commit_count_4_weeks ?? null,
     chart_24h: chart24h,
     fetchedAt: new Date().toISOString(),
+  }
+}
+
+/**
+ * CoinGecko's free tier rate-limits hard on shared IPs (Vercel) and was
+ * failing even for BTC. Binance has no key and a much higher limit, so it's
+ * the fallback for price/change/chart — its data just doesn't include
+ * CoinGecko's richer fields (market cap, FDV, description, socials), which
+ * come back null. The x402 fee is only ever charged once a real price is
+ * found from either source — both failing still throws before settlement.
+ */
+async function fetchTokenPrice(symbol: string) {
+  try {
+    return await fetchFromCoinGecko(symbol)
+  } catch (coinGeckoErr) {
+    const fallback = await fetchBinancePrice(symbol)
+    if (!fallback) {
+      throw coinGeckoErr instanceof Error ? coinGeckoErr : new Error(String(coinGeckoErr))
+    }
+    const chart24h = await fetchBinanceChart24h(symbol)
+    return {
+      symbol: symbol.toUpperCase(),
+      name: symbol.toUpperCase(),
+      price_usd: fallback.priceUsd,
+      change_24h_pct: fallback.change24hPct,
+      market_cap_usd: null,
+      fdv_usd: null,
+      circulating_supply: null,
+      max_supply: null,
+      description: null,
+      categories: [] as string[],
+      sentiment_up_pct: null,
+      twitter_followers: null,
+      github_stars: null,
+      github_commits_4w: null,
+      chart_24h: chart24h,
+      fetchedAt: new Date().toISOString(),
+    }
   }
 }
 

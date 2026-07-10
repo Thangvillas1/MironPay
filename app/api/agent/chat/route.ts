@@ -512,7 +512,8 @@ Never claim the transaction is done or already in progress — the system will s
                 + `2. Never mix a currency symbol with a word-based unit in the same number (e.g. never write "$3.08 tỷ USD" or "$3.08 billion USD"). Pick ONE style consistent with the reply language: "$3.08B" in English, or "3,08 tỷ USD" in Vietnamese — never both together.\n`
                 + `3. An interactive price chart (with 1H/4H/24H range buttons) is ALREADY displayed to the user right below your reply — you DO have chart capability, it's just rendered as a UI widget, not text. If the user asked for a chart, confirm briefly (e.g. "Đây là biểu đồ giá ${data.symbol}, bạn có thể đổi khung 1H/4H/24H bên dưới") — never say you cannot provide a chart or suggest checking another website.\n`
                 + `4. Do not mention team members or funding rounds — not available from this data source; say so plainly if asked.\n`
-                + `5. Use ONLY the numbers above — never estimate or guess.`
+                + `5. Use ONLY the numbers above — never estimate or guess.\n`
+                + `6. Any field showing "null" means that specific metric wasn't available from the data source this time (a fallback provider was used) — never say the literal word "null" to the user; if they specifically ask about that metric, say it's not available right now.`
             } catch (e) {
               const errMsg = e instanceof Error ? e.message : String(e)
               console.error(`[agent/chat] get_token_price("${symbol}") failed:`, errMsg)

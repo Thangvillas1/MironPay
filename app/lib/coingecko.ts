@@ -1,3 +1,5 @@
+import { fetchBinancePrice } from '@/app/lib/binance'
+
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
 /**
@@ -46,15 +48,21 @@ export async function fetchSimplePrice(symbol: string): Promise<{ priceUsd: numb
   try {
     const { id } = await resolveCoinGeckoId(symbol)
     const res = await fetchWithRetry(`${COINGECKO_BASE}/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true`)
-    if (!res.ok) return null
-    const data = await res.json()
-    const info = data[id]
-    if (!info || info.usd == null) return null
-    return {
-      priceUsd: info.usd,
-      change24hPct: info.usd_24h_change != null ? Number(info.usd_24h_change.toFixed(2)) : null,
+    if (res.ok) {
+      const data = await res.json()
+      const info = data[id]
+      if (info?.usd != null) {
+        return {
+          priceUsd: info.usd,
+          change24hPct: info.usd_24h_change != null ? Number(info.usd_24h_change.toFixed(2)) : null,
+        }
+      }
     }
   } catch {
-    return null
+    // fall through to Binance below
   }
+  // CoinGecko's free tier rate-limits hard on shared IPs (e.g. Vercel) —
+  // Binance has no key and a much higher limit, so it's the fallback for
+  // any token that trades against USDT there.
+  return fetchBinancePrice(symbol)
 }
