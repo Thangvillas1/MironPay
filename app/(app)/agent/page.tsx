@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useWalletStore } from '@/app/store/wallet'
 import { addLocalTransaction } from '@/app/lib/local-tx'
 import { TokenPriceChart } from '@/app/components/TokenPriceChart'
@@ -626,6 +627,7 @@ export default function AgentPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
       await loadWallet(data.session.access_token)
       await loadHistory(data.session.access_token)

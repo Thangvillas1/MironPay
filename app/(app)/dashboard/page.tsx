@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useAuthStore } from '@/app/store/auth'
 import { useWalletStore } from '@/app/store/wallet'
 import type { Transaction } from '@/app/lib/types'
@@ -343,6 +344,7 @@ export default function DashboardPage() {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/'); return }
       if (!user) setUser(session.user)
       setAccessToken(session.access_token)
 

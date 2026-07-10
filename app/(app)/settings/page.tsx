@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useAuthStore } from '@/app/store/auth'
 
 export default function SettingsPage() {
@@ -15,6 +16,7 @@ export default function SettingsPage() {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/'); return }
       if (!user) setUser(session.user)
       const { data: profile } = await supabase.from('profiles').select('pin_hash').eq('id', session.user.id).single()
       setHasPIN(!!profile?.pin_hash)

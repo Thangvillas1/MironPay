@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 
 const LISTING_FEE_USDC = 50
 
@@ -99,6 +100,7 @@ export default function LaunchpadSubmitPage() {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/'); return }
       setAccessToken(session.access_token)
       const { data: profile } = await supabase.from('profiles').select('pin_hash').eq('id', session.user.id).single()
       setHasPIN(!!profile?.pin_hash)

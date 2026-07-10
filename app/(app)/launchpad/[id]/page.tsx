@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 import VerifiedBadge from '@/app/components/VerifiedBadge'
 import { STATUS_PILL, fmtUsd, fmtNum, fmtPrice, initials, teamAccent } from '@/app/lib/launchpad-data'
 
@@ -63,6 +64,7 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/'); return }
       const res = await fetch(`/api/launchpad/sales/${id}`, { headers: { Authorization: `Bearer ${session.access_token}` } })
       if (res.ok) setProject(await res.json())
       setWatched(!!readWatchlist()[id])

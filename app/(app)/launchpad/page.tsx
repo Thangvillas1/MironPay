@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { STATUS_PILL, CTA_LABEL, fmtUsd, fmtNum, fmtPrice, type ProjectStatus } from '@/app/lib/launchpad-data'
 
 type Tab = ProjectStatus
@@ -118,6 +119,7 @@ export default function LaunchpadPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/'); return }
       const res = await fetch('/api/launchpad/sales')
       if (res.ok) {
         const d = await res.json()

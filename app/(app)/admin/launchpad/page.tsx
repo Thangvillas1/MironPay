@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 
 interface Submission {
   id: string
@@ -42,8 +43,9 @@ export default function AdminLaunchpadPage() {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
       load(data.session.access_token)
     })

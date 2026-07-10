@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useWalletStore } from '@/app/store/wallet'
 import { mergeWithLocalTransactions } from '@/app/lib/local-tx'
 import PriceChart from '@/app/components/PriceChart'
@@ -84,6 +85,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.replace('/'); return }
+      if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
       const { data: profile } = await supabase
         .from('profiles').select('username, pin_hash').eq('id', data.session.user.id).single()
