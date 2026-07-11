@@ -714,60 +714,68 @@ export default function DashboardPage() {
         </div>
 
         <div className="px-[18px]" style={{ paddingBottom: 90 }}>
-          {/* Total balance hero */}
-          <div className="relative overflow-hidden mt-4" style={{
-            padding: '26px 24px 22px', borderRadius: 'var(--mpm-radius-xl)',
-            background: 'linear-gradient(150deg, rgba(47,107,255,0.24), rgba(109,108,255,0.06) 55%), var(--mpm-glass-bg)',
-            backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
-            border: '1px solid var(--mpm-glass-border)', boxShadow: 'var(--mpm-glow-blue), var(--mpm-shadow-lg), inset 0 1px 0 var(--mpm-glass-hi)',
-          }}>
-            <div className="absolute pointer-events-none" style={{ top: -60, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,108,255,0.28), transparent 70%)' }} />
-            <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--mpm-muted)', letterSpacing: '0.03em' }}>Total balance</div>
-            <div className="flex items-end gap-2.5 mt-1.5">
-              <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--mpm-text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+          {/* Total balance + Agent Wallet — side by side, equal size */}
+          <div className="grid mt-4" style={{ gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'stretch' }}>
+
+            {/* Total balance */}
+            <div className="relative overflow-hidden flex flex-col" style={{
+              padding: '18px 16px', borderRadius: 'var(--mpm-radius-xl)',
+              background: 'linear-gradient(150deg, rgba(47,107,255,0.24), rgba(109,108,255,0.06) 55%), var(--mpm-glass-bg)',
+              backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
+              border: '1px solid var(--mpm-glass-border)', boxShadow: 'var(--mpm-glow-blue), var(--mpm-shadow-lg), inset 0 1px 0 var(--mpm-glass-hi)',
+            }}>
+              <div className="absolute pointer-events-none" style={{ top: -50, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(109,108,255,0.28), transparent 70%)' }} />
+              <div style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--mpm-muted)', letterSpacing: '0.03em' }}>Total balance</div>
+              <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--mpm-text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, marginTop: 6 }}>
                 ${formatUSD(totalUsd + agentTotalUsd + (agentWallet?.gateway_reserved ?? 0))}
               </div>
               {mainDelta24h !== 0 && (
-                <span className="inline-flex items-center gap-1 mb-1" style={{
-                  padding: '4px 9px', borderRadius: 'var(--mpm-radius-full)', fontSize: 12.5, fontWeight: 600,
+                <span className="inline-flex items-center gap-1 self-start" style={{
+                  marginTop: 8, padding: '3px 8px', borderRadius: 'var(--mpm-radius-full)', fontSize: 11, fontWeight: 600,
                   background: mainDelta24h > 0 ? 'rgba(43,212,164,0.16)' : 'rgba(255,93,108,0.14)',
                   color: mainDelta24h > 0 ? 'var(--mpm-success)' : 'var(--mpm-error)',
                 }}>
                   {mainDelta24h > 0 ? '+' : ''}{mainDeltaPct.toFixed(2)}%
                 </span>
               )}
+              {/* X402 Gateway reserve is folded into the total above but not
+                  broken out here, kept invisible per instruction. */}
+              <div style={{ marginTop: 'auto', paddingTop: 10 }}>
+                <div style={{ fontSize: 10.5, color: 'var(--mpm-muted2)' }}>Main <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(totalUsd)}</b></div>
+                <div style={{ fontSize: 10.5, color: 'var(--mpm-muted2)' }}>Agent <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(agentTotalUsd)}</b></div>
+              </div>
             </div>
-            {/* Small breakdown instead of the old "Across N wallets" caption —
-                X402 Gateway reserve is folded into the total above but not
-                broken out here, kept invisible per instruction. */}
-            <div className="flex items-center gap-3" style={{ marginTop: 8 }}>
-              <span style={{ fontSize: 11, color: 'var(--mpm-muted2)' }}>Main <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(totalUsd)}</b></span>
-              <span style={{ fontSize: 11, color: 'var(--mpm-muted2)' }}>Agent <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(agentTotalUsd)}</b></span>
-            </div>
-          </div>
 
-          {/* Agent Wallet — kept as a swipeable card (Main Wallet is now fully
-              covered by the Total balance hero above, so its own card was dropped). */}
-          <div className="flex gap-3.5 overflow-x-auto scrollbar-hide" style={{ margin: '18px -18px 0', padding: '0 18px 4px' }}>
-            <div className="shrink-0" style={{ minWidth: 190, padding: 14, borderRadius: 'var(--mpm-radius-lg)', background: 'linear-gradient(135deg,rgba(109,108,255,0.16),rgba(13,28,64,0.04))', border: '1px solid rgba(109,108,255,0.28)' }}>
+            {/* Agent Wallet */}
+            <div className="flex flex-col" style={{ padding: '18px 16px', borderRadius: 'var(--mpm-radius-xl)', background: 'linear-gradient(135deg,rgba(109,108,255,0.16),rgba(13,28,64,0.04))', border: '1px solid rgba(109,108,255,0.28)' }}>
               <div className="flex items-center justify-between">
-                <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Agent Wallet</div>
-                <span className="inline-flex items-center gap-1" style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--mpm-success)' }}>
+                <div style={{ fontSize: 11.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Agent Wallet</div>
+                <span className="inline-flex items-center gap-1" style={{ fontSize: 10, fontWeight: 600, color: 'var(--mpm-success)' }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--mpm-success)' }} />Active
                 </span>
               </div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--mpm-text)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>${formatUSD(agentTotalUsd)}</div>
-              <div style={{ marginTop: 10 }}>
-                <div className="flex justify-between" style={{ fontSize: 11, color: 'var(--mpm-muted)', marginBottom: 6 }}>
-                  <span>Daily spent</span><span>${formatUSD(agentWallet?.daily_spent ?? 0)} / ${formatUSD(agentWallet?.daily_limit ?? 5)}</span>
+              <div style={{ fontSize: 26, fontWeight: 600, color: 'var(--mpm-text)', marginTop: 6, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>${formatUSD(agentTotalUsd)}</div>
+              <div style={{ marginTop: 8 }}>
+                <div className="flex justify-between" style={{ fontSize: 10, color: 'var(--mpm-muted)', marginBottom: 5 }}>
+                  <span>Daily spent</span><span>${formatUSD(agentWallet?.daily_spent ?? 0)}/${formatUSD(agentWallet?.daily_limit ?? 5)}</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 9999, background: 'var(--mpm-input)', overflow: 'hidden' }}>
+                <div style={{ height: 5, borderRadius: 9999, background: 'var(--mpm-input)', overflow: 'hidden' }}>
                   <div style={{ width: `${Math.min(spentPct, 100)}%`, height: '100%', borderRadius: 9999, background: 'linear-gradient(90deg,#6d6cff,#2f6bff)' }} />
                 </div>
               </div>
-              {/* Fund dropped — Quick Actions "Fund Agent" already covers it. Withdraw kept: no other entry point exists for it. */}
-              <button onClick={() => { setShowWithdraw(true); setModalAmount(''); setModalError('') }} className="w-full flex items-center justify-center py-2 rounded-[8px] text-xs font-semibold mt-3" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Withdraw</button>
+              <div className="flex gap-1.5" style={{ marginTop: 'auto', paddingTop: 10 }}>
+                <button onClick={() => { setShowFund(true); setModalAmount(''); setModalError('') }} title="Fund" className="flex-1 flex items-center justify-center rounded-[8px]" style={{ height: 30, background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+                <button onClick={() => { setShowWithdraw(true); setModalAmount(''); setModalError('') }} title="Withdraw" className="flex-1 flex items-center justify-center rounded-[8px]" style={{ height: 30, background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5-7 7 7 7" /></svg>
+                </button>
+                <button onClick={() => setShowLimit(true)} title="Limit" className="flex-1 flex items-center justify-center rounded-[8px]" style={{ height: 30, background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                </button>
+              </div>
             </div>
+
           </div>
 
           {/* Quick actions */}
