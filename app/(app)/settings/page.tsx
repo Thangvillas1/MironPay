@@ -7,6 +7,11 @@ import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useAuthStore } from '@/app/store/auth'
 import { useWalletStore } from '@/app/store/wallet'
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export default function SettingsPage() {
   const router = useRouter()
   const { user, setUser } = useAuthStore()
@@ -17,6 +22,39 @@ export default function SettingsPage() {
   const [scoreValue, setScoreValue] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [mobileIsDark, setMobileIsDark] = useState(true)
+  const [isStandalone, setIsStandalone] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [showIOSHint, setShowIOSHint] = useState(false)
+
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as { standalone?: boolean }).standalone === true
+    setIsStandalone(standalone)
+    setIsIOS(/iphone|ipad|ipod/i.test(window.navigator.userAgent))
+
+    // Android/desktop Chrome fires this when the app is installable —
+    // capturing it lets a real "Add" button trigger the native install
+    // prompt instead of just linking to instructions.
+    function onBeforeInstall(e: Event) {
+      e.preventDefault()
+      setInstallPrompt(e as BeforeInstallPromptEvent)
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+  }, [])
+
+  async function handleInstallClick() {
+    if (installPrompt) {
+      await installPrompt.prompt()
+      setInstallPrompt(null)
+      return
+    }
+    // iOS Safari has no install API at all — "Add to Home Screen" only
+    // exists behind the manual Share sheet, so show real instructions
+    // instead of a button that would silently do nothing.
+    setShowIOSHint(true)
+  }
 
   useEffect(() => { setMobileIsDark(localStorage.getItem('theme') !== 'light') }, [])
   function toggleMobileTheme() {
@@ -117,6 +155,28 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Add to Home Screen — only shown when not already installed */}
+        {!isStandalone && (
+          <div style={{ background: 'var(--mpm-panel)', border: '1px solid var(--mpm-border)', borderRadius: 14, padding: 14, marginBottom: 18 }}>
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/icon-192.png" width={40} height={40} alt="MironPay" style={{ borderRadius: 10, flexShrink: 0 }} />
+              <div className="flex-1 min-w-0">
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--mpm-text)' }}>Thêm vào màn hình chính</div>
+                <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>MironPay sẽ hiện như 1 app thật</div>
+              </div>
+            </div>
+            <button onClick={handleInstallClick} style={{ width: '100%', height: 42, marginTop: 12, borderRadius: 10, border: 'none', background: 'var(--mpm-grad-primary)', color: '#fff', fontSize: 14, fontWeight: 600 }}>
+              Thêm
+            </button>
+            {showIOSHint && isIOS && (
+              <p style={{ fontSize: 12, color: 'var(--mpm-muted)', marginTop: 10, lineHeight: 1.5 }}>
+                Trên iPhone: bấm nút <strong style={{ color: 'var(--mpm-text)' }}>Share</strong> (biểu tượng ⬆) ở thanh dưới Safari, sau đó chọn <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add to Home Screen&quot;</strong>.
+              </p>
+            )}
+          </div>
+        )}
 
         <div style={{ background: 'var(--mpm-panel)', border: '1px solid var(--mpm-border)', borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
           <SettingsRow
