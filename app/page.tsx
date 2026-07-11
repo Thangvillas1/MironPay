@@ -184,7 +184,7 @@ function Nav({ isLight, onToggle, onSignIn }: { isLight: boolean; onToggle: () =
           <button onClick={onToggle} className="mp-iconbtn" title="Toggle theme" style={{ width: 38, height: 38, borderRadius: 10, border: '1px solid var(--c-border)', background: 'var(--c-input)', color: 'var(--lp-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             {isLight ? <IcSun /> : <IcMoon />}
           </button>
-          <button onClick={onSignIn} className="mp-btn" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 11, border: '1px solid rgba(0,0,0,.12)', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.12)', color: '#141221', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={onSignIn} className="mp-btn mp-btn-bounce" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 11, border: '1px solid rgba(0,0,0,.12)', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.12)', color: '#141221', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
             <IcGoogle size={15} className="ic-google-logo" /> Sign in
           </button>
         </div>
@@ -203,7 +203,7 @@ function Hero({ googleState, onSignIn, error }: { googleState: GoogleState; onSi
     border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
     fontSize: 15.5, fontWeight: 600, cursor: 'pointer',
     color: g === 'idle' ? '#141221' : '#fff',
-    background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : g === 'busy' ? 'var(--grad-primary)' : '#fff',
+    background: g === 'idle' ? '#fff' : 'var(--grad-primary)',
     boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
   } as React.CSSProperties
 
@@ -262,7 +262,7 @@ function Hero({ googleState, onSignIn, error }: { googleState: GoogleState; onSi
         </p>
         {/* CTA row */}
         <div style={{ marginTop: 42 }}>
-          <button onClick={onSignIn} className="mp-btn" style={gBtn}>
+          <button onClick={onSignIn} className="mp-btn mp-btn-bounce" style={gBtn}>
             {g === 'idle' && <><IcGoogle size={20} className="ic-google-logo" /><span>Continue with Google</span><span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,.06)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}><IcArrow stroke="#141221" /></span></>}
             {g === 'busy' && <><IcSpinner /><span>Connecting…</span></>}
             {g === 'done' && <><IcCheckWhite /><span>Opening your wallet…</span></>}
@@ -659,7 +659,7 @@ function CTA({ googleState, onSignIn }: { googleState: GoogleState; onSignIn: ()
     border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
     fontSize: 17, fontWeight: 600, cursor: 'pointer',
     color: g === 'idle' ? '#141221' : '#fff',
-    background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : g === 'busy' ? 'var(--grad-primary)' : '#fff',
+    background: g === 'idle' ? '#fff' : 'var(--grad-primary)',
     boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
   } as React.CSSProperties
 
@@ -672,7 +672,7 @@ function CTA({ googleState, onSignIn }: { googleState: GoogleState; onSignIn: ()
         No seed phrase. No gas surprises. Just your Google account and a handle.
       </p>
       <div className="rv" style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>
-        <button onClick={onSignIn} className="mp-btn" style={ctaBtn}>
+        <button onClick={onSignIn} className="mp-btn mp-btn-bounce" style={ctaBtn}>
           {g === 'idle' && <><IcGoogle size={22} className="ic-google-logo" /><span>Continue with Google</span></>}
           {g === 'busy' && <><IcSpinner /><span>Connecting…</span></>}
           {g === 'done' && <><IcCheckWhite size={21} /><span>Opening your wallet…</span></>}
