@@ -457,6 +457,10 @@ input[type="number"] {
 .mp-btn  { transition:transform .16s cubic-bezier(.22,1,.36,1),filter .16s,box-shadow .2s }
 .mp-btn:hover  { filter:brightness(1.07);box-shadow:0 12px 38px rgba(99,102,241,.5) }
 .mp-btn:active { transform:scale(.97) }
+@keyframes mpBtnBounce { 0%{transform:translateY(0) scale(1)} 35%{transform:translateY(-9px) scale(1.04)} 60%{transform:translateY(2px) scale(.98)} 100%{transform:translateY(0) scale(1)} }
+.mp-btn-bounce { transition:filter .16s,box-shadow .2s }
+.mp-btn-bounce:hover { filter:brightness(1.07);box-shadow:0 12px 38px rgba(99,102,241,.5) }
+.mp-btn-bounce:active { animation:mpBtnBounce .42s cubic-bezier(.34,1.56,.64,1) }
 .ic-google-logo { filter:grayscale(1); transition:filter .18s ease }
 .mp-btn:hover .ic-google-logo { filter:grayscale(0) }
 .mp-feat-row { transition:transform .3s cubic-bezier(.22,1,.36,1) }

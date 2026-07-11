@@ -747,10 +747,11 @@ function StandaloneLoginScreen({ googleState, onSignIn, error }: { googleState: 
   const g = googleState
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', background: 'var(--lp-bg)', color: 'var(--lp-text)' }}>
-      <span style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 34 }}>M</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/icon-192.png" alt="" style={{ width: 72, height: 72, borderRadius: 20, boxShadow: 'var(--glow-primary)' }} />
       <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-.01em', marginTop: 22 }}>Miron<span style={{ color: '#8487F5' }}>Pay</span></h1>
       <p style={{ fontSize: 14.5, color: 'var(--lp-muted)', marginTop: 8, maxWidth: 260, lineHeight: 1.55 }}>
-        No seed phrase, no password — just your Google account.
+        No seed phrase, no password. Just your Google account.
       </p>
 
       {error && (
@@ -762,17 +763,18 @@ function StandaloneLoginScreen({ googleState, onSignIn, error }: { googleState: 
       <button
         onClick={onSignIn}
         disabled={g !== 'idle'}
+        className="mp-btn-bounce"
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 11,
           height: 54, width: '100%', maxWidth: 320, marginTop: 28, padding: '0 20px', borderRadius: 9999,
-          border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
+          border: 'none',
           fontSize: 15.5, fontWeight: 600, cursor: g === 'idle' ? 'pointer' : 'default',
-          color: g === 'idle' ? '#141221' : '#fff',
-          background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : g === 'busy' ? 'var(--grad-primary)' : '#fff',
-          boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
+          color: '#fff',
+          background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : 'var(--grad-primary)',
+          boxShadow: 'var(--glow-primary)',
         }}
       >
-        {g === 'idle' && <><IcGoogle size={20} />Sign in with Google</>}
+        {g === 'idle' && <><span style={{ width: 26, height: 26, borderRadius: '50%', background: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><IcGoogle size={16} /></span>Sign in with Google</>}
         {g === 'busy' && <><IcSpinner />Connecting…</>}
         {g === 'done' && <><IcCheckWhite />Opening your wallet…</>}
       </button>
