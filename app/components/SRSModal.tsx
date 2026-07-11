@@ -510,10 +510,12 @@ export default function SRSModal({
   return (
     <div
       onClick={handleClose}
+      className="srs-overlay"
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(6,4,16,.66)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, animation: 'srsScrim .2s ease' }}
     >
       <div
         onClick={e => e.stopPropagation()}
+        className="srs-panel"
         style={{ width: 432, maxWidth: '94vw', maxHeight: '90vh', borderRadius: 22, ...S.panel, border: '1px solid rgba(var(--c-fg-rgb),.14)', boxShadow: '0 30px 80px rgba(3,8,20,.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'srsUp 340ms cubic-bezier(.22,1,.36,1)' }}
       >
         {/* ── Header ── */}

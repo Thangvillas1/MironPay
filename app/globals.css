@@ -123,6 +123,20 @@ html, body {
 @keyframes srsStep { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .srs-pad::-webkit-scrollbar { width: 0 }
 
+/* Send/Receive/Swap modal — becomes a true full-screen page (no card
+   floating over a scrim) under ~640px, matching the mobile design
+   handoff's push-navigation flow, without touching any of the real
+   PIN/on-chain transaction logic in SRSModal.tsx — presentation only. */
+@media (max-width: 640px) {
+  .srs-overlay { padding: 0 !important; align-items: stretch !important; }
+  .srs-panel {
+    width: 100% !important; max-width: 100% !important;
+    height: 100dvh !important; max-height: 100dvh !important;
+    border-radius: 0 !important; border: none !important;
+  }
+  .srs-panel > div:first-child { padding-top: calc(env(safe-area-inset-top) + 16px) !important; }
+}
+
 /* ── Panels: flat color + subtle top highlight + depth shadow ─────── */
 /* Cards are FLAT like the design — depth comes from shadow, not gradient */
 .bg-mp-card {
