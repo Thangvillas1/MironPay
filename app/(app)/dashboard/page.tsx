@@ -34,6 +34,7 @@ interface AgentWalletData {
   daily_limit: number
   msg_cost: number
   wallet_address: string | null
+  gateway_reserved?: number
 }
 
 interface LiveIdo {
@@ -724,7 +725,7 @@ export default function DashboardPage() {
             <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--mpm-muted)', letterSpacing: '0.03em' }}>Total balance</div>
             <div className="flex items-end gap-2.5 mt-1.5">
               <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--mpm-text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                ${formatUSD(totalUsd)}
+                ${formatUSD(totalUsd + agentTotalUsd + (agentWallet?.gateway_reserved ?? 0))}
               </div>
               {mainDelta24h !== 0 && (
                 <span className="inline-flex items-center gap-1 mb-1" style={{
@@ -736,19 +737,18 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--mpm-muted2)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>Across 2 wallets · ARC network</div>
+            {/* Small breakdown instead of the old "Across N wallets" caption —
+                X402 Gateway reserve is folded into the total above but not
+                broken out here, kept invisible per instruction. */}
+            <div className="flex items-center gap-3" style={{ marginTop: 8 }}>
+              <span style={{ fontSize: 11, color: 'var(--mpm-muted2)' }}>Main <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(totalUsd)}</b></span>
+              <span style={{ fontSize: 11, color: 'var(--mpm-muted2)' }}>Agent <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(agentTotalUsd)}</b></span>
+            </div>
           </div>
 
-          {/* Wallet cards — horizontal scroll */}
-          <div className="flex items-center justify-between mt-5 mb-2.5 mx-1">
-            <h3 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--mpm-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your wallets</h3>
-          </div>
-          <div className="flex gap-3.5 overflow-x-auto scrollbar-hide" style={{ margin: '0 -18px', padding: '0 18px 4px' }}>
-            <div className="shrink-0" style={{ minWidth: 190, padding: 14, borderRadius: 'var(--mpm-radius-lg)', background: 'var(--mpm-grad-sapphire)', border: '1px solid rgba(47,107,255,0.28)' }}>
-              <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Main Wallet</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--mpm-text)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>${formatUSD(totalUsd)}</div>
-              {/* Send/Receive dropped — Quick Actions row right below already covers both, no need to repeat here. */}
-            </div>
+          {/* Agent Wallet — kept as a swipeable card (Main Wallet is now fully
+              covered by the Total balance hero above, so its own card was dropped). */}
+          <div className="flex gap-3.5 overflow-x-auto scrollbar-hide" style={{ margin: '18px -18px 0', padding: '0 18px 4px' }}>
             <div className="shrink-0" style={{ minWidth: 190, padding: 14, borderRadius: 'var(--mpm-radius-lg)', background: 'linear-gradient(135deg,rgba(109,108,255,0.16),rgba(13,28,64,0.04))', border: '1px solid rgba(109,108,255,0.28)' }}>
               <div className="flex items-center justify-between">
                 <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Agent Wallet</div>
