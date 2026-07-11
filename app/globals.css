@@ -311,6 +311,17 @@ input[type="number"] {
   background: rgba(var(--c-fg-rgb), .3);
 }
 
+/* Mobile: hide every scrollbar in the app — scrolling still works, the
+   track/thumb just never renders (matches native app feel). */
+@media (max-width: 768px) {
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+}
+
 /* ── Sidebar nav hover ─────────────────────────────────────────────── */
 .mp-nav-item {
   transition: background var(--dur-fast), color var(--dur-fast);
