@@ -767,14 +767,14 @@ function StandaloneLoginScreen({ googleState, onSignIn, error }: { googleState: 
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 11,
           height: 54, width: '100%', maxWidth: 320, marginTop: 28, padding: '0 20px', borderRadius: 9999,
-          border: 'none',
+          border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
           fontSize: 15.5, fontWeight: 600, cursor: g === 'idle' ? 'pointer' : 'default',
-          color: '#fff',
-          background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : 'var(--grad-primary)',
-          boxShadow: 'var(--glow-primary)',
+          color: g === 'idle' ? '#141221' : '#fff',
+          background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : g === 'busy' ? 'var(--grad-primary)' : '#fff',
+          boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
         }}
       >
-        {g === 'idle' && <><span style={{ width: 26, height: 26, borderRadius: '50%', background: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><IcGoogle size={16} /></span>Sign in with Google</>}
+        {g === 'idle' && <><IcGoogle size={20} />Sign in with Google</>}
         {g === 'busy' && <><IcSpinner />Connecting…</>}
         {g === 'done' && <><IcCheckWhite />Opening your wallet…</>}
       </button>
