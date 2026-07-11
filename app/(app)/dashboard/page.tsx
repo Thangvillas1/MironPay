@@ -604,6 +604,11 @@ export default function DashboardPage() {
   const msgCost = agentWallet?.msg_cost ?? 0.005
   const spentPct = agentWallet ? Math.min(100, (agentWallet.daily_spent / agentWallet.daily_limit) * 100) : 0
 
+  // Most recent successful swap/send — powers the personalized suggestion
+  // chips below the chat instead of a hardcoded "Swap USDC → EURC".
+  const lastSwap = [...messages].reverse().find(m => m.txResult?.success && m.txResult.type === 'swap')?.txResult
+  const lastSend = [...messages].reverse().find(m => m.txResult?.success && m.txResult.type === 'send')?.txResult
+
   const todayStr = new Date().toDateString()
   const todayTxs = transactions.filter(t => new Date(t.created_at).toDateString() === todayStr)
   const todayMsgs = messages.filter(m => new Date(m.created_at).toDateString() === todayStr)
@@ -1001,11 +1006,19 @@ export default function DashboardPage() {
                 {messages.length === 0 ? (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' as const, gap: 18, padding: '40px 20px' }}>
                     <div style={{ width: 68, height: 68, borderRadius: 20, background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                      <svg width={30} height={30} viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z" /></svg>
+                      <svg width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="5" y="9" width="14" height="11" rx="3" />
+                        <path d="M12 9V5" />
+                        <circle cx="12" cy="3.5" r="1.5" fill="currentColor" stroke="none" />
+                        <circle cx="9" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
+                        <circle cx="15" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
+                        <path d="M9 18h6" />
+                        <path d="M2 12v3M22 12v3" />
+                      </svg>
                     </div>
                     <div>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', marginBottom: 5 }}>👋 Hey {username ? `@${username}` : firstName} — I&apos;m your Miron Agent</p>
-                      <p style={{ fontSize: 13.5, color: 'var(--c-muted)', lineHeight: 1.55 }}>I can send, swap, or check balances on-chain for you. What do you need?</p>
+                      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', marginBottom: 5 }}>Hi {username ? `@${username}` : firstName}</p>
+                      <p style={{ fontSize: 13.5, color: 'var(--c-muted)', lineHeight: 1.55 }}>Send, swap, or check balances — just ask.</p>
                     </div>
                   </div>
                 ) : (
@@ -1116,11 +1129,15 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', gap: 7, padding: '0 18px 10px', flexWrap: 'wrap' as const, flexShrink: 0 }}>
                 {[
                   { text: 'Check my balance', fn: () => setInput('Check my balance') },
-                  ...(tokenList.some(t => t.symbol === 'USDC' && (t.usdValue ?? 0) > 0)
+                  ...(lastSwap?.tokenIn && lastSwap?.tokenOut
+                    ? [{ text: `Swap ${lastSwap.tokenIn} → ${lastSwap.tokenOut} again`, fn: () => setInput(`Swap ${lastSwap.tokenIn} → ${lastSwap.tokenOut}`) }]
+                    : tokenList.some(t => t.symbol === 'USDC' && (t.usdValue ?? 0) > 0)
                     ? [{ text: 'Swap USDC → EURC', fn: () => setInput('Swap USDC → EURC') }]
                     : []),
                   ...(agentBalance < 1
                     ? [{ text: 'Fund my Agent Wallet', fn: () => setInput('Fund my Agent Wallet with 5 USDC') }]
+                    : lastSend?.to
+                    ? [{ text: `Send to ${lastSend.to} again`, fn: () => setInput(`Send USDC to ${lastSend.to}`) }]
                     : [{ text: 'Send USDC to a friend', fn: () => setInput('Send USDC to @') }]),
                   ...(liveIdo ? [{ text: `Contribute $100 to ${liveIdo.name}`, fn: () => setInput(`Contribute $100 to ${liveIdo.name}`) }] : []),
                 ].map(c => (
