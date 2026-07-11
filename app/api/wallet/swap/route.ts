@@ -164,11 +164,11 @@ async function getSwapData(params: {
     try { parsed = JSON.parse(text) } catch { /* ok */ }
     if (parsed.code === 331001 && attempt < 2) continue
     if (parsed.code === 331001) {
-      throw new Error('Khong co tuyen swap kha dung tren testnet luc nay. Thu lai sau it phut.')
+      throw new Error('No swap route available on testnet right now. Please try again in a few minutes.')
     }
     throw new Error(`Stablecoin service error ${res.status}: ${text}`)
   }
-  throw new Error('Khong co tuyen swap kha dung tren testnet luc nay. Thu lai sau it phut.')
+  throw new Error('No swap route available on testnet right now. Please try again in a few minutes.')
 }
 
 export async function POST(request: NextRequest) {
@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!txId) return NextResponse.json({ error: lastErr || 'Swap that bai sau nhieu lan thu' }, { status: 500 })
+    if (!txId) return NextResponse.json({ error: lastErr || 'Swap failed after multiple attempts' }, { status: 500 })
 
     const amountOutRaw: string | null = swapData?.estimatedAmount ?? null
     const amountOut = amountOutRaw

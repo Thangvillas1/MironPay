@@ -2,8 +2,8 @@ import { circleClient } from '@/app/lib/circle'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Lay circle_wallet_id cua user tu profiles.
- * Neu chua co (user cu), tu dong tim trong Circle va cap nhat profiles.
+ * Get the user's circle_wallet_id from profiles.
+ * If missing (legacy user), look it up in Circle and backfill profiles.
  */
 export async function resolveCircleWalletId(
   supabase: SupabaseClient,
@@ -21,7 +21,7 @@ export async function resolveCircleWalletId(
     return { circleWalletId: profile.circle_wallet_id, walletAddress: profile.wallet_address }
   }
 
-  // Fallback: tim trong Circle bang wallet address
+  // Fallback: look it up in Circle by wallet address
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const walletsRes = await circleClient.listWallets({} as any)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,7 +31,7 @@ export async function resolveCircleWalletId(
 
   if (!match?.id) return null
 
-  // Luu lai cho lan sau
+  // Save it for next time
   await supabase
     .from('profiles')
     .update({ circle_wallet_id: match.id })

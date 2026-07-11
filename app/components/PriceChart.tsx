@@ -9,12 +9,12 @@ interface Props {
 function formatTimeLabel(ts: number, period: string): string {
   const d = new Date(ts)
   if (period === '1D') {
-    return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   }
   if (period === '1W') {
-    return d.toLocaleDateString('vi-VN', { weekday: 'short' })
+    return d.toLocaleDateString('en-US', { weekday: 'short' })
   }
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' })
 }
 
 export default function PriceChart({ data, isPositive, period }: Props) {

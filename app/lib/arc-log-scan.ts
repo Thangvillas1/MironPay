@@ -12,14 +12,16 @@ function errorDetail(err: unknown): string {
   return e?.details ?? e?.shortMessage ?? e?.message ?? String(err)
 }
 
-// RPC có trả kèm 1 range "gợi ý" khi vượt quá kết quả tối đa (vd: "query exceeds
-// max results 20000, retry with the range 49822286-49826768") nhưng ĐÃ VERIFY THẬT
-// gợi ý này không đáng tin — retry đúng range đó vẫn có thể exceeds lần nữa (test
-// thật ngày 2026-07-02, agent id vùng dày block ~45.84M). Nên bỏ qua gợi ý, luôn
-// tự chia đôi range còn lại — hội tụ chắc chắn về 0 trong tối đa ~14 lần (log2(10000)).
+// The RPC sometimes returns a "suggested" range when the result limit is
+// exceeded (e.g. "query exceeds max results 20000, retry with the range
+// 49822286-49826768") but VERIFIED LIVE that suggestion isn't reliable —
+// retrying that exact range can still exceed again (tested 2026-07-02, in a
+// dense block region around ~45.84M). So we ignore the suggestion and always
+// halve the remaining range ourselves — guaranteed to converge to 0 within
+// ~14 iterations max (log2(10000)).
 
-// Log đã decode bởi viem (qua `events` — KHÔNG dùng `topics` thô, param đó bị
-// getLogs() lặng lẽ bỏ qua nếu không đi kèm event/events, xem arc-chain.ts).
+// Logs are decoded by viem (via `events` — NOT raw `topics`, which getLogs()
+// silently ignores if not paired with event/events, see arc-chain.ts).
 export interface DecodedLog {
   eventName: string
   args: Record<string, unknown>
@@ -27,11 +29,13 @@ export interface DecodedLog {
 }
 
 /**
- * Quét log theo chunk, tự thu hẹp range khi RPC báo vượt giới hạn (10,000 block/lần,
- * 20,000 kết quả/lần — verify thật trên rpc.testnet.arc.network ngày 2026-07-02),
- * gọi onChunk() ngay khi có kết quả từng chunk để caller lưu tiến độ dần dần thay vì
- * gom hết vào bộ nhớ. Hỗ trợ deadline để caller tự giới hạn thời gian chạy (dùng cho
- * route cron chạy trong 1 request) và resume ở lần gọi tiếp theo.
+ * Scans logs in chunks, auto-shrinking the range whenever the RPC reports the
+ * limit exceeded (10,000 blocks/call, 20,000 results/call — verified live on
+ * rpc.testnet.arc.network on 2026-07-02). Calls onChunk() as soon as each
+ * chunk's results are ready so the caller can persist progress incrementally
+ * instead of buffering everything in memory. Supports a deadline so the
+ * caller can cap run time (used by a cron route that runs within one
+ * request) and resume on the next call.
  */
 export async function scanLogs(opts: {
   client: PublicClient
@@ -45,9 +49,10 @@ export async function scanLogs(opts: {
 }): Promise<{ resumeFrom: bigint; done: boolean }> {
   const maxRetries = opts.maxRetries ?? 20
   let cursor = opts.fromBlock
-  // Nhớ span "an toàn" gần nhất giữa các chunk thay vì luôn reset về MAX_LOG_RANGE —
-  // vùng block dày (density cao gần tip) cứ dò lại từ đầu mỗi chunk rất lãng phí
-  // round-trip RPC (verify thật: ~10-20s/chunk nếu reset, so với vài giây nếu nhớ span).
+  // Remember the last "safe" span between chunks instead of always resetting
+  // to MAX_LOG_RANGE — in dense block regions (high density near the tip),
+  // re-probing from scratch every chunk wastes RPC round-trips (verified
+  // live: ~10-20s/chunk if reset, vs a few seconds if the span is remembered).
   let span = MAX_LOG_RANGE
 
   while (cursor <= opts.toBlock) {
@@ -69,7 +74,7 @@ export async function scanLogs(opts: {
           events: opts.events,
           strict: false,
         }) as unknown as DecodedLog[]
-        // Thành công — ramp span lên dần (x1.5), không reset thẳng về MAX_LOG_RANGE.
+        // Success — ramp the span up gradually (x1.5) instead of jumping straight back to MAX_LOG_RANGE.
         span = (end - cursor + 1n) * 3n / 2n
         if (span > MAX_LOG_RANGE) span = MAX_LOG_RANGE
         if (span < 1n) span = 1n
@@ -82,7 +87,7 @@ export async function scanLogs(opts: {
           end = cursor + (curSpan / 2n > 0n ? curSpan / 2n : 0n)
           span = end - cursor + 1n
         } else {
-          // Lỗi khác (mạng, RPC down...) — chờ rồi thử lại cùng range
+          // Other error (network, RPC down...) — wait then retry the same range
           await new Promise(r => setTimeout(r, Math.min(1000 * attempt, 8000)))
         }
       }

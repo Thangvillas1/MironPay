@@ -16,7 +16,7 @@
   --color-mp-danger:  #ef4444;
 }
 
-/* ── CSS Custom Properties — dùng trong inline styles để light mode hoạt động ── */
+/* ── CSS Custom Properties — used in inline styles so light mode works ── */
 :root {
   --c-page:           #070a18;
   --c-chat:           #07071a;
@@ -191,7 +191,7 @@ html, body {
 :root.light .bg-white\/10 { background-color: rgba(0, 0, 0, 0.07); }
 :root.light .bg-white\/12 { background-color: rgba(0, 0, 0, 0.08); }
 
-/* ── Chat section light mode (độc lập, không ảnh hưởng website) ──── */
+/* ── Chat section light mode (self-contained, doesn't affect the website) ──── */
 .chat-section.chat-light {
   --c-chat:      #f5f3ff;
   --c-text:      #0a0718;
@@ -213,7 +213,7 @@ html, body {
 :root.light aside p.text-white\/30 { color: var(--c-nav-muted) !important; }
 
 /* ── Wallet card hover effects ────────────────────────────────────── */
-/* border + shadow ở CSS class (không dùng inline style) để hover work */
+/* border + shadow live in a CSS class (not inline style) so hover works */
 .wallet-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   border-radius: 16px;
@@ -271,7 +271,7 @@ html, body {
   box-shadow: 0 12px 40px rgba(99, 102, 241, 0.45), 0 0 0 1px rgba(129, 140, 248, 0.6);
 }
 
-/* ── Ẩn mũi tên tăng giảm của input number ───────────────────────── */
+/* ── Hide the increment/decrement arrows on number inputs ───────────────────────── */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -515,8 +515,9 @@ input[type="number"] {
 @keyframes mpShake { 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
 .mp-shake      { animation:mpShake 420ms cubic-bezier(.22,1,.36,1) }
 
-/* prefers-reduced-motion: giữ nguyên animations vì design intentionally loop-driven.
-   Chỉ tắt scroll-reveal transitions để tránh layout shift khi navigate. */
+/* prefers-reduced-motion: keep the ambient animations since the design is
+   intentionally loop-driven. Only disable scroll-reveal transitions, to
+   avoid layout shift while navigating. */
 @media (prefers-reduced-motion:reduce) {
   .rv,.rv-l,.rv-r,.rv-s { transition:none!important;opacity:1!important;transform:none!important }
 }

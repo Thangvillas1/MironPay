@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MironPay",
-  description: "Vi stablecoin tren ARC Testnet",
+  description: "Stablecoin wallet on ARC Testnet",
   manifest: "/manifest.json",
   icons: {
     icon: [

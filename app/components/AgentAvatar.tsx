@@ -21,9 +21,9 @@ export default function AgentAvatar({ size = 44, showStatusDot = true, glow = fa
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}
     >
-      {/* Bob wrapper — không đổi kích thước, chỉ trôi lên xuống nhẹ */}
+      {/* Bob wrapper — doesn't change size, just drifts up/down gently */}
       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'agentBob 3.4s ease-in-out infinite' }}>
-        {/* Face — phần duy nhất phóng to khi excited, khung vuông ngoài giữ nguyên */}
+        {/* Face — the only part that scales up when excited; the outer square stays the same */}
         <svg
           width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24"
           style={{

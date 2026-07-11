@@ -6,7 +6,7 @@ interface Props {
 export default function VerifiedBadge({ size = 'sm', source }: Props) {
   const dim = size === 'md' ? 'w-5 h-5' : 'w-4 h-4'
   const icon = size === 'md' ? 'w-3 h-3' : 'w-2.5 h-2.5'
-  const title = source ? `Da xac minh tren ${source}` : 'Token da xac minh'
+  const title = source ? `Verified on ${source}` : 'Token verified'
 
   return (
     <div

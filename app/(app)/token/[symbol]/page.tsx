@@ -158,7 +158,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
               <div className="flex items-center gap-1 mt-0.5">
                 <p className="text-sm text-mp-muted">{upperSymbol}</p>
                 {!loadingMeta && meta?.found && (
-                  <span className="text-xs text-mp-primary font-medium">· Da xac minh</span>
+                  <span className="text-xs text-mp-primary font-medium">· Verified</span>
                 )}
               </div>
             </div>
@@ -177,7 +177,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
           {/* Chart area */}
           {loadingChart && (
             <div className="h-40 flex items-center justify-center">
-              <p className="text-sm text-mp-muted animate-pulse">Dang tai bieu do...</p>
+              <p className="text-sm text-mp-muted animate-pulse">Loading chart...</p>
             </div>
           )}
           {!loadingChart && hasChart && (
@@ -187,7 +187,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
           )}
           {!loadingChart && !hasChart && (
             <div className="h-20 flex items-center justify-center">
-              <p className="text-xs text-mp-muted/50">Khong co du lieu bieu do</p>
+              <p className="text-xs text-mp-muted/50">No chart data</p>
             </div>
           )}
 
@@ -210,7 +210,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
 
         {/* User balance */}
         <div className="mx-4 mt-4 bg-mp-card border border-white/8 rounded-[12px] p-4">
-          <p className="text-xs text-mp-muted uppercase tracking-widest mb-3">So du cua ban</p>
+          <p className="text-xs text-mp-muted uppercase tracking-widest mb-3">Your balance</p>
           {tokenBalance ? (
             <div className="flex items-center justify-between">
               <div>
@@ -230,23 +230,23 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
         {/* Market info */}
         {!loadingMeta && meta?.found && (meta?.marketCap || meta?.volume24h || meta?.circulatingSupply) && (
           <div className="mx-4 mt-3 bg-mp-card border border-white/8 rounded-[12px] p-4">
-            <p className="text-xs text-mp-muted uppercase tracking-widest mb-3">Thong tin thi truong</p>
+            <p className="text-xs text-mp-muted uppercase tracking-widest mb-3">Market info</p>
             <div className="flex flex-col gap-3">
               {meta.marketCap != null && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-mp-muted">Von hoa thi truong</span>
+                  <span className="text-sm text-mp-muted">Market cap</span>
                   <span className="text-sm font-medium text-mp-text">{formatUSD(meta.marketCap)}</span>
                 </div>
               )}
               {meta.volume24h != null && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-mp-muted">Khoi luong 24h</span>
+                  <span className="text-sm text-mp-muted">24h volume</span>
                   <span className="text-sm font-medium text-mp-text">{formatUSD(meta.volume24h)}</span>
                 </div>
               )}
               {meta.circulatingSupply != null && (
                 <div className="flex justify-between">
-                  <span className="text-sm text-mp-muted">Cung luu hanh</span>
+                  <span className="text-sm text-mp-muted">Circulating supply</span>
                   <span className="text-sm font-medium text-mp-text">{formatSupply(meta.circulatingSupply, upperSymbol)}</span>
                 </div>
               )}
@@ -260,29 +260,29 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
             onClick={() => setSrsMode('send')}
             className="bg-mp-primary text-white rounded-[10px] py-3.5 text-sm font-semibold hover:bg-blue-600 active:bg-blue-700 transition-colors"
           >
-            Gui
+            Send
           </button>
           <button
             onClick={() => setSrsMode('receive')}
             className="bg-white/5 border border-white/8 rounded-[10px] py-3.5 text-sm font-semibold text-mp-text hover:bg-white/10 transition-colors"
           >
-            Nhan
+            Receive
           </button>
           <button
             onClick={() => setSrsMode('swap')}
             className="bg-white/5 border border-white/8 rounded-[10px] py-3.5 text-sm font-semibold text-mp-text hover:bg-white/10 transition-colors"
           >
-            Hoan doi
+            Swap
           </button>
         </div>
 
         {/* Transaction history inline */}
         <div className="mx-4 mt-4 mb-4 bg-mp-card border border-white/8 rounded-[12px] overflow-hidden">
           <p className="text-xs font-semibold text-mp-muted px-4 py-3 border-b border-white/8 uppercase tracking-widest">
-            Lich su giao dich
+            Transaction history
           </p>
           {tokenTransactions.length === 0 ? (
-            <p className="text-sm text-mp-muted px-4 py-8 text-center">Chua co giao dich nao</p>
+            <p className="text-sm text-mp-muted px-4 py-8 text-center">No transactions yet</p>
           ) : (
             <ul className="divide-y divide-white/8">
               {tokenTransactions.map((tx) => (
@@ -300,7 +300,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium text-mp-text">{tx.description}</span>
                       <span className="text-xs text-mp-muted">
-                        {new Date(tx.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                        {new Date(tx.created_at).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' })}
                       </span>
                     </div>
                   </div>

@@ -82,19 +82,19 @@ function formatUSD(n: number) {
 }
 function truncateAddr(a: string) { return `${a.slice(0, 6)}...${a.slice(-4)}` }
 
-// ── Wallet sparkline (với gradient fill, dùng cho wallet cards) ──────────────
+// ── Wallet sparkline (with gradient fill, used for wallet cards) ──────────────
 function SparklineChart({ values, color, id }: { values: number[]; color: string; id: string }) {
   const w = 100, h = 50
   const data = values.length >= 2 ? values : [0, 0]
   const max = Math.max(...data)
   const min = Math.min(...data)
-  // Nếu flat (balance không đổi): vẽ đường ngang ở 60% chiều cao
+  // If flat (balance unchanged): draw a horizontal line at 60% height
   const range = max - min
   const pts = data.map((v, i) => {
     const x = (i / (data.length - 1)) * w
     const y = range === 0
-      ? h * 0.4                                           // flat → giữa
-      : h - ((v - min) / range) * (h * 0.75) - h * 0.1  // có variation
+      ? h * 0.4                                           // flat → centered
+      : h - ((v - min) / range) * (h * 0.75) - h * 0.1  // has variation
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }).join(' ')
   const fillPts = `0,${h} ${pts} ${w},${h}`
@@ -324,7 +324,7 @@ export default function DashboardPage() {
     setLimitResult(null)
   }
 
-  // ── Helper: refresh main wallet từ Circle ──────────────────────────────────
+  // ── Helper: refresh main wallet from Circle ──────────────────────────────────
   async function refreshMainWallet(token: string) {
     const res = await fetch('/api/wallet', { headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) return
@@ -388,14 +388,14 @@ export default function DashboardPage() {
       const [msgRes] = await Promise.all([
         supabase.from('agent_messages').select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data')
           .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false }).limit(100), // load 100 mới nhất, đảo ngược để hiển thị
+          .order('created_at', { ascending: false }).limit(100), // load the 100 most recent, then reverse to display
         refreshAgentWallet(session.access_token),
         refreshAgentStats(session.access_token),
       ])
       if (msgRes.data) {
-        // Đảo ngược để hiển thị đúng thứ tự (cũ → mới)
+        // Reverse to display in the correct order (oldest → newest)
         setMessages([...msgRes.data].reverse().map(m => {
-          // Parse JSON txResult nếu có
+          // Parse JSON txResult if present
           let txResult: TxResult | undefined
           try {
             const parsed = JSON.parse(m.content)
@@ -421,7 +421,7 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
-  // ── Polling: Main Wallet mỗi 30s ───────────────────────────────────────────
+  // ── Polling: Main Wallet every 30s ───────────────────────────────────────────
   useEffect(() => {
     if (!accessToken) return
     const id = setInterval(() => refreshMainWallet(accessToken), 10_000)
@@ -429,7 +429,7 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken])
 
-  // ── Supabase Realtime: agent_wallets (balance đổi ngay khi chat) ────────────
+  // ── Supabase Realtime: agent_wallets (balance updates instantly during chat) ─
   useEffect(() => {
     if (!user) return
     const ch = supabase.channel('rt-agent-wallet')
@@ -453,7 +453,7 @@ export default function DashboardPage() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ── Supabase Realtime: agent_messages (tin nhắn mới) ───────────────────────
+  // ── Supabase Realtime: agent_messages (new messages) ───────────────────────
   useEffect(() => {
     if (!user) return
     const ch = supabase.channel('rt-agent-messages')
@@ -514,7 +514,7 @@ export default function DashboardPage() {
       txId: execData.txId,
     }
 
-    // Lưu vào Supabase để hiện lại sau khi F5
+    // Save to Supabase so it's still there after an F5
     const txContent = JSON.stringify({ __txResult: true, ...txResult })
     const { data: inserted } = await supabase.from('agent_messages').insert({
       user_id: user?.id,
@@ -539,7 +539,7 @@ export default function DashboardPage() {
     if (!text || sending) return
     setInput(''); setChatError(''); setSending(true)
 
-    // Luôn lấy token mới nhất để tránh expired
+    // Always fetch the freshest token to avoid it being expired
     const { data: { session: freshSession } } = await supabase.auth.getSession()
     if (!freshSession) { setChatError('Session expired. Please log in again.'); setSending(false); return }
     const token = freshSession.access_token
@@ -563,7 +563,7 @@ export default function DashboardPage() {
       const data = await res.json()
       if (!res.ok) { setChatError(data.message ?? data.error ?? 'Connection error'); setSending(false); return }
 
-      // Hiện reply của agent
+      // Show the agent's reply
       const agentMsgId = `a_${Date.now()}`
       setMessages(prev => [
         ...prev.map(m => m.id === userMsg.id ? { ...m, cost: data.cost, inputFeeTxHash: data.input_fee_tx_hash ?? null } : m),
@@ -581,7 +581,7 @@ export default function DashboardPage() {
       ])
       if (agentWallet) setAgentWallet(prev => prev ? { ...prev, balance: data.balance_after, daily_spent: prev.daily_spent + (data.cost ?? 0) } : prev)
 
-      // Nếu có action → execute và show kết quả đầy đủ. Main Wallet actions
+      // If there's an action → execute it and show the full result. Main Wallet actions
       // need a PIN first — the server enforces it, so ask before calling execute
       // rather than letting it fail with "PIN required".
       if (data.action) {
@@ -614,8 +614,8 @@ export default function DashboardPage() {
   const todayMsgs = messages.filter(m => new Date(m.created_at).toDateString() === todayStr)
   const todayVol = todayTxs.reduce((s, t) => s + t.amount, 0)
 
-  // tx.amount là số lượng token gốc (vd 0.01 ETH), không phải USD — quy đổi theo giá hiện tại
-  // của từng token (từ tokenList) trước khi cộng dồn, USDC/USDT coi như neo 1:1.
+  // tx.amount is the raw token quantity (e.g. 0.01 ETH), not USD — convert using
+  // each token's current price (from tokenList) before summing; USDC/USDT are treated as pegged 1:1.
   const priceBySymbol: Record<string, number> = {}
   tokenList.forEach(t => {
     const amt = parseFloat(t.amount)
@@ -638,8 +638,8 @@ export default function DashboardPage() {
   const agentDeltaPct = agentBalanceBefore24h !== 0 ? (agentDelta24h / Math.abs(agentBalanceBefore24h)) * 100 : 0
 
 
-  // Main wallet: balance history 7 ngày (tính ngược từ balance hiện tại — dùng totalUsd để
-  // khớp với số $ đang hiển thị trên card, không dùng mainBalance vốn chỉ tính riêng USDC)
+  // Main wallet: 7-day balance history (computed backwards from the current balance — uses
+  // totalUsd to match the $ figure shown on the card, not mainBalance which is USDC-only)
   const chartValues: number[] = Array.from({ length: 7 }, (_, i) => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - (6 - i))
@@ -652,7 +652,7 @@ export default function DashboardPage() {
 
   // Combined recent activity
   const agentMsgs = messages.filter(m => m.role === 'assistant' && (m.cost ?? 0) > 0)
-  // Đếm chính xác toàn bộ lịch sử qua /api/agent/stats — messages chỉ giữ 100 tin gần nhất nên fallback tạm khi chưa load xong
+  // Exact full-history counts come from /api/agent/stats — messages only keeps the last 100, so this is a temporary fallback until stats load
   const agentTxSuccessCount = agentStats?.txSuccessCount ?? messages.filter(m => m.txResult?.success).length
   const agentReplyCount = agentStats?.replyCount ?? messages.filter(m => m.role === 'assistant').length
   const recentActivity = [
@@ -667,7 +667,7 @@ export default function DashboardPage() {
     ? recentActivity.filter(a => a.kind === 'agent' || a.kind === 'msg')
     : recentActivity
 
-  // Agent wallet: balance history 7 ngày (tính ngược từ balance hiện tại)
+  // Agent wallet: 7-day balance history (computed backwards from the current balance)
   const agentChartValues: number[] = Array.from({ length: 7 }, (_, i) => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - (6 - i))

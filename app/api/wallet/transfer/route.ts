@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   const txId = (tx.data as any)?.id
   let txHash: string | null = null
 
-  // Cho den khi co txHash (toi da 20 giay)
+  // Wait until txHash is available (up to 20 seconds)
   if (txId) {
     try {
       const confirmed = await circleClient.getTransaction({
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       txHash = (confirmed.data as any)?.transaction?.txHash ?? null
     } catch {
-      // Neu timeout thi van tra ve ma khong co txHash
+      // On timeout, still return the response without txHash
     }
   }
 

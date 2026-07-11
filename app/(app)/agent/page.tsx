@@ -663,7 +663,7 @@ export default function AgentPage() {
         content: m.content,
         cost: m.cost,
         inputFeeTxHash: m.input_fee_tx_hash,
-        time: new Date(m.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        time: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
         dataFee: m.data_fee_amount != null ? { amount: m.data_fee_amount, txHash: m.data_fee_tx_hash } : null,
         chart: m.chart_symbol && m.chart_points ? { symbol: m.chart_symbol, points: m.chart_points } : null,
         trending: m.trending_data ?? null,
@@ -756,13 +756,13 @@ export default function AgentPage() {
       id: `tmp_${Date.now()}`,
       role: 'user',
       content: text,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     }
     setMessages(prev => [...prev, userMsg])
 
     // Build wallet context for AI
     const walletContext = tokenList.length > 0
-      ? `Số dư: ${tokenList.map(t => `${parseFloat(parseFloat(t.amount).toFixed(4))} ${t.symbol}`).join(', ')}`
+      ? `Balance: ${tokenList.map(t => `${parseFloat(parseFloat(t.amount).toFixed(4))} ${t.symbol}`).join(', ')}`
       : ''
 
     try {
@@ -790,7 +790,7 @@ export default function AgentPage() {
         id: `a_${Date.now()}`,
         role: 'assistant',
         content: data.reply,
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
         action: data.action ?? null,
         dataFee: data.data_fee ?? null,
         chart: data.token_chart ?? null,
@@ -816,7 +816,7 @@ export default function AgentPage() {
         }
       }
 
-      // Cập nhật agent wallet balance
+      // Update agent wallet balance
       if (agentWallet) {
         setAgentWallet(prev => prev ? { ...prev, balance: data.balance_after, daily_spent: prev.daily_spent + (data.cost ?? 0) } : prev)
       }

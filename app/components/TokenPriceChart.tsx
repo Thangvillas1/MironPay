@@ -102,7 +102,7 @@ export function TokenPriceChart({ chart }: { chart: { symbol: string; points: Ar
         <circle cx={hovered.x} cy={hovered.y} r={hoverIdx != null ? 3 : 2.5} fill={color} stroke="var(--c-panel)" strokeWidth="1.5" />
       </svg>
       <div className="flex items-center justify-between text-[10px] text-mp-muted mt-1">
-        <span>{new Date(hovered.t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+        <span>{new Date(hovered.t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
         <span className="text-mp-text font-medium">${formatChartPrice(hovered.p)}</span>
       </div>
     </div>
