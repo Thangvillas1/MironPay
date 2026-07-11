@@ -162,7 +162,60 @@ export default function LaunchpadPage() {
   const goToProject = (id: string) => router.push(`/launchpad/${id}`)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--c-page)', color: 'var(--c-text)' }}>
+    <>
+      {/* ══════════════════════ MOBILE ══════════════════════ */}
+      <div className="lg:hidden" style={{ minHeight: '100vh', background: 'var(--mpm-page)' }}>
+        <div style={{ padding: '20px 18px 90px' }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--mpm-text)', margin: '0 0 18px' }}>Launchpad</h1>
+
+          <div className="flex gap-1" style={{ padding: 4, borderRadius: 12, background: 'var(--mpm-input)', border: '1px solid var(--mpm-border)', marginBottom: 16 }}>
+            {TABS.map(t => {
+              const active = tab === t.key
+              return (
+                <button key={t.key} onClick={() => setTab(t.key)} className="flex-1 flex items-center justify-center gap-1.5" style={{
+                  height: 34, borderRadius: 9, border: 'none', fontSize: 12.5, fontWeight: 600,
+                  background: active ? 'var(--mpm-panel-2)' : 'transparent', color: active ? 'var(--mpm-text)' : 'var(--mpm-muted)',
+                }}>
+                  {t.label}
+                  <span style={{ minWidth: 17, height: 17, padding: '0 4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9999, fontSize: 10, fontWeight: 700, background: active ? 'var(--mpm-primary)' : 'var(--mpm-input)', color: active ? '#fff' : 'var(--mpm-muted2)' }}>{counts[t.key]}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {(featured ? [featured, ...list] : list).map(p => {
+              const pill = STATUS_PILL[p.status]
+              const pct = progressPct(p)
+              return (
+                <button key={p.id} onClick={() => goToProject(p.id)} className="text-left" style={{ border: '1px solid var(--mpm-border)', background: 'var(--mpm-panel)', borderRadius: 14, padding: 14 }}>
+                  <div className="flex items-center gap-3 mb-2.5">
+                    <span className="shrink-0 w-[38px] h-[38px] rounded-full flex items-center justify-center" style={{ fontWeight: 700, fontSize: 16, color: '#fff', background: `linear-gradient(140deg, ${p.accent}, ${p.accent}bb)` }}>{p.mark}</span>
+                    <div className="flex-1 min-w-0">
+                      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--mpm-text)' }}>{p.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>{p.category} · {fmtUsd(p.target)}</div>
+                    </div>
+                    <span className="shrink-0" style={{ display: 'inline-flex', alignItems: 'center', height: 22, padding: '0 9px', borderRadius: 9999, fontSize: 10.5, fontWeight: 700, background: pill.bg, color: pill.fg }}>{pill.label}</span>
+                  </div>
+                  {(p.status === 'live' || p.status === 'ended') && (
+                    <div style={{ height: 6, borderRadius: 9999, background: 'var(--mpm-input)', overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${p.accent}, ${p.accent}cc)` }} />
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+            {list.length === 0 && !featured && (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--mpm-muted2)', fontSize: 13.5 }}>
+                {projects.length === 0 ? 'No sales yet.' : 'No sales in this category right now.'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════ DESKTOP ══════════════════════ */}
+      <div className="hidden lg:block" style={{ minHeight: '100vh', background: 'var(--c-page)', color: 'var(--c-text)' }}>
       <style>{`
         .lp-card{transition:transform .18s ease-out,border-color .18s,box-shadow .18s}
         .lp-card:hover{transform:translateY(-3px);border-color:rgba(var(--c-fg-rgb),.14);box-shadow:0 14px 38px rgba(3,8,20,.5)}
@@ -284,6 +337,7 @@ export default function LaunchpadPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

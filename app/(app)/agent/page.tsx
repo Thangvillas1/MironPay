@@ -836,25 +836,37 @@ export default function AgentPage() {
   return (
     <div className="h-screen bg-mp-bg flex flex-col overflow-hidden">
       {/* Header mobile */}
-      <div className="lg:hidden flex items-center justify-between px-4 pt-10 pb-3 border-b border-white/8 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-mp-primary/20 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-mp-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2l2.4 6.4L21 9l-5.4 5 1.8 7L12 17.5 6.6 21l1.8-7L3 9l6.6-.6z" />
-            </svg>
+      <div className="lg:hidden flex items-center gap-[11px] shrink-0" style={{
+        padding: '16px 18px', background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
+        borderBottom: '1px solid var(--mpm-glass-border)', paddingTop: 'calc(env(safe-area-inset-top) + 16px)',
+      }}>
+        <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg,#5b8cff,#3b30c4)', color: '#fff' }}>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2l2.4 6.4L21 9l-5.4 5 1.8 7L12 17.5 6.6 21l1.8-7L3 9l6.6-.6z" />
+          </svg>
+        </span>
+        <div className="flex-1 min-w-0">
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--mpm-text)' }}>Miron Agent</div>
+          <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: 'var(--mpm-success)' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mpm-success)' }} />Online · on-chain ready
           </div>
-          <span className="text-base font-semibold text-mp-text">MironPay Agent</span>
         </div>
         {!loadingWallet && agentWallet && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="text-right">
-              <p className={`text-xs font-semibold ${lowBalance ? 'text-red-400' : 'text-mp-text'}`}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: lowBalance ? 'var(--mpm-error)' : 'var(--mpm-text)' }}>
                 {formatUSDC(agentWallet.balance)} USDC
               </p>
-              <p className="text-[10px] text-mp-muted">{msgsFromBalance} left</p>
+              <p style={{ fontSize: 10, color: 'var(--mpm-muted)' }}>{msgsFromBalance} left</p>
             </div>
             <button onClick={() => setShowDeposit(true)}
-              className={`text-xs font-semibold px-2.5 py-1.5 rounded-[6px] border transition-colors ${lowBalance ? 'text-red-400 border-red-500/30 bg-red-500/10 animate-pulse' : 'text-mp-primary border-mp-primary/30 bg-mp-primary/10'}`}>
+              className={lowBalance ? 'animate-pulse' : ''}
+              style={{
+                fontSize: 12, fontWeight: 600, padding: '6px 10px', borderRadius: 8,
+                color: lowBalance ? 'var(--mpm-error)' : 'var(--mpm-primary)',
+                border: `1px solid ${lowBalance ? 'rgba(255,93,108,.3)' : 'rgba(47,107,255,.3)'}`,
+                background: lowBalance ? 'rgba(255,93,108,.1)' : 'rgba(47,107,255,.1)',
+              }}>
               Deposit
             </button>
           </div>
