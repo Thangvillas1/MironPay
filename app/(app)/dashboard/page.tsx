@@ -1002,7 +1002,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Messages */}
-              <div className="mp-chat-body scrollbar-hide" style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 10px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="mp-chat-body scrollbar-hide" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', touchAction: 'pan-y', padding: '18px 18px 10px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {messages.length === 0 ? (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' as const, gap: 18, padding: '40px 20px' }}>
                     <AgentAvatar size={68} showStatusDot={false} bg={false} />

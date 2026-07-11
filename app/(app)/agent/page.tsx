@@ -893,7 +893,7 @@ export default function AgentPage() {
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4 flex flex-col gap-3">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 py-4 flex flex-col gap-3" style={{ touchAction: 'pan-y' }}>
             {messages.length === 0 && !sending && (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 gap-3">
                 <div className="w-14 h-14 bg-mp-primary/15 rounded-full flex items-center justify-center">

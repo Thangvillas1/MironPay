@@ -113,6 +113,8 @@
 html, body {
   background: var(--c-page);
   color: var(--c-text);
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 /* ── SRS Modal Animations ─────────────────────────────────────────── */
