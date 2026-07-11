@@ -597,5 +597,24 @@ input[type="number"] {
 .mp-app-content-pad { padding-bottom: calc(var(--mpm-tabbar-h) + env(safe-area-inset-bottom)); }
 @media (min-width: 1024px) { .mp-app-content-pad { padding-bottom: 0; } }
 
+/* Secondary text reads too faint/thin on phone screens — raise contrast on
+   the muted color tokens (kept last in the file so it wins the cascade
+   over every other :root / :root.light declaration) so labels and
+   captions stay legible without touching every inline style that uses them. */
+@media (max-width: 768px) {
+  :root {
+    --c-muted:    #9aa8cc;
+    --c-muted2:   #7280a5;
+    --lp-muted:   #b3afd6;
+    --lp-muted2:  #8d89b5;
+  }
+  :root.light {
+    --c-muted:    #2e3a5c;
+    --c-muted2:   #47547a;
+    --lp-muted:   #383256;
+    --lp-muted2:  #5a5480;
+  }
+}
+
 
 
