@@ -121,7 +121,7 @@ export default function SettingsPage() {
         <div style={{ background: 'var(--mpm-panel)', border: '1px solid var(--mpm-border)', borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
           <SettingsRow
             label="Leaderboard"
-            sub="Xem xếp hạng Miron Score"
+            sub="Agent reputation trên ARC Testnet"
             icon={<path d="M3 12h4l2 6 4-13 2 7h6" />}
             onClick={() => router.push('/leaderboard')}
           />
