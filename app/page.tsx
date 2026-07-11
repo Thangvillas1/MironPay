@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, startTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase, isSupabaseConfigured } from '@/app/lib/supabase'
+import { isOnboardingComplete } from '@/app/lib/onboarding'
 
 /* ─────────── SVG Icons (from design system) ─────────── */
 function IcGoogle({ size = 20, className }: { size?: number; className?: string }) {
@@ -733,10 +735,62 @@ function useParallax() {
 }
 
 /* ─────────── Page ─────────── */
+/**
+ * Slim entry screen shown only when the app is launched standalone (opened
+ * from the home-screen icon, not a regular browser tab) — a PWA user is in
+ * "app mode" already, so the full scrolling marketing site (hero, features,
+ * testimonials, footer) is the wrong thing to show; they want straight to
+ * sign-in, matching the design handoff's Splash→Login flow. Regular browser
+ * visits still get the full landing page below, untouched.
+ */
+function StandaloneLoginScreen({ googleState, onSignIn, error }: { googleState: GoogleState; onSignIn: () => void; error?: string }) {
+  const g = googleState
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', background: 'var(--lp-bg)', color: 'var(--lp-text)' }}>
+      <span style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 34 }}>M</span>
+      <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-.01em', marginTop: 22 }}>Miron<span style={{ color: '#8487F5' }}>Pay</span></h1>
+      <p style={{ fontSize: 14.5, color: 'var(--lp-muted)', marginTop: 8, maxWidth: 260, lineHeight: 1.55 }}>
+        No seed phrase, no password — just your Google account.
+      </p>
+
+      {error && (
+        <p style={{ marginTop: 18, fontSize: 12.5, color: '#fb6f84', background: 'rgba(251,111,132,.10)', border: '1px solid rgba(251,111,132,.25)', borderRadius: 10, padding: '9px 12px', maxWidth: 300 }}>
+          {error}
+        </p>
+      )}
+
+      <button
+        onClick={onSignIn}
+        disabled={g !== 'idle'}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 11,
+          height: 54, width: '100%', maxWidth: 320, marginTop: 28, padding: '0 20px', borderRadius: 9999,
+          border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
+          fontSize: 15.5, fontWeight: 600, cursor: g === 'idle' ? 'pointer' : 'default',
+          color: g === 'idle' ? '#141221' : '#fff',
+          background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : g === 'busy' ? 'var(--grad-primary)' : '#fff',
+          boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
+        }}
+      >
+        {g === 'idle' && <><IcGoogle size={20} />Sign in with Google</>}
+        {g === 'busy' && <><IcSpinner />Connecting…</>}
+        {g === 'done' && <><IcCheckWhite />Opening your wallet…</>}
+      </button>
+
+      <p style={{ fontSize: 11.5, color: 'var(--lp-muted2)', marginTop: 26, maxWidth: 280, lineHeight: 1.5 }}>
+        By continuing you agree to MironPay&apos;s Terms & Privacy Policy.
+      </p>
+    </div>
+  )
+}
+
 export default function HomePage() {
+  const router = useRouter()
   const [isLight, setIsLight] = useState(false)
   const [googleState, setGoogleState] = useState<GoogleState>('idle')
   const [googleError, setGoogleError] = useState('')
+  const [isStandalone, setIsStandalone] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
   useReveal()
   useParallax()
 
@@ -746,6 +800,24 @@ export default function HomePage() {
       document.documentElement.classList.add('light')
     }
   }, [])
+
+  // Detect standalone (installed PWA) launch — matchMedia covers Android/
+  // desktop installs, navigator.standalone covers iOS Safari's older API.
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as { standalone?: boolean }).standalone === true
+    setIsStandalone(standalone)
+
+    if (!standalone || !isSupabaseConfigured) { setCheckingSession(false); return }
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session && await isOnboardingComplete(data.session.user.id)) {
+        router.replace('/dashboard')
+        return
+      }
+      setCheckingSession(false)
+    })
+  }, [router])
 
   const toggleTheme = () => {
     setIsLight(prev => {
@@ -785,6 +857,13 @@ export default function HomePage() {
       setGoogleState('idle')
       setGoogleError(err instanceof Error ? err.message : 'Something went wrong')
     }
+  }
+
+  if (isStandalone) {
+    if (checkingSession) {
+      return <div style={{ minHeight: '100vh', background: 'var(--lp-bg)' }} />
+    }
+    return <StandaloneLoginScreen googleState={googleState} onSignIn={handleSignIn} error={googleError} />
   }
 
   return (
