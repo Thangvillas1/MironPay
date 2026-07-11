@@ -133,8 +133,8 @@ function MiniLineChart({ values, color = '#22c55e' }: { values: number[]; color?
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-  { label: 'Send', sub: 'Send USDC to anyone', href: 'modal:send', iconBg: '#1d4ed8', iconGlow: '29,78,216', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg> },
-  { label: 'Swap', sub: 'Exchange tokens instantly', href: 'modal:swap', iconBg: '#6d4ff0', iconGlow: '109,79,240', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" /></svg> },
+  { label: 'Send', sub: 'Send USDC to anyone', href: 'modal:send', iconBg: '#1d4ed8', iconGlow: '29,78,216', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 17L17 7M17 7H9M17 7v8" /></svg> },
+  { label: 'Swap', sub: 'Exchange tokens instantly', href: 'modal:swap', iconBg: '#6d4ff0', iconGlow: '109,79,240', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 4v12M7 16l-3-3M7 16l3-3" /><path d="M17 20V8M17 8l-3 3M17 8l3 3" /></svg> },
   { label: 'Fund Agent', sub: 'Deposit into Agent Wallet', href: '/agent', iconBg: '#7c3aed', iconGlow: '124,58,237', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 2l2.4 6.4L21 9l-5.4 5 1.8 7L12 17.5 6.6 21l1.8-7L3 9l6.6-.6z" /></svg> },
   { label: 'Earn Yield', sub: 'Find yield opportunities', href: '#', iconBg: '#b45309', iconGlow: '180,83,9', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg> },
   { label: 'Buy IDO', sub: 'Participate in IDOs', href: '#', iconBg: '#b91c1c', iconGlow: '185,28,28', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" /></svg> },
@@ -750,8 +750,14 @@ export default function DashboardPage() {
               <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--mpm-text)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>${formatUSD(totalUsd)}</div>
               <div style={{ height: 34, marginTop: 8 }}><SparklineChart values={chartValues} color={mainDelta24h >= 0 ? '#2dd4bf' : '#fb6f84'} id="spk-main-m" /></div>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => setSrsMode('send')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-grad-primary)', color: '#fff' }}>Send</button>
-                <button onClick={() => setSrsMode('receive')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Receive</button>
+                <button onClick={() => setSrsMode('send')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-grad-primary)', color: '#fff' }}>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M17 7H9M17 7v8" /></svg>
+                  Send
+                </button>
+                <button onClick={() => setSrsMode('receive')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M17 7L7 17M7 17h8M7 17V9" /></svg>
+                  Receive
+                </button>
                 <button
                   disabled
                   title="Scan & Pay — coming soon"
