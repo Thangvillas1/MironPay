@@ -104,14 +104,13 @@ function UsernameContent() {
           borderRadius: 15,
           background: 'var(--grad-primary)',
           boxShadow: 'var(--glow-primary)',
-          color: '#fff',
-          fontFamily: 'var(--font-mono)',
-          fontWeight: 700,
-          fontSize: 22,
           marginTop: 26,
         }}
       >
-        @
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+        </svg>
       </span>
 
       <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--lp-text)', marginTop: 18 }}>Choose your username</h1>

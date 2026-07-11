@@ -37,8 +37,9 @@ function ConfirmUsernameContent() {
           marginTop: 26,
         }}
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5 13l4 4L19 7" />
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l7 3v6c0 4.8-3 8.4-7 9-4-.6-7-4.2-7-9V6l7-3z" />
+          <path d="M9 12l2 2 4-4" />
         </svg>
       </span>
 
