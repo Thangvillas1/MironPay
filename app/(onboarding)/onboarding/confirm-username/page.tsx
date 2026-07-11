@@ -25,28 +25,30 @@ function ConfirmUsernameContent() {
     <AuthShell step="confirm" cardWidth={460} cardPadding={36}>
       <OnboardingProgress index={1} />
 
-      <span
-        className="inline-flex items-center justify-center"
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: 15,
-          background: 'var(--grad-primary)',
-          boxShadow: 'var(--glow-primary)',
-          color: '#fff',
-          marginTop: 26,
-        }}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3l7 3v6c0 4.8-3 8.4-7 9-4-.6-7-4.2-7-9V6l7-3z" />
-          <path d="M9 12l2 2 4-4" />
-        </svg>
-      </span>
+      <div className="text-center">
+        <span
+          className="inline-flex items-center justify-center"
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 15,
+            background: 'var(--grad-primary)',
+            boxShadow: 'var(--glow-primary)',
+            color: '#fff',
+            marginTop: 26,
+          }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3l7 3v6c0 4.8-3 8.4-7 9-4-.6-7-4.2-7-9V6l7-3z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+        </span>
 
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--lp-text)', marginTop: 18 }}>Confirm your username</h1>
-      <p style={{ fontSize: 14, color: 'var(--lp-muted)', marginTop: 6 }}>
-        Your username cannot be changed after this step.
-      </p>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--lp-text)', marginTop: 18 }}>Confirm your username</h1>
+        <p style={{ fontSize: 14, color: 'var(--lp-muted)', marginTop: 6 }}>
+          Your username cannot be changed after this step.
+        </p>
+      </div>
 
       <div
         className="flex flex-col items-center"
@@ -96,7 +98,7 @@ function ConfirmUsernameContent() {
           <line x1="12" y1="9" x2="12" y2="13" />
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
-        <p style={{ fontSize: 12.5, color: 'var(--c-warning)' }}>
+        <p style={{ fontSize: 12.5, color: 'var(--c-warning)', textAlign: 'left' }}>
           This username is permanent and cannot be changed later.
         </p>
       </div>

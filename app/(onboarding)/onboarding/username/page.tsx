@@ -96,27 +96,29 @@ function UsernameContent() {
     <AuthShell step="username" cardWidth={460} cardPadding={36}>
       <OnboardingProgress index={0} />
 
-      <span
-        className="inline-flex items-center justify-center"
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: 15,
-          background: 'var(--grad-primary)',
-          boxShadow: 'var(--glow-primary)',
-          marginTop: 26,
-        }}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
-        </svg>
-      </span>
+      <div className="text-center">
+        <span
+          className="inline-flex items-center justify-center"
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 15,
+            background: 'var(--grad-primary)',
+            boxShadow: 'var(--glow-primary)',
+            marginTop: 26,
+          }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+          </svg>
+        </span>
 
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--lp-text)', marginTop: 18 }}>Choose your username</h1>
-      <p style={{ fontSize: 14, color: 'var(--lp-muted)', marginTop: 6 }}>
-        This is how friends find and pay you on MironPay.
-      </p>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--lp-text)', marginTop: 18 }}>Choose your username</h1>
+        <p style={{ fontSize: 14, color: 'var(--lp-muted)', marginTop: 6 }}>
+          This is how friends find and pay you on MironPay.
+        </p>
+      </div>
 
       <div
         className="flex items-center"
@@ -147,7 +149,7 @@ function UsernameContent() {
       </div>
 
       <div style={{ height: 20, marginTop: 8 }}>
-        <p style={{ fontSize: 12.5, color: helperColor }}>{helperText}</p>
+        <p style={{ fontSize: 12.5, color: helperColor, textAlign: 'left' }}>{helperText}</p>
       </div>
 
       <button
