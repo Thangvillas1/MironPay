@@ -126,8 +126,18 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
         .lp-back:hover{color:var(--c-text)!important;background:rgba(var(--c-fg-rgb),.05)!important}
         .lp-join:hover{transform:translateY(-1px);filter:brightness(1.06)}
         .lp-join:active{transform:scale(.98)}
+        .lp-detail-pad{padding:24px 34px 56px}
+        .lp-detail-grid{display:grid;grid-template-columns:1fr 360px;gap:20px;margin-top:20px;align-items:start}
+        .lp-detail-aside{position:sticky;top:24px}
+        .lp-team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+        @media (max-width:900px){
+          .lp-detail-pad{padding:20px 18px calc(90px + env(safe-area-inset-bottom))}
+          .lp-detail-grid{grid-template-columns:1fr}
+          .lp-detail-aside{position:static;top:auto}
+          .lp-team-grid{grid-template-columns:1fr}
+        }
       `}</style>
-      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '24px 34px 56px' }}>
+      <div className="lp-detail-pad" style={{ maxWidth: 1160, margin: '0 auto' }}>
 
         <button className="lp-back" onClick={() => router.push('/launchpad')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 34, padding: '0 13px 0 9px', borderRadius: 9, border: '1px solid rgba(var(--c-fg-rgb),.07)', background: 'transparent', color: 'var(--c-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background .15s,color .15s' }}>
           <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m15 6-6 6 6 6" /></svg>All projects
@@ -169,8 +179,8 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        {/* two columns */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20, marginTop: 20, alignItems: 'start' }}>
+        {/* two columns — collapses to 1 column under 900px via .lp-detail-grid */}
+        <div className="lp-detail-grid">
 
           {/* LEFT */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
@@ -233,7 +243,7 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
                 {project.team.length > 0 && (
                   <>
                     <div style={S.eyebrow}>Team</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginTop: 14 }}>
+                    <div className="lp-team-grid">
                       {project.team.map((m, i) => (
                         <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 12, borderRadius: 13, background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
                           <span style={logoStyle(teamAccent(i), 38)}>{initials(m.name)}</span>
@@ -263,7 +273,7 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
           </div>
 
           {/* RIGHT: sale panel */}
-          <aside style={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <aside className="lp-detail-aside" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ padding: 20, borderRadius: 18, background: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))', WebkitBackdropFilter: 'blur(var(--glass-blur))', border: '1px solid var(--glass-border)', boxShadow: 'var(--glow-primary), inset 0 1px 0 var(--glass-hi)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                 <span style={S.eyebrow}>Public sale</span>

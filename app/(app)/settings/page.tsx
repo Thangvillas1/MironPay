@@ -102,7 +102,7 @@ export default function SettingsPage() {
   return (
     <>
       {/* ══════════════════════ MOBILE ══════════════════════ */}
-      <div className="lg:hidden" style={{ minHeight: '100vh', background: 'var(--mpm-page)', color: 'var(--mpm-text)', padding: '20px 18px 90px' }}>
+      <div className="lg:hidden" style={{ minHeight: '100vh', background: 'var(--mpm-page)', color: 'var(--mpm-text)', padding: '18px', paddingTop: 'calc(env(safe-area-inset-top) + 20px)', paddingBottom: 90 }}>
         <h1 style={{ margin: '0 0 18px', fontSize: 20, fontWeight: 700, color: 'var(--mpm-text)' }}>Settings</h1>
 
         {/* Profile summary */}

@@ -22,16 +22,6 @@ const TABS: Tab[] = [
     ),
   },
   {
-    label: 'Wallet',
-    href: '/wallet',
-    activeOn: ['/wallet'],
-    icon: (active) => (
-      <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.2 : 1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="w-[21px] h-[21px]">
-        <rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18" /><circle cx="17" cy="14.5" r="1.2" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
     label: 'Agent',
     href: '/agent',
     activeOn: ['/agent'],

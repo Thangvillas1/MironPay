@@ -691,7 +691,7 @@ export default function DashboardPage() {
     <>
       {/* ══════════════════════ MOBILE ══════════════════════ */}
       <div className="lg:hidden min-h-screen flex flex-col" style={{ background: 'var(--mpm-page)' }}>
-        <div className="px-[18px] pt-10 pb-1 flex items-center justify-between">
+        <div className="px-[18px] pb-1 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
           <div className="flex items-center gap-[11px]">
             <span className="p-[2px] rounded-full inline-flex shrink-0" style={{ background: 'var(--mpm-grad-primary)' }}>
               <span className="w-[42px] h-[42px] rounded-full flex items-center justify-center overflow-hidden" style={{ background: 'var(--mpm-panel)' }}>

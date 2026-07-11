@@ -165,7 +165,7 @@ export default function LaunchpadPage() {
     <>
       {/* ══════════════════════ MOBILE ══════════════════════ */}
       <div className="lg:hidden" style={{ minHeight: '100vh', background: 'var(--mpm-page)' }}>
-        <div style={{ padding: '20px 18px 90px' }}>
+        <div style={{ padding: '18px', paddingTop: 'calc(env(safe-area-inset-top) + 20px)', paddingBottom: 90 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--mpm-text)', margin: '0 0 18px' }}>Launchpad</h1>
 
           <div className="flex gap-1" style={{ padding: 4, borderRadius: 12, background: 'var(--mpm-input)', border: '1px solid var(--mpm-border)', marginBottom: 16 }}>
