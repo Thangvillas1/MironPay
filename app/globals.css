@@ -490,47 +490,48 @@ input[type="number"] {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   MOBILE PWA design system — "Sapphire / Neo-fintech"
-   Deliberately separate token namespace (--mpm-*) from the desktop
-   --c-, --grad-primary, --radius- tokens above. Same token NAMES exist
-   on both systems with DIFFERENT values (desktop = indigo/purple,
-   mobile = sapphire blue) — reusing --c-* directly would silently
-   repaint the desktop app. Mobile-only components (app/components/
-   mobile/*, mobile route branches) must consume --mpm-* exclusively.
-   Unify into one system later if/when the brand converges — tracked,
-   not decided yet.
+   MOBILE PWA design system — now an ALIAS layer onto the desktop
+   tokens, not a separate palette. Was originally the design handoff's
+   "Sapphire / Neo-fintech" palette (see git history), but the brand
+   decision landed on keeping the one existing indigo/purple desktop
+   look everywhere for consistency/premium feel — decided 11/07/2026.
+   Kept the --mpm-* NAMES (so no JSX changes needed across the mobile
+   screens that already consume them) but every value below now
+   resolves to the real --c-, --grad-primary, --glass- desktop tokens
+   defined above. If a genuinely mobile-specific value is ever needed
+   again, add it here — avoid reintroducing a second color system.
    ══════════════════════════════════════════════════════════════════ */
 :root {
-  --mpm-page:          #070b15;
-  --mpm-panel:         #0f1626;
-  --mpm-panel-2:       #16203a;
-  --mpm-text:          #eaf0fb;
-  --mpm-muted:         #8595b8;
-  --mpm-muted2:        #515f80;
-  --mpm-border:        rgba(255,255,255,0.07);
-  --mpm-border-strong: rgba(255,255,255,0.14);
-  --mpm-input:         rgba(255,255,255,0.045);
-  --mpm-overlay:       rgba(4,8,18,0.74);
+  --mpm-page:          var(--c-page);
+  --mpm-panel:         var(--c-panel);
+  --mpm-panel-2:       var(--c-panel-2);
+  --mpm-text:          var(--c-text);
+  --mpm-muted:         var(--c-muted);
+  --mpm-muted2:        var(--c-muted2);
+  --mpm-border:        var(--c-border);
+  --mpm-border-strong: var(--c-border-strong);
+  --mpm-input:         var(--c-input);
+  --mpm-overlay:       var(--c-overlay);
 
-  --mpm-success:       #2bd4a4;
-  --mpm-error:         #ff5d6c;
-  --mpm-warning:       #f5b748;
-  --mpm-purple-accent: #5b8cff;
-  --mpm-purple-light:  #7da6ff;
-  --mpm-blue-accent:   #58a6ff;
+  --mpm-success:       #22c55e;
+  --mpm-error:         #fb6f84;
+  --mpm-warning:       var(--c-warning);
+  --mpm-purple-accent: var(--c-purple-accent);
+  --mpm-purple-light:  var(--c-purple-light);
+  --mpm-blue-accent:   var(--c-blue-accent);
 
-  --mpm-primary:       #2f6bff;
-  --mpm-primary-hover: #4d83ff;
+  --mpm-primary:       #6366f1;
+  --mpm-primary-hover: #818cf8;
   --mpm-on-primary:    #ffffff;
 
-  --mpm-wallet-blue:   #2f6bff;
-  --mpm-wallet-purple: #6d6cff;
+  --mpm-wallet-blue:   #6366f1;
+  --mpm-wallet-purple: #8b7cff;
   --mpm-wallet-cyan:   #22c6e0;
 
-  --mpm-glass-bg:      rgba(20,30,54,0.55);
-  --mpm-glass-border:  rgba(255,255,255,0.10);
-  --mpm-glass-hi:      rgba(255,255,255,0.07);
-  --mpm-glass-blur:    18px;
+  --mpm-glass-bg:      var(--glass-bg);
+  --mpm-glass-border:  var(--glass-border);
+  --mpm-glass-hi:      var(--glass-hi);
+  --mpm-glass-blur:    var(--glass-blur);
 
   --mpm-radius-sm:   6px;
   --mpm-radius-md:   10px;
@@ -540,16 +541,16 @@ input[type="number"] {
 
   --mpm-shadow-sm: 0 1px 2px rgba(3,8,20,0.40);
   --mpm-shadow-md: 0 8px 28px rgba(3,8,20,0.45);
-  --mpm-shadow-lg: 0 24px 64px rgba(3,8,20,0.55);
+  --mpm-shadow-lg: var(--shadow-lg);
 
-  --mpm-glow-blue:    0 10px 40px rgba(47,107,255,0.30);
-  --mpm-glow-purple:  0 10px 40px rgba(109,108,255,0.30);
+  --mpm-glow-blue:    0 10px 40px rgba(99,102,241,0.30);
+  --mpm-glow-purple:  0 10px 40px rgba(139,124,255,0.30);
   --mpm-glow-cyan:    0 10px 40px rgba(34,198,224,0.28);
-  --mpm-glow-primary: 0 8px 30px rgba(47,107,255,0.42);
+  --mpm-glow-primary: var(--glow-primary);
 
-  --mpm-grad-primary:  linear-gradient(135deg,#4d8bff 0%,#2f6bff 52%,#1b4ad6 100%);
-  --mpm-grad-sapphire: linear-gradient(135deg,rgba(91,140,255,0.22),rgba(13,28,64,0.04));
-  --mpm-grad-score:    linear-gradient(135deg,rgba(47,107,255,0.18),rgba(109,108,255,0.06));
+  --mpm-grad-primary:  var(--grad-primary);
+  --mpm-grad-sapphire: var(--wc-blue-grad);
+  --mpm-grad-score:    var(--wc-purple-grad);
   --mpm-grad-sheen:    linear-gradient(180deg,var(--mpm-glass-hi),transparent 38%);
 
   --mpm-ease-out:    cubic-bezier(.22,1,.36,1);
@@ -563,38 +564,6 @@ input[type="number"] {
 }
 .mp-app-content-pad { padding-bottom: calc(var(--mpm-tabbar-h) + env(safe-area-inset-bottom)); }
 @media (min-width: 1024px) { .mp-app-content-pad { padding-bottom: 0; } }
-:root.light {
-  --mpm-page:          #eef2fb;
-  --mpm-panel:         #ffffff;
-  --mpm-panel-2:       #f4f7fe;
-  --mpm-text:          #0b1220;
-  --mpm-muted:         #586484;
-  --mpm-muted2:        #8b96ad;
-  --mpm-border:        rgba(13,28,64,0.10);
-  --mpm-border-strong: rgba(13,28,64,0.16);
-  --mpm-input:         rgba(13,28,64,0.04);
-  --mpm-overlay:       rgba(20,30,60,0.35);
-
-  --mpm-success:       #0f9d76;
-  --mpm-error:         #e23b4e;
-  --mpm-warning:       #c2870a;
-  --mpm-purple-accent: #1d4ed8;
-  --mpm-purple-light:  #2456e6;
-  --mpm-blue-accent:   #1d6fe0;
-
-  --mpm-primary:       #1d4ed8;
-  --mpm-primary-hover: #1746c4;
-  --mpm-on-primary:    #ffffff;
-
-  --mpm-wallet-blue:   #2456e6;
-  --mpm-wallet-purple: #5b54e8;
-  --mpm-wallet-cyan:   #0c9fc0;
-
-  --mpm-glass-bg:      rgba(255,255,255,0.65);
-  --mpm-glass-border:  rgba(13,28,64,0.08);
-  --mpm-glass-hi:      rgba(255,255,255,0.9);
-  --mpm-glass-blur:    18px;
-}
 
 
 
