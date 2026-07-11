@@ -744,33 +744,12 @@ export default function DashboardPage() {
             <h3 style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--mpm-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your wallets</h3>
           </div>
           <div className="flex gap-3.5 overflow-x-auto scrollbar-hide" style={{ margin: '0 -18px', padding: '0 18px 4px' }}>
-            <div className="shrink-0" style={{ minWidth: 230, padding: 16, borderRadius: 'var(--mpm-radius-lg)', background: 'var(--mpm-grad-sapphire)', border: '1px solid rgba(47,107,255,0.28)' }}>
+            <div className="shrink-0" style={{ minWidth: 190, padding: 14, borderRadius: 'var(--mpm-radius-lg)', background: 'var(--mpm-grad-sapphire)', border: '1px solid rgba(47,107,255,0.28)' }}>
               <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Main Wallet</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--mpm-text)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>${formatUSD(totalUsd)}</div>
-              <div style={{ height: 34, marginTop: 8 }}><SparklineChart values={chartValues} color={mainDelta24h >= 0 ? '#2dd4bf' : '#fb6f84'} id="spk-main-m" /></div>
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => setSrsMode('send')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-grad-primary)', color: '#fff' }}>
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M17 7H9M17 7v8" /></svg>
-                  Send
-                </button>
-                <button onClick={() => setSrsMode('receive')} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M17 7L7 17M7 17h8M7 17V9" /></svg>
-                  Receive
-                </button>
-                <button
-                  disabled
-                  title="Scan & Pay — coming soon"
-                  className="w-9 flex items-center justify-center rounded-[8px]"
-                  style={{ background: 'var(--mpm-input)', color: 'var(--mpm-muted)' }}
-                >
-                  <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
-                    <path d="M14 14h3v3M14 21h3M21 14v3M21 21v.01" />
-                  </svg>
-                </button>
-              </div>
+              {/* Send/Receive dropped — Quick Actions row right below already covers both, no need to repeat here. */}
             </div>
-            <div className="shrink-0" style={{ minWidth: 230, padding: 16, borderRadius: 'var(--mpm-radius-lg)', background: 'linear-gradient(135deg,rgba(109,108,255,0.16),rgba(13,28,64,0.04))', border: '1px solid rgba(109,108,255,0.28)' }}>
+            <div className="shrink-0" style={{ minWidth: 190, padding: 14, borderRadius: 'var(--mpm-radius-lg)', background: 'linear-gradient(135deg,rgba(109,108,255,0.16),rgba(13,28,64,0.04))', border: '1px solid rgba(109,108,255,0.28)' }}>
               <div className="flex items-center justify-between">
                 <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Agent Wallet</div>
                 <span className="inline-flex items-center gap-1" style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--mpm-success)' }}>
@@ -786,10 +765,8 @@ export default function DashboardPage() {
                   <div style={{ width: `${Math.min(spentPct, 100)}%`, height: '100%', borderRadius: 9999, background: 'linear-gradient(90deg,#6d6cff,#2f6bff)' }} />
                 </div>
               </div>
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => { setShowFund(true); setModalAmount(''); setModalError('') }} className="flex-1 flex items-center justify-center py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Fund</button>
-                <button onClick={() => { setShowWithdraw(true); setModalAmount(''); setModalError('') }} className="flex-1 flex items-center justify-center py-2 rounded-[8px] text-xs font-semibold" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Withdraw</button>
-              </div>
+              {/* Fund dropped — Quick Actions "Fund Agent" already covers it. Withdraw kept: no other entry point exists for it. */}
+              <button onClick={() => { setShowWithdraw(true); setModalAmount(''); setModalError('') }} className="w-full flex items-center justify-center py-2 rounded-[8px] text-xs font-semibold mt-3" style={{ background: 'var(--mpm-input)', color: 'var(--mpm-text)' }}>Withdraw</button>
             </div>
           </div>
 
