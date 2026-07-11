@@ -770,7 +770,7 @@ function StandaloneLoginScreen({ googleState, onSignIn, error }: { googleState: 
           border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
           fontSize: 15.5, fontWeight: 600, cursor: g === 'idle' ? 'pointer' : 'default',
           color: g === 'idle' ? '#141221' : '#fff',
-          background: g === 'done' ? 'linear-gradient(135deg,#2dd4bf,#0d9488)' : g === 'busy' ? 'var(--grad-primary)' : '#fff',
+          background: g === 'idle' ? '#fff' : 'var(--grad-primary)',
           boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
         }}
       >
