@@ -832,7 +832,10 @@ export default function DashboardPage() {
                       ? <img src={t.logoUrl} alt={t.symbol} className="w-9 h-9 rounded-full shrink-0" />
                       : <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--mpm-input)', fontSize: 11, fontWeight: 700, color: 'var(--mpm-text)' }}>{t.symbol.slice(0, 2)}</span>}
                     <div className="flex-1 min-w-0">
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)' }}>{t.symbol}</div>
+                      <div className="flex items-center gap-1.5" style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)' }}>
+                        {t.symbol}
+                        {t.isVerified && <VerifiedBadge size="sm" />}
+                      </div>
                       <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>{t.name}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
