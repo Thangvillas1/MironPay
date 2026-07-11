@@ -53,21 +53,13 @@ export default function AuthShell({
         style={{ padding: '20px 34px', borderBottom: '1px solid var(--c-border)', background: 'var(--lp-bg)' }}
       >
         <div className="flex items-center gap-2.5">
-          <span
-            className="flex items-center justify-center shrink-0"
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 10,
-              background: 'var(--grad-primary)',
-              boxShadow: 'var(--glow-primary)',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: 16,
-            }}
-          >
-            M
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/icon-192.png"
+            alt=""
+            className="shrink-0"
+            style={{ width: 34, height: 34, borderRadius: 10, boxShadow: 'var(--glow-primary)' }}
+          />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--lp-text)' }}>
             Miron<span style={{ color: 'var(--c-primary, #818cf8)' }}>Pay</span>
           </span>

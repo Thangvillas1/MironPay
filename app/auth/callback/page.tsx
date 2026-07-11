@@ -116,21 +116,12 @@ function CallbackHandler() {
           className="mp-spinner absolute inset-0 rounded-full"
           style={{ border: '3px solid var(--c-border)', borderTopColor: '#818cf8' }}
         />
-        <span
-          className="inline-flex items-center justify-center"
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: 'var(--grad-primary)',
-            boxShadow: 'var(--glow-primary)',
-            color: '#fff',
-            fontWeight: 800,
-            fontSize: 22,
-          }}
-        >
-          M
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icons/icon-192.png"
+          alt=""
+          style={{ width: 48, height: 48, borderRadius: 14, boxShadow: 'var(--glow-primary)' }}
+        />
       </div>
       <h1 style={{ fontSize: 21, fontWeight: 700, color: 'var(--lp-text)', marginTop: 22 }}>Signing you in…</h1>
       <p style={{ fontSize: 13.5, color: 'var(--lp-muted)', marginTop: 8 }}>
