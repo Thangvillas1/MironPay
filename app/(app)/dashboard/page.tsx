@@ -137,7 +137,7 @@ const QUICK_ACTIONS = [
   { label: 'Send', sub: 'Send USDC to anyone', href: 'modal:send', accent: 'var(--mpm-text)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 17L17 7M17 7H9M17 7v8" /></svg> },
   { label: 'Receive', sub: 'Receive USDC from anyone', href: 'modal:receive', accent: 'var(--mpm-success)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 7L7 17M7 17h8M7 17V9" /></svg> },
   { label: 'Swap', sub: 'Exchange tokens instantly', href: 'modal:swap', accent: 'var(--mpm-blue-accent)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 4v12M7 16l-3-3M7 16l3-3" /><path d="M17 20V8M17 8l-3 3M17 8l3 3" /></svg> },
-  { label: 'Fund Agent', sub: 'Deposit into Agent Wallet', href: '/agent', accent: 'var(--mpm-purple-accent)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 5v14M5 12h14" /></svg> },
+  { label: 'Scan QR', sub: 'Scan & Pay — coming soon', href: '#', disabled: true, accent: 'var(--mpm-purple-accent)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3M14 21h3M21 14v3M21 21v.01" /></svg> },
 ]
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -786,13 +786,14 @@ export default function DashboardPage() {
           <div className="mt-5 mb-2 px-1.5">
             <div className="flex justify-between">
               {QUICK_ACTIONS.map(a => (
-                <button key={a.label} onClick={() => {
+                <button key={a.label} disabled={a.disabled} title={a.disabled ? a.sub : undefined} onClick={() => {
+                  if (a.disabled) return
                   if (a.href === 'modal:send') setSrsMode('send')
                   else if (a.href === 'modal:receive') setSrsMode('receive')
                   else if (a.href === 'modal:swap') setSrsMode('swap')
                   else if (a.href !== '#') router.push(a.href)
                 }}
-                  className="flex flex-col items-center gap-1.5">
+                  className="flex flex-col items-center gap-1.5" style={{ opacity: a.disabled ? 0.4 : 1 }}>
                   <div className="w-12 h-12 rounded-[12px] flex items-center justify-center"
                     style={{ background: 'var(--mpm-input)', color: a.accent }}>
                     {a.icon}
@@ -808,13 +809,45 @@ export default function DashboardPage() {
             <MironScoreCard />
           </div>
 
-          {/* Recent activity */}
+          {/* Holdings — moved above Recent activity */}
+          {tokenList.length > 0 && (
+            <>
+              <div className="flex items-center justify-between mt-6 mb-2.5 mx-1">
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--mpm-text)' }}>Holdings</h3>
+              </div>
+              <div className="scrollbar-hide" style={{
+                background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
+                borderRadius: 'var(--mpm-radius-lg)', border: '1px solid var(--mpm-glass-border)', boxShadow: 'inset 0 1px 0 var(--mpm-glass-hi)', padding: 6,
+                maxHeight: 260, overflowY: 'auto',
+              }}>
+                {tokenList.map((t, i) => (
+                  <div key={t.symbol} className="flex items-center gap-3 px-2.5 py-2.5" style={{ borderBottom: i < tokenList.length - 1 ? '1px solid var(--mpm-border)' : 'none' }}>
+                    {t.logoUrl
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={t.logoUrl} alt={t.symbol} className="w-9 h-9 rounded-full shrink-0" />
+                      : <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--mpm-input)', fontSize: 11, fontWeight: 700, color: 'var(--mpm-text)' }}>{t.symbol.slice(0, 2)}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)' }}>{t.symbol}</div>
+                      <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>{t.name}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)', fontVariantNumeric: 'tabular-nums' }}>{parseFloat(t.amount).toFixed(4)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>${(t.usdValue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Recent activity — moved below Holdings */}
           <div className="flex items-center justify-between mt-6 mb-2.5 mx-1">
             <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--mpm-text)' }}>Recent activity</h3>
           </div>
-          <div style={{
+          <div className="scrollbar-hide" style={{
             background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
             borderRadius: 'var(--mpm-radius-lg)', border: '1px solid var(--mpm-glass-border)', boxShadow: 'inset 0 1px 0 var(--mpm-glass-hi)', padding: 6,
+            maxHeight: 260, overflowY: 'auto',
           }}>
             {transactions.slice(0, 5).map(tx => {
               const hasMemo = !!tx.memo
@@ -843,36 +876,6 @@ export default function DashboardPage() {
             })}
             {transactions.length === 0 && <p className="text-sm text-center py-8" style={{ color: 'var(--mpm-muted)' }}>No transactions</p>}
           </div>
-
-          {/* Holdings */}
-          {tokenList.length > 0 && (
-            <>
-              <div className="flex items-center justify-between mt-6 mb-2.5 mx-1">
-                <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--mpm-text)' }}>Holdings</h3>
-              </div>
-              <div style={{
-                background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
-                borderRadius: 'var(--mpm-radius-lg)', border: '1px solid var(--mpm-glass-border)', boxShadow: 'inset 0 1px 0 var(--mpm-glass-hi)', padding: 6,
-              }}>
-                {tokenList.map((t, i) => (
-                  <div key={t.symbol} className="flex items-center gap-3 px-2.5 py-2.5" style={{ borderBottom: i < tokenList.length - 1 ? '1px solid var(--mpm-border)' : 'none' }}>
-                    {t.logoUrl
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={t.logoUrl} alt={t.symbol} className="w-9 h-9 rounded-full shrink-0" />
-                      : <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--mpm-input)', fontSize: 11, fontWeight: 700, color: 'var(--mpm-text)' }}>{t.symbol.slice(0, 2)}</span>}
-                    <div className="flex-1 min-w-0">
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)' }}>{t.symbol}</div>
-                      <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>{t.name}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mpm-text)', fontVariantNumeric: 'tabular-nums' }}>{parseFloat(t.amount).toFixed(4)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>${(t.usdValue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </div>
 
