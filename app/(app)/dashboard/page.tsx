@@ -1005,17 +1005,7 @@ export default function DashboardPage() {
               <div className="mp-chat-body scrollbar-hide" style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 10px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {messages.length === 0 ? (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' as const, gap: 18, padding: '40px 20px' }}>
-                    <div style={{ width: 68, height: 68, borderRadius: 20, background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                      <svg width={30} height={30} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="5" y="9" width="14" height="11" rx="3" />
-                        <path d="M12 9V5" />
-                        <circle cx="12" cy="3.5" r="1.5" fill="currentColor" stroke="none" />
-                        <circle cx="9" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
-                        <circle cx="15" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
-                        <path d="M9 18h6" />
-                        <path d="M2 12v3M22 12v3" />
-                      </svg>
-                    </div>
+                    <AgentAvatar size={68} glow showStatusDot={false} />
                     <div>
                       <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', marginBottom: 5 }}>Hi {username ? `@${username}` : firstName}</p>
                       <p style={{ fontSize: 13.5, color: 'var(--c-muted)', lineHeight: 1.55 }}>Send, swap, or check balances — just ask.</p>
