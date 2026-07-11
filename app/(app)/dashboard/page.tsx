@@ -1005,7 +1005,7 @@ export default function DashboardPage() {
               <div className="mp-chat-body scrollbar-hide" style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 10px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {messages.length === 0 ? (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' as const, gap: 18, padding: '40px 20px' }}>
-                    <AgentAvatar size={68} glow showStatusDot={false} />
+                    <AgentAvatar size={68} showStatusDot={false} bg={false} />
                     <div>
                       <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', marginBottom: 5 }}>Hi {username ? `@${username}` : firstName}</p>
                       <p style={{ fontSize: 13.5, color: 'var(--c-muted)', lineHeight: 1.55 }}>Send, swap, or check balances — just ask.</p>
