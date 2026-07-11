@@ -213,7 +213,15 @@ export default function LaunchpadSubmitPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--c-page)', color: 'var(--c-text)' }}>
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 34px 80px' }}>
+      <style>{`
+        .lps-grid3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+        .lps-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        @media (max-width:640px){
+          .lps-grid3{grid-template-columns:1fr}
+          .lps-grid2{grid-template-columns:1fr}
+        }
+      `}</style>
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '18px', paddingTop: 'calc(env(safe-area-inset-top) + 20px)', paddingBottom: 'calc(90px + env(safe-area-inset-bottom))' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <span style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, color: '#fff', background: `linear-gradient(140deg, ${accent}, ${accent}bb)`, boxShadow: `0 6px 18px ${accent}55` }}>
             {(mark || sym.slice(0, 2) || '?').toUpperCase()}
@@ -225,7 +233,7 @@ export default function LaunchpadSubmitPage() {
         </div>
 
         <Section title="Project info">
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+          <div className="lps-grid3">
             <Field label="Project name *"><input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="Helios" /></Field>
             <Field label="Symbol *"><input style={inputStyle} value={sym} onChange={e => setSym(e.target.value)} placeholder="HELI" maxLength={8} /></Field>
             <Field label="Logo letters *"><input style={inputStyle} value={mark} onChange={e => setMark(e.target.value)} placeholder="H" maxLength={2} /></Field>
@@ -244,15 +252,15 @@ export default function LaunchpadSubmitPage() {
         </Section>
 
         <Section title="Sale details">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="lps-grid2">
             <Field label="Token price (USD) *"><input style={inputStyle} value={price} onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.085" /></Field>
             <Field label="Raise target (USD) *"><input style={inputStyle} value={target} onChange={e => setTarget(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="600000" /></Field>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="lps-grid2">
             <Field label="Per-wallet min (USD) *"><input style={inputStyle} value={minContribution} onChange={e => setMinContribution(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="25" /></Field>
             <Field label="Per-wallet max (USD) *"><input style={inputStyle} value={cap} onChange={e => setCap(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="2500" /></Field>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="lps-grid2">
             <Field label="Sale starts *"><input type="datetime-local" style={inputStyle} value={startAt} onChange={e => setStartAt(e.target.value)} /></Field>
             <Field label="Sale ends *"><input type="datetime-local" style={inputStyle} value={endAt} onChange={e => setEndAt(e.target.value)} /></Field>
           </div>
@@ -265,7 +273,7 @@ export default function LaunchpadSubmitPage() {
             <textarea style={textareaStyle} value={vestingText} onChange={e => setVestingText(e.target.value)} placeholder={'TGE unlock - 25% released at token listing\n1-month cliff - No further unlocks during cliff\nFully unlocked - about 7 months after TGE'} />
           </Field>
           <Field label="Auditor"><input style={inputStyle} value={audit} onChange={e => setAudit(e.target.value)} placeholder="OtterSec" /></Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="lps-grid2">
             <Field label="Website"><input style={inputStyle} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://" /></Field>
             <Field label="X / Twitter"><input style={inputStyle} value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="https://x.com/..." /></Field>
             <Field label="Discord"><input style={inputStyle} value={discord} onChange={e => setDiscord(e.target.value)} placeholder="https://discord.gg/..." /></Field>

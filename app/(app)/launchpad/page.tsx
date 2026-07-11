@@ -166,7 +166,12 @@ export default function LaunchpadPage() {
       {/* ══════════════════════ MOBILE ══════════════════════ */}
       <div className="lg:hidden" style={{ minHeight: '100vh', background: 'var(--mpm-page)' }}>
         <div style={{ padding: '18px', paddingTop: 'calc(env(safe-area-inset-top) + 20px)', paddingBottom: 90 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--mpm-text)', margin: '0 0 18px' }}>Launchpad</h1>
+          <div className="flex items-center justify-between" style={{ margin: '0 0 18px' }}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--mpm-text)', margin: 0 }}>Launchpad</h1>
+            <button onClick={() => router.push('/launchpad/submit')} style={{ height: 32, padding: '0 12px', borderRadius: 9999, background: 'var(--mpm-grad-primary)', boxShadow: 'var(--mpm-glow-primary)', border: 'none', color: '#fff', fontSize: 11.5, fontWeight: 600 }}>
+              Submit
+            </button>
+          </div>
 
           <div className="flex gap-1" style={{ padding: 4, borderRadius: 12, background: 'var(--mpm-input)', border: '1px solid var(--mpm-border)', marginBottom: 16 }}>
             {TABS.map(t => {
