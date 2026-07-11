@@ -133,11 +133,10 @@ function MiniLineChart({ values, color = '#22c55e' }: { values: number[]; color?
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-  { label: 'Send', sub: 'Send USDC to anyone', href: 'modal:send', iconBg: '#1d4ed8', iconGlow: '29,78,216', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 17L17 7M17 7H9M17 7v8" /></svg> },
-  { label: 'Swap', sub: 'Exchange tokens instantly', href: 'modal:swap', iconBg: '#6d4ff0', iconGlow: '109,79,240', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 4v12M7 16l-3-3M7 16l3-3" /><path d="M17 20V8M17 8l-3 3M17 8l3 3" /></svg> },
-  { label: 'Fund Agent', sub: 'Deposit into Agent Wallet', href: '/agent', iconBg: '#7c3aed', iconGlow: '124,58,237', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 2l2.4 6.4L21 9l-5.4 5 1.8 7L12 17.5 6.6 21l1.8-7L3 9l6.6-.6z" /></svg> },
-  { label: 'Earn Yield', sub: 'Find yield opportunities', href: '#', iconBg: '#b45309', iconGlow: '180,83,9', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg> },
-  { label: 'Buy IDO', sub: 'Participate in IDOs', href: '#', iconBg: '#b91c1c', iconGlow: '185,28,28', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" /></svg> },
+  { label: 'Send', sub: 'Send USDC to anyone', href: 'modal:send', accent: 'var(--mpm-text)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 17L17 7M17 7H9M17 7v8" /></svg> },
+  { label: 'Receive', sub: 'Receive USDC from anyone', href: 'modal:receive', accent: 'var(--mpm-success)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M17 7L7 17M7 17h8M7 17V9" /></svg> },
+  { label: 'Swap', sub: 'Exchange tokens instantly', href: 'modal:swap', accent: 'var(--mpm-blue-accent)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M7 4v12M7 16l-3-3M7 16l3-3" /><path d="M17 20V8M17 8l-3 3M17 8l3 3" /></svg> },
+  { label: 'Fund Agent', sub: 'Deposit into Agent Wallet', href: '/agent', accent: 'var(--mpm-purple-accent)', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 5v14M5 12h14" /></svg> },
 ]
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -800,12 +799,13 @@ export default function DashboardPage() {
               {QUICK_ACTIONS.map(a => (
                 <button key={a.label} onClick={() => {
                   if (a.href === 'modal:send') setSrsMode('send')
+                  else if (a.href === 'modal:receive') setSrsMode('receive')
                   else if (a.href === 'modal:swap') setSrsMode('swap')
                   else if (a.href !== '#') router.push(a.href)
                 }}
                   className="flex flex-col items-center gap-1.5">
-                  <div className="w-12 h-12 rounded-[12px] flex items-center justify-center text-white"
-                    style={{ background: a.iconBg, boxShadow: `0 0 12px rgba(${a.iconGlow},0.4)` }}>
+                  <div className="w-12 h-12 rounded-[12px] flex items-center justify-center"
+                    style={{ background: 'var(--mpm-input)', color: a.accent }}>
                     {a.icon}
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--mpm-text)' }}>{a.label}</span>
