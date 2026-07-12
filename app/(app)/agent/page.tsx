@@ -840,7 +840,7 @@ export default function AgentPage() {
   const msgsFromBalance = agentWallet ? Math.floor(agentWallet.balance / MSG_COST) : 0
 
   return (
-    <div className="h-screen bg-mp-bg flex flex-col overflow-hidden">
+    <div className="h-dvh bg-mp-bg flex flex-col overflow-hidden">
       {/* Header mobile */}
       <div className="lg:hidden flex items-center gap-[11px] shrink-0" style={{
         padding: '16px 18px', background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
