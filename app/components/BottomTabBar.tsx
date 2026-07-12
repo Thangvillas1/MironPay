@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useUIStore } from '@/app/store/ui'
 
 type Tab = {
   label: string
@@ -57,6 +58,9 @@ const TABS: Tab[] = [
 
 export default function BottomTabBar() {
   const pathname = usePathname()
+  const keyboardOpen = useUIStore((s) => s.keyboardOpen)
+
+  if (keyboardOpen) return null
 
   return (
     <nav
