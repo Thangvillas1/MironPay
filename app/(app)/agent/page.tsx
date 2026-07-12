@@ -595,6 +595,7 @@ function LimitModal({ current, onClose, onSave }: {
 export default function AgentPage() {
   const router = useRouter()
   const { tokenList } = useWalletStore()
+  const keyboardOpen = useUiStore(s => s.keyboardOpen)
   const setKeyboardOpen = useUiStore(s => s.setKeyboardOpen)
   const [accessToken, setAccessToken] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWallet | null>(null)
@@ -1023,7 +1024,9 @@ export default function AgentPage() {
           </div>
 
           {/* Input */}
-          <div className="px-4 pt-2 pb-3 border-t border-white/8 shrink-0">
+          <div className={`px-4 pt-2 border-t border-white/8 shrink-0 lg:pb-3 ${
+            keyboardOpen ? 'pb-3' : 'pb-[calc(var(--mpm-tabbar-h)+env(safe-area-inset-bottom)+12px)]'
+          }`}>
             <div className="flex items-end gap-2 bg-mp-card border border-white/8 rounded-[12px] px-4 py-3">
               <textarea
                 value={input}
