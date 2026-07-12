@@ -25,7 +25,7 @@ export default function SettingsPage() {
   const [isStandalone, setIsStandalone] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showIOSHint, setShowIOSHint] = useState(false)
+  const [showManualHint, setShowManualHint] = useState(false)
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
@@ -50,10 +50,11 @@ export default function SettingsPage() {
       setInstallPrompt(null)
       return
     }
-    // iOS Safari has no install API at all — "Add to Home Screen" only
-    // exists behind the manual Share sheet, so show real instructions
-    // instead of a button that would silently do nothing.
-    setShowIOSHint(true)
+    // No captured beforeinstallprompt — either iOS Safari (which has no
+    // install API at all) or a browser that hasn't offered one yet. Show
+    // manual step-by-step instructions instead of a button that would
+    // otherwise silently do nothing.
+    setShowManualHint(true)
   }
 
   useEffect(() => { setMobileIsDark(localStorage.getItem('theme') !== 'light') }, [])
@@ -170,10 +171,24 @@ export default function SettingsPage() {
             <button onClick={handleInstallClick} style={{ width: '100%', height: 42, marginTop: 12, borderRadius: 10, border: 'none', background: 'var(--mpm-grad-primary)', color: '#fff', fontSize: 14, fontWeight: 600 }}>
               Add
             </button>
-            {showIOSHint && isIOS && (
-              <p style={{ fontSize: 12, color: 'var(--mpm-muted)', marginTop: 10, lineHeight: 1.5 }}>
-                On iPhone: tap <strong style={{ color: 'var(--mpm-text)' }}>Share</strong> (the ⬆ icon) in Safari&apos;s toolbar, then choose <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add to Home Screen&quot;</strong>.
-              </p>
+            {showManualHint && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(isIOS ? [
+                  { icon: <path d="M12 19V5M5 12l7-7 7 7" />, text: <>Tap the <strong style={{ color: 'var(--mpm-text)' }}>Share</strong> icon in Safari&apos;s toolbar</> },
+                  { icon: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></>, text: <>Scroll down and tap <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add to Home Screen&quot;</strong></> },
+                  { icon: <path d="M5 13l4 4L19 7" />, text: <>Tap <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add&quot;</strong> in the top-right corner</> },
+                ] : [
+                  { icon: <><circle cx="12" cy="5" r="1.2" fill="var(--mpm-muted)" stroke="none" /><circle cx="12" cy="12" r="1.2" fill="var(--mpm-muted)" stroke="none" /><circle cx="12" cy="19" r="1.2" fill="var(--mpm-muted)" stroke="none" /></>, text: <>Tap the <strong style={{ color: 'var(--mpm-text)' }}>⋮ menu</strong> in your browser&apos;s toolbar</> },
+                  { icon: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></>, text: <>Choose <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add to Home screen&quot;</strong> or <strong style={{ color: 'var(--mpm-text)' }}>&quot;Install app&quot;</strong></> },
+                  { icon: <path d="M5 13l4 4L19 7" />, text: <>Confirm — the icon appears on your home screen</> },
+                ]).map((step, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(99,102,241,.12)', color: 'var(--mpm-purple-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--mpm-muted)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>{step.icon}</svg>
+                    <p style={{ fontSize: 12.5, color: 'var(--mpm-muted)', lineHeight: 1.4, margin: 0 }}>{step.text}</p>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
