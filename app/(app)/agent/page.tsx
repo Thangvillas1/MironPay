@@ -676,8 +676,9 @@ export default function AgentPage() {
       if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
       setUserId(data.session.user.id)
-      await loadWallet(data.session.access_token)
-      await loadHistory(data.session.access_token)
+      // Independent of each other — no reason to make history wait on the
+      // Circle balance round-trip (or vice versa).
+      await Promise.all([loadWallet(data.session.access_token), loadHistory(data.session.access_token)])
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
