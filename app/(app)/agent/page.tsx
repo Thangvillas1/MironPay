@@ -863,22 +863,15 @@ export default function AgentPage() {
         padding: '16px 18px', background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
         borderBottom: '1px solid var(--mpm-glass-border)', paddingTop: 'calc(env(safe-area-inset-top) + 16px)',
       }}>
-        <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg,#5b8cff,#3b30c4)', color: '#fff' }}>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2l2.4 6.4L21 9l-5.4 5 1.8 7L12 17.5 6.6 21l1.8-7L3 9l6.6-.6z" />
-          </svg>
-        </span>
-        <div className="flex-1 min-w-0">
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--mpm-text)' }}>Miron Agent</div>
-          <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: 'var(--mpm-success)' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mpm-success)' }} />Online · on-chain ready
-          </div>
+        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--mpm-text)' }}>Miron Agent</span>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mpm-success)' }} />
         </div>
         {!loadingWallet && agentWallet && (
           <div className="flex items-center gap-2 shrink-0">
             <div className="text-right">
               <p style={{ fontSize: 12, fontWeight: 600, color: lowBalance ? 'var(--mpm-error)' : 'var(--mpm-text)' }}>
-                {formatUSDC(agentWallet.balance)} USDC
+                {formatUSDC(agentWallet.balance)} USD
               </p>
               <p style={{ fontSize: 10, color: 'var(--mpm-muted)' }}>{msgsFromBalance} left</p>
             </div>
@@ -1044,6 +1037,7 @@ export default function AgentPage() {
                 className="flex-1 bg-transparent text-sm text-mp-text placeholder:text-mp-muted/50 outline-none resize-none max-h-32 disabled:opacity-50"
                 style={{ lineHeight: '1.5' }}
               />
+              <span className="text-[9px] text-mp-muted/40 shrink-0 self-start pt-0.5">{MSG_COST}$/msg</span>
               <button
                 onClick={handleSend}
                 disabled={sending || !input.trim()}
@@ -1054,7 +1048,6 @@ export default function AgentPage() {
                 </svg>
               </button>
             </div>
-            <p className="text-[10px] text-mp-muted/40 text-center mt-1.5">Each message costs {MSG_COST} USDC from Agent Wallet</p>
           </div>
         </div>
 
