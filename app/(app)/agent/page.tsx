@@ -622,6 +622,20 @@ export default function AgentPage() {
   }
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+
+  // 100dvh / interactive-widget=resizes-content are unreliable in an
+  // installed iOS PWA (standalone display mode) when the keyboard opens —
+  // known WebKit gap. window.visualViewport reports the real visible area
+  // there, so use it to size just this chat container when available.
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const updateHeight = () => setViewportHeight(vv.height)
+    updateHeight()
+    vv.addEventListener('resize', updateHeight)
+    return () => vv.removeEventListener('resize', updateHeight)
+  }, [])
 
   // Only the message list should scroll. `overflow: hidden` on html/body alone
   // isn't enough on iOS Safari — while the keyboard is up, WebKit still lets
@@ -858,7 +872,10 @@ export default function AgentPage() {
   const msgsFromBalance = agentWallet ? Math.floor(agentWallet.balance / MSG_COST) : 0
 
   return (
-    <div className="h-dvh bg-mp-bg flex flex-col overflow-hidden">
+    <div
+      className="h-dvh bg-mp-bg flex flex-col overflow-hidden"
+      style={viewportHeight != null ? { height: `${viewportHeight}px` } : undefined}
+    >
       {/* Header mobile */}
       <div className="lg:hidden flex items-center gap-[11px] shrink-0" style={{
         padding: '16px 18px', background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
