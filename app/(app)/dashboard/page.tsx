@@ -6,7 +6,7 @@ import { supabase } from '@/app/lib/supabase'
 import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useAuthStore } from '@/app/store/auth'
 import { useWalletStore } from '@/app/store/wallet'
-import type { Transaction } from '@/app/lib/types'
+import type { Transaction, TokenBalance } from '@/app/lib/types'
 import TransactionHistoryModal from '@/app/components/TransactionHistoryModal'
 import TransactionDetailModal from '@/app/components/TransactionDetailModal'
 import { mergeWithLocalTransactions } from '@/app/lib/local-tx'
@@ -35,6 +35,7 @@ interface AgentWalletData {
   msg_cost: number
   wallet_address: string | null
   gateway_reserved?: number
+  tokenList?: TokenBalance[]
 }
 
 interface LiveIdo {
@@ -1503,7 +1504,8 @@ export default function DashboardPage() {
 
               {/* TOKEN PICKER */}
               {withdrawPhase === 'form' && withdrawTokenStep === 'token' && (() => {
-                const tokens = tokenList.length > 0 ? tokenList : [{ symbol: 'USDC', name: 'USD Coin', amount: String(agentBalance), usdValue: agentBalance, logoUrl: null, isVerified: true, tokenAddress: null }]
+                const agentTokenList = agentWallet?.tokenList ?? []
+                const tokens = agentTokenList.length > 0 ? agentTokenList : [{ symbol: 'USDC', name: 'USD Coin', amount: String(agentBalance), usdValue: agentBalance, change24hPct: null, logoUrl: null, isVerified: true, tokenAddress: null }]
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 7, animation: 'srsStep .25s ease' }}>
                     <p style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 9, lineHeight: 1.5 }}>Choose which token to withdraw from the agent wallet.</p>
@@ -1536,7 +1538,7 @@ export default function DashboardPage() {
 
               {/* FORM */}
               {withdrawPhase === 'form' && withdrawTokenStep === 'form' && (() => {
-                const selToken = tokenList.find(t => t.symbol === withdrawToken)
+                const selToken = agentWallet?.tokenList?.find(t => t.symbol === withdrawToken)
                 const withdrawBal = withdrawToken === 'USDC' ? agentBalance : parseFloat(selToken?.amount ?? '0')
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'srsStep .25s ease' }}>
