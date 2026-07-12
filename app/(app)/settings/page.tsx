@@ -163,16 +163,16 @@ export default function SettingsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/icons/icon-192.png" width={40} height={40} alt="MironPay" style={{ borderRadius: 10, flexShrink: 0 }} />
               <div className="flex-1 min-w-0">
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--mpm-text)' }}>Thêm vào màn hình chính</div>
-                <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>MironPay sẽ hiện như 1 app thật</div>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--mpm-text)' }}>Add to Home Screen</div>
+                <div style={{ fontSize: 12, color: 'var(--mpm-muted)' }}>MironPay will feel like a real app</div>
               </div>
             </div>
             <button onClick={handleInstallClick} style={{ width: '100%', height: 42, marginTop: 12, borderRadius: 10, border: 'none', background: 'var(--mpm-grad-primary)', color: '#fff', fontSize: 14, fontWeight: 600 }}>
-              Thêm
+              Add
             </button>
             {showIOSHint && isIOS && (
               <p style={{ fontSize: 12, color: 'var(--mpm-muted)', marginTop: 10, lineHeight: 1.5 }}>
-                Trên iPhone: bấm nút <strong style={{ color: 'var(--mpm-text)' }}>Share</strong> (biểu tượng ⬆) ở thanh dưới Safari, sau đó chọn <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add to Home Screen&quot;</strong>.
+                On iPhone: tap <strong style={{ color: 'var(--mpm-text)' }}>Share</strong> (the ⬆ icon) in Safari&apos;s toolbar, then choose <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add to Home Screen&quot;</strong>.
               </p>
             )}
           </div>
@@ -181,17 +181,17 @@ export default function SettingsPage() {
         <div style={{ background: 'var(--mpm-panel)', border: '1px solid var(--mpm-border)', borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
           <SettingsRow
             label="Leaderboard"
-            sub="Agent reputation trên ARC Testnet"
+            sub="Agent reputation on ARC Testnet"
             icon={<path d="M3 12h4l2 6 4-13 2 7h6" />}
             onClick={() => router.push('/leaderboard')}
           />
           <SettingsRow
-            label="Giao diện"
+            label="Appearance"
             sub={mobileIsDark ? 'Dark theme' : 'Light theme'}
             icon={mobileIsDark
               ? <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               : <><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></>}
-            right={<span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--mpm-purple-accent)' }}>Đổi</span>}
+            right={<span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--mpm-purple-accent)' }}>Switch</span>}
             onClick={toggleMobileTheme}
           />
         </div>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
 
         <div style={{ background: 'var(--mpm-panel)', border: '1px solid var(--mpm-border)', borderRadius: 14, overflow: 'hidden' }}>
           <SettingsRow
-            label="Đăng xuất"
+            label="Sign out"
             danger
             icon={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>}
             onClick={handleSignOut}
