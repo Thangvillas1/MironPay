@@ -12,6 +12,10 @@ export const swapKit = new SwapKit()
 
 export const ARC_TESTNET = Blockchain.Arc_Testnet
 
+// Required by the Stablecoin Service — format KIT_KEY:<keyId>:<keySecret>.
+// Without this every estimate()/swap() call fails with INPUT_VALIDATION_FAILED.
+export const CIRCLE_KIT_KEY = process.env.CIRCLE_KIT_KEY!
+
 // No-route-available is Circle's error code 331001 (same code the old raw
 // REST implementation checked for) — not transient, retrying the exact same
 // quote won't help, only a fresh quote after a short wait might.

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { circleSwapAdapter, swapKit, ARC_TESTNET, isNoRouteError, swapKitErrorMessage } from '@/app/lib/circle-swap-kit'
+import { circleSwapAdapter, swapKit, ARC_TESTNET, CIRCLE_KIT_KEY, isNoRouteError, swapKitErrorMessage } from '@/app/lib/circle-swap-kit'
 
 const SUPPORTED_TOKENS = new Set(['USDC', 'EURC'])
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
           tokenIn,
           tokenOut,
           amountIn,
-          config: { slippageBps, allowanceStrategy: 'permit' },
+          config: { slippageBps, allowanceStrategy: 'permit', kitKey: CIRCLE_KIT_KEY },
         })
 
         return NextResponse.json({
