@@ -30,6 +30,27 @@ async function callX402Tool<T>(
 
 const MSG_COST = 0.01 // placeholder for testnet — revisit for mainnet
 const TREASURY_ADDRESS = process.env.AGENT_OWNER_ADDRESS!
+
+// Repeated price lookups for the same symbol within this window are served
+// from here instead of re-running the full x402 payment (Gateway funding
+// check + Circle signTypedData + settle) and re-hitting CoinGecko's
+// rate-limited free tier — that round trip is the main source of flaky
+// repeat queries. Per-instance only (no cross-instance store needed for a
+// 40s window); Fluid Compute keeps instances warm enough for this to help
+// in practice.
+const PRICE_CACHE_TTL_MS = 40_000
+type CachedPrice = {
+  data: {
+    symbol: string; name: string; price_usd: number; change_24h_pct: number | null
+    market_cap_usd: number | null; fdv_usd: number | null
+    circulating_supply: number | null; max_supply: number | null
+    description: string | null; categories: string[]; sentiment_up_pct: number | null
+    twitter_followers: number | null; github_stars: number | null; github_commits_4w: number | null
+    chart_24h: Array<[number, number]>
+  }
+  expiresAt: number
+}
+const priceCache = new Map<string, CachedPrice>()
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
@@ -485,22 +506,27 @@ Never claim the transaction is done or already in progress — the system will s
             toolResultContent = 'Price lookup unavailable: Agent Wallet not initialized. Answer using general knowledge instead.'
           } else {
             try {
-              const origin = request.nextUrl.origin
-              const { data, txHash } = await payX402<{
-                symbol: string; name: string; price_usd: number; change_24h_pct: number | null
-                market_cap_usd: number | null; fdv_usd: number | null
-                circulating_supply: number | null; max_supply: number | null
-                description: string | null; categories: string[]; sentiment_up_pct: number | null
-                twitter_followers: number | null; github_stars: number | null; github_commits_4w: number | null
-                chart_24h: Array<[number, number]>
-              }>(
-                `${origin}/api/x402/market-data?symbol=${encodeURIComponent(symbol)}`,
-                profile.agent_wallet_id,
-                profile.agent_wallet_address as `0x${string}`,
-              )
-              dataFee = { amount: X402_DATA_FEE, txHash }
+              const cacheKey = symbol.toUpperCase()
+              const cached = priceCache.get(cacheKey)
+              let data: CachedPrice['data']
+              let txHash: string | null
+              if (cached && cached.expiresAt > Date.now()) {
+                data = cached.data
+                txHash = null // no new on-chain payment made — served from cache
+              } else {
+                const origin = request.nextUrl.origin
+                const paid = await payX402<CachedPrice['data']>(
+                  `${origin}/api/x402/market-data?symbol=${encodeURIComponent(symbol)}`,
+                  profile.agent_wallet_id,
+                  profile.agent_wallet_address as `0x${string}`,
+                )
+                data = paid.data
+                txHash = paid.txHash
+                priceCache.set(cacheKey, { data, expiresAt: Date.now() + PRICE_CACHE_TTL_MS })
+              }
+              dataFee = txHash ? { amount: X402_DATA_FEE, txHash } : null
               if (data.chart_24h?.length > 1) tokenChart = { symbol: data.symbol, points: data.chart_24h }
-              toolResultContent = `Full live data for ${data.name} (${data.symbol}), paid $${X402_DATA_FEE} USDC via x402 — `
+              toolResultContent = (txHash ? `Full live data for ${data.name} (${data.symbol}), paid $${X402_DATA_FEE} USDC via x402 — ` : `Full live data for ${data.name} (${data.symbol}), served from a recent cached lookup (no new fee charged) — `)
                 + `price_usd=${data.price_usd}, change_24h_pct=${data.change_24h_pct}, `
                 + `market_cap_usd=${data.market_cap_usd}, fdv_usd=${data.fdv_usd}, `
                 + `circulating_supply=${data.circulating_supply}, max_supply=${data.max_supply}, `

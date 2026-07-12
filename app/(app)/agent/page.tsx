@@ -598,6 +598,7 @@ export default function AgentPage() {
   const keyboardOpen = useUiStore(s => s.keyboardOpen)
   const setKeyboardOpen = useUiStore(s => s.setKeyboardOpen)
   const [accessToken, setAccessToken] = useState('')
+  const [userId, setUserId] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWallet | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -674,6 +675,7 @@ export default function AgentPage() {
       if (!data.session) { router.replace('/'); return }
       if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/'); return }
       setAccessToken(data.session.access_token)
+      setUserId(data.session.user.id)
       await loadWallet(data.session.access_token)
       await loadHistory(data.session.access_token)
     })
@@ -683,6 +685,59 @@ export default function AgentPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Cross-device/tab sync: without this, sending a message on desktop never
+  // shows up on a phone tab already sitting open on this page until it's
+  // manually reloaded. Row already appended locally by handleSend gets
+  // deduped by id — this only fills in messages that arrived from elsewhere.
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel(`agent_messages:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'agent_messages', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const m = payload.new as {
+            id: string; role: 'user' | 'assistant'; content: string; cost: number | null
+            input_fee_tx_hash: string | null; created_at: string
+            data_fee_amount: number | null; data_fee_tx_hash: string | null
+            chart_symbol: string | null; chart_points: Array<[number, number]> | null
+            trending_data: Message['trending']; defi_data: Message['defi']; sentiment_data: Message['sentiment']
+          }
+          const incoming: Message = {
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            cost: m.cost ?? undefined,
+            inputFeeTxHash: m.input_fee_tx_hash,
+            time: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            dataFee: m.data_fee_amount != null ? { amount: m.data_fee_amount, txHash: m.data_fee_tx_hash } : null,
+            chart: m.chart_symbol && m.chart_points ? { symbol: m.chart_symbol, points: m.chart_points } : null,
+            trending: m.trending_data ?? null,
+            defi: m.defi_data ?? null,
+            sentiment: m.sentiment_data ?? null,
+          }
+          setMessages(prev => {
+            if (prev.some(existing => existing.id === m.id)) return prev
+            // The tab that sent this message already appended a local copy
+            // under a temp id (tmp_.../a_...) before the DB row existed —
+            // reconcile onto that placeholder instead of duplicating it.
+            const placeholderIdx = prev.findIndex(existing =>
+              (existing.id.startsWith('tmp_') || existing.id.startsWith('a_')) &&
+              existing.role === m.role && existing.content === m.content)
+            if (placeholderIdx !== -1) {
+              const next = prev.slice()
+              next[placeholderIdx] = { ...incoming, animate: prev[placeholderIdx].animate }
+              return next
+            }
+            return [...prev, incoming]
+          })
+        },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [userId])
 
   async function loadWallet(token: string) {
     setLoadingWallet(true)
@@ -698,11 +753,11 @@ export default function AgentPage() {
     const { data } = await supabase
       .from('agent_messages')
       .select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data')
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(50)
 
     if (data) {
-      setMessages(data.map(m => ({
+      setMessages(data.slice().reverse().map(m => ({
         id: m.id,
         role: m.role as 'user' | 'assistant',
         content: m.content,
