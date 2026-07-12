@@ -630,6 +630,29 @@ export default function AgentPage() {
   // input was still focused (e.g. user navigates away via a link mid-type).
   useEffect(() => () => setKeyboardOpen(false), [setKeyboardOpen])
 
+  // iOS Safari (especially inside an installed/standalone PWA) doesn't
+  // reliably shrink 100dvh when the on-screen keyboard opens, and the
+  // visual viewport can also pan (offsetTop) while the keyboard is up —
+  // both let the input bar drift out from above the keyboard. Track the
+  // real visible viewport via the VisualViewport API and pin this page's
+  // root to exactly that rect instead of trusting CSS viewport units.
+  const [viewportRect, setViewportRect] = useState<{ height: number; top: number } | null>(null)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    function update() {
+      if (!vv) return
+      setViewportRect({ height: vv.height, top: vv.offsetTop })
+    }
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.replace('/'); return }
@@ -840,7 +863,12 @@ export default function AgentPage() {
   const msgsFromBalance = agentWallet ? Math.floor(agentWallet.balance / MSG_COST) : 0
 
   return (
-    <div className="h-dvh bg-mp-bg flex flex-col overflow-hidden">
+    <div
+      className="bg-mp-bg flex flex-col overflow-hidden"
+      style={viewportRect
+        ? { position: 'fixed', left: 0, right: 0, top: viewportRect.top, height: viewportRect.height }
+        : { height: '100dvh' }}
+    >
       {/* Header mobile */}
       <div className="lg:hidden flex items-center gap-[11px] shrink-0" style={{
         padding: '16px 18px', background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
