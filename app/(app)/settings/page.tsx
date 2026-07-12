@@ -174,7 +174,7 @@ export default function SettingsPage() {
             {showManualHint && (
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {(isIOS ? [
-                  { icon: <path d="M12 19V5M5 12l7-7 7 7" />, text: <>Tap the <strong style={{ color: 'var(--mpm-text)' }}>Share</strong> icon in Safari&apos;s toolbar</> },
+                  { icon: <><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></>, text: <>Tap the <strong style={{ color: 'var(--mpm-text)' }}>Share</strong> icon in Safari&apos;s toolbar</> },
                   { icon: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8M8 12h8" /></>, text: <>Scroll down and tap <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add to Home Screen&quot;</strong></> },
                   { icon: <path d="M5 13l4 4L19 7" />, text: <>Tap <strong style={{ color: 'var(--mpm-text)' }}>&quot;Add&quot;</strong> in the top-right corner</> },
                 ] : [
