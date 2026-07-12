@@ -622,19 +622,26 @@ export default function AgentPage() {
   }
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null)
+  const [viewportRect, setViewportRect] = useState<{ top: number; height: number } | null>(null)
 
   // 100dvh / interactive-widget=resizes-content are unreliable in an
   // installed iOS PWA (standalone display mode) when the keyboard opens —
   // known WebKit gap. window.visualViewport reports the real visible area
-  // there, so use it to size just this chat container when available.
+  // there. Height alone isn't enough though: the visual viewport also pans
+  // (offsetTop) independent of the layout viewport once the keyboard is up,
+  // so a plain shorter box left in normal flow ends up with its bottom
+  // hanging off-screen. Track both and pin this container to the exact rect.
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
-    const updateHeight = () => setViewportHeight(vv.height)
-    updateHeight()
-    vv.addEventListener('resize', updateHeight)
-    return () => vv.removeEventListener('resize', updateHeight)
+    const updateRect = () => setViewportRect({ top: vv.offsetTop, height: vv.height })
+    updateRect()
+    vv.addEventListener('resize', updateRect)
+    vv.addEventListener('scroll', updateRect)
+    return () => {
+      vv.removeEventListener('resize', updateRect)
+      vv.removeEventListener('scroll', updateRect)
+    }
   }, [])
 
   // Only the message list should scroll. `overflow: hidden` on html/body alone
@@ -873,8 +880,10 @@ export default function AgentPage() {
 
   return (
     <div
-      className="h-dvh bg-mp-bg flex flex-col overflow-hidden"
-      style={viewportHeight != null ? { height: `${viewportHeight}px` } : undefined}
+      className={keyboardOpen && viewportRect
+        ? 'fixed inset-x-0 lg:left-[236px] bg-mp-bg flex flex-col overflow-hidden z-50'
+        : 'h-dvh bg-mp-bg flex flex-col overflow-hidden'}
+      style={keyboardOpen && viewportRect ? { top: `${viewportRect.top}px`, height: `${viewportRect.height}px` } : undefined}
     >
       {/* Header mobile */}
       <div className="lg:hidden flex items-center gap-[11px] shrink-0" style={{
