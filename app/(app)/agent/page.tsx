@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useWalletStore } from '@/app/store/wallet'
-import { useUIStore } from '@/app/store/ui'
 import { addLocalTransaction } from '@/app/lib/local-tx'
 import { TokenPriceChart } from '@/app/components/TokenPriceChart'
 import { TypewriterText } from '@/app/components/TypewriterText'
@@ -595,7 +594,6 @@ function LimitModal({ current, onClose, onSave }: {
 export default function AgentPage() {
   const router = useRouter()
   const { tokenList } = useWalletStore()
-  const setKeyboardOpen = useUIStore((s) => s.setKeyboardOpen)
   const [accessToken, setAccessToken] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWallet | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -625,10 +623,6 @@ export default function AgentPage() {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [])
-
-  // Safety net: force the tab bar back on if this page unmounts while the
-  // input was still focused (e.g. user navigates away via a link mid-type).
-  useEffect(() => () => setKeyboardOpen(false), [setKeyboardOpen])
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -1019,8 +1013,6 @@ export default function AgentPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                onFocus={() => setKeyboardOpen(true)}
-                onBlur={() => setKeyboardOpen(false)}
                 placeholder="Ask MironPay Agent..."
                 rows={1}
                 disabled={sending}
