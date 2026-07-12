@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useWalletStore } from '@/app/store/wallet'
+import { useUiStore } from '@/app/store/ui'
 import { addLocalTransaction } from '@/app/lib/local-tx'
 import { TokenPriceChart } from '@/app/components/TokenPriceChart'
 import { TypewriterText } from '@/app/components/TypewriterText'
@@ -594,6 +595,7 @@ function LimitModal({ current, onClose, onSave }: {
 export default function AgentPage() {
   const router = useRouter()
   const { tokenList } = useWalletStore()
+  const setKeyboardOpen = useUiStore(s => s.setKeyboardOpen)
   const [accessToken, setAccessToken] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWallet | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -618,11 +620,32 @@ export default function AgentPage() {
     setTimeout(() => setCopiedAddr(false), 2000)
   }
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
 
+  // Only the message list should scroll. `overflow: hidden` on html/body alone
+  // isn't enough on iOS Safari — while the keyboard is up, WebKit still lets
+  // fixed/flow elements outside the focused input pan independently underneath
+  // it. Block touchmove everywhere except inside the message list to kill that.
   useEffect(() => {
+    const html = document.documentElement
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyOverflow = document.body.style.overflow
+    html.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
-  }, [])
+
+    const blockOuterScroll = (e: TouchEvent) => {
+      if (messagesScrollRef.current?.contains(e.target as Node)) return
+      e.preventDefault()
+    }
+    document.addEventListener('touchmove', blockOuterScroll, { passive: false })
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow
+      document.body.style.overflow = prevBodyOverflow
+      document.removeEventListener('touchmove', blockOuterScroll)
+      setKeyboardOpen(false)
+    }
+  }, [setKeyboardOpen])
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -834,7 +857,7 @@ export default function AgentPage() {
   const msgsFromBalance = agentWallet ? Math.floor(agentWallet.balance / MSG_COST) : 0
 
   return (
-    <div className="h-screen bg-mp-bg flex flex-col overflow-hidden">
+    <div className="h-dvh bg-mp-bg flex flex-col overflow-hidden">
       {/* Header mobile */}
       <div className="lg:hidden flex items-center gap-[11px] shrink-0" style={{
         padding: '16px 18px', background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
@@ -893,7 +916,7 @@ export default function AgentPage() {
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 py-4 flex flex-col gap-3" style={{ touchAction: 'pan-y' }}>
+          <div ref={messagesScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 py-4 flex flex-col gap-3" style={{ touchAction: 'pan-y' }}>
             {messages.length === 0 && !sending && (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 gap-3">
                 <div className="w-14 h-14 bg-mp-primary/15 rounded-full flex items-center justify-center">
@@ -1013,6 +1036,8 @@ export default function AgentPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+                onFocus={() => setKeyboardOpen(true)}
+                onBlur={() => setKeyboardOpen(false)}
                 placeholder="Ask MironPay Agent..."
                 rows={1}
                 disabled={sending}
