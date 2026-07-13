@@ -18,8 +18,6 @@ export default function SettingsPage() {
   const { setWallet, setTransactions, setTokenList, setWalletAddress, setLastFetched } = useWalletStore()
   const [hasPIN, setHasPIN] = useState(false)
   const [username, setUsername] = useState<string | null>(null)
-  const [scoreLevel, setScoreLevel] = useState<string | null>(null)
-  const [scoreValue, setScoreValue] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [mobileIsDark, setMobileIsDark] = useState(true)
   const [isStandalone, setIsStandalone] = useState(false)
@@ -74,10 +72,6 @@ export default function SettingsPage() {
       const { data: profile } = await supabase.from('profiles').select('pin_hash, username').eq('id', session.user.id).single()
       setHasPIN(!!profile?.pin_hash)
       setUsername(profile?.username ?? null)
-      fetch('/api/score/me', { headers: { Authorization: `Bearer ${session.access_token}` } })
-        .then(r => r.json())
-        .then(d => { setScoreLevel(d?.level ?? null); setScoreValue(d?.score ?? null) })
-        .catch(() => {})
       setLoading(false)
     }
     init()
@@ -151,9 +145,6 @@ export default function SettingsPage() {
           </span>
           <div className="min-w-0">
             <div style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--mpm-text)' }}>{username ? `@${username}` : user?.email}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--mpm-muted)' }}>
-              {scoreLevel ? `${scoreLevel} · Miron Score ${scoreValue?.toLocaleString() ?? 0}` : 'Miron Score unavailable'}
-            </div>
           </div>
         </div>
 

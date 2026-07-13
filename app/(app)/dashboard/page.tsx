@@ -10,8 +10,6 @@ import type { Transaction, TokenBalance } from '@/app/lib/types'
 import TransactionHistoryModal from '@/app/components/TransactionHistoryModal'
 import TransactionDetailModal from '@/app/components/TransactionDetailModal'
 import { mergeWithLocalTransactions } from '@/app/lib/local-tx'
-import MironScoreCard from '@/app/components/MironScoreCard'
-import MironScorePanel from '@/app/components/MironScorePanel'
 import SRSModal, { type ModalMode } from '@/app/components/SRSModal'
 import VerifiedBadge from '@/app/components/VerifiedBadge'
 import AgentAvatar from '@/app/components/AgentAvatar'
@@ -810,10 +808,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Miron Score */}
-          <div className="mt-5">
-            <MironScoreCard />
-          </div>
+          {/* Miron Score — hidden until public launch; scoring still runs server-side */}
 
           {/* Holdings — moved above Recent activity */}
           {tokenList.length > 0 && (
@@ -1238,8 +1233,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Miron Score */}
-            <MironScorePanel />
+            {/* Miron Score — hidden until public launch; scoring still runs server-side */}
 
             {/* Recent Activity */}
             <div style={{ display: 'flex', flexDirection: 'column', padding: '16px 18px 12px', borderRadius: 14, background: 'var(--c-panel)', border: '1px solid rgba(var(--c-fg-rgb),.07)', flex: 1, minHeight: 0, overflow: 'hidden' }}>
