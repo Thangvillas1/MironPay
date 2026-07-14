@@ -686,6 +686,13 @@ export default function AgentPage() {
     }
   }, [setKeyboardOpen])
 
+  // This page is the mobile-only agent chat surface — desktop uses the chat
+  // panel built into /dashboard instead. Bounce desktop-width visitors there
+  // rather than maintaining two full chat UIs on wide screens.
+  useEffect(() => {
+    if (window.matchMedia('(min-width: 1024px)').matches) router.replace('/dashboard')
+  }, [router])
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { router.replace('/'); return }
