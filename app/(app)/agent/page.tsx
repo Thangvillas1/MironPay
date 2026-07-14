@@ -13,6 +13,7 @@ import { SentimentMeter } from '@/app/components/SentimentMeter'
 import { TrendingTable } from '@/app/components/TrendingTable'
 import { DefiDataCard } from '@/app/components/DefiDataCard'
 import { StablecoinDataCard } from '@/app/components/StablecoinDataCard'
+import { WalletLookupCard } from '@/app/components/WalletLookupCard'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
 
 interface AgentWallet {
@@ -57,6 +58,11 @@ interface Message {
     | { mode: 'top'; coins: Array<{ symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number }> }
     | { mode: 'single'; coin: { symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number } }
     | null
+  walletLookup?: {
+    address: string
+    chains: Array<{ blockchain: string; total_usd: number; tokens: Array<{ symbol: string; name: string; amount: number; usd_value: number; rank: number | null }> }>
+    total_usd: number
+  } | null
   animate?: boolean
 }
 
@@ -748,7 +754,7 @@ export default function AgentPage() {
             data_fee_amount: number | null; data_fee_tx_hash: string | null
             chart_symbol: string | null; chart_points: Array<[number, number]> | null
             trending_data: Message['trending']; defi_data: Message['defi']; sentiment_data: Message['sentiment']
-            stablecoin_data: Message['stablecoin']
+            stablecoin_data: Message['stablecoin']; wallet_lookup_data: Message['walletLookup']
           }
           const incoming: Message = {
             id: m.id,
@@ -763,6 +769,7 @@ export default function AgentPage() {
             defi: m.defi_data ?? null,
             sentiment: m.sentiment_data ?? null,
             stablecoin: m.stablecoin_data ?? null,
+            walletLookup: m.wallet_lookup_data ?? null,
           }
           setMessages(prev => {
             if (prev.some(existing => existing.id === m.id)) return prev
@@ -798,7 +805,7 @@ export default function AgentPage() {
   async function loadHistory(token: string) {
     const { data } = await supabase
       .from('agent_messages')
-      .select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data, stablecoin_data')
+      .select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data, stablecoin_data, wallet_lookup_data')
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -816,6 +823,7 @@ export default function AgentPage() {
         defi: m.defi_data ?? null,
         sentiment: m.sentiment_data ?? null,
         stablecoin: m.stablecoin_data ?? null,
+        walletLookup: m.wallet_lookup_data ?? null,
       })))
     }
   }
@@ -947,6 +955,7 @@ export default function AgentPage() {
         defi: data.defi_data ?? null,
         sentiment: data.sentiment_data ?? null,
         stablecoin: data.stablecoin_data ?? null,
+        walletLookup: data.wallet_lookup_data ?? null,
         animate: true,
       }
       // Input fee is charged for the message just sent — attach the real
@@ -1113,6 +1122,9 @@ export default function AgentPage() {
                 )}
                 {msg.role === 'assistant' && msg.stablecoin && (
                   <StablecoinDataCard data={msg.stablecoin} />
+                )}
+                {msg.role === 'assistant' && msg.walletLookup && (
+                  <WalletLookupCard data={msg.walletLookup} />
                 )}
                 {msg.role === 'assistant' && msg.sentiment && (
                   <SentimentMeter value={msg.sentiment.value} classification={msg.sentiment.classification} />

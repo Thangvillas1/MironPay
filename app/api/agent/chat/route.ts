@@ -199,6 +199,20 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'get_wallet_lookup',
+      description: 'Look up token holdings for ANY wallet address (not just the user\'s own MironPay wallets) across major EVM chains (Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche, Fantom) via CoinStats. READ-ONLY RESEARCH ONLY — this never sends, swaps, or moves funds, and is unrelated to execute_send/execute_swap. Costs $0.01 USDC via x402. Call this when the user pastes/names a wallet address (0x...) and asks what\'s in it, its portfolio, or its balance — for any chain, not just ARC.',
+      parameters: {
+        type: 'object',
+        properties: {
+          address: { type: 'string', description: 'The wallet address to look up, e.g. "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045".' },
+        },
+        required: ['address'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_market_sentiment',
       description: 'Fetch the real-time Crypto Fear & Greed Index (0-100, Extreme Fear to Extreme Greed). Costs $0.01 USDC via x402 — no PIN needed. Call this when the user asks about overall market mood, sentiment, or "is the market fearful/greedy right now".',
       parameters: { type: 'object', properties: {}, required: [] },
@@ -439,6 +453,13 @@ Never claim the transaction is done or already in progress — the system will s
     let stablecoinData:
       | { mode: 'top'; coins: Array<{ symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number }> }
       | { mode: 'single'; coin: { symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number } }
+      | null = null
+    let walletLookupData:
+      | {
+          address: string
+          chains: Array<{ blockchain: string; total_usd: number; tokens: Array<{ symbol: string; name: string; amount: number; usd_value: number; rank: number | null }> }>
+          total_usd: number
+        }
       | null = null
 
     // Does the user's RAW text contain a standalone number the model could
@@ -685,6 +706,36 @@ Never claim the transaction is done or already in progress — the system will s
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
+        } else if (fnName === 'get_wallet_lookup') {
+          const origin = request.nextUrl.origin
+          const address = (args.address ?? '').trim()
+          if (!address) {
+            reply = 'Please provide the wallet address you want to look up.'
+          } else {
+            const { content, fee, data: rawData } = await callX402Tool<{
+              address: string
+              chains: Array<{ blockchain: string; total_usd: number; tokens: Array<{ symbol: string; name: string; amount: number; usd_value: number; rank: number | null }> }>
+              total_usd: number
+            }>(origin, `/api/x402/wallet-lookup?address=${encodeURIComponent(address)}`, profile, (data) => {
+              const nonEmptyChains = data.chains.filter(c => c.tokens.length > 0)
+              if (nonEmptyChains.length === 0) return `No holdings found for ${data.address} across the chains checked (paid $${X402_DATA_FEE} via x402).`
+              return `Wallet ${data.address} holdings (CoinStats, paid $${X402_DATA_FEE} via x402), total ~$${data.total_usd} across ${nonEmptyChains.length} chain(s): `
+                + nonEmptyChains.map(c => `${c.blockchain}: ${c.tokens.slice(0, 5).map(t => `${t.symbol} ($${t.usd_value})`).join(', ')}`).join(' | ')
+                + `. A table with full details is ALREADY shown to the user below — reply in ONE short sentence with the total and 1-2 notable holdings. `
+                + `IMPORTANT: this is a read-only lookup of an on-chain address, NOT a MironPay wallet — never offer to send/swap/manage these funds. `
+                + `Token balances on any chain can include spam tokens that spoof a real asset's symbol/price to show an inflated fake value — if a single holding looks implausibly large relative to the rest, say the figure may be unreliable rather than stating it as fact.`
+            })
+            if (fee) dataFee = fee
+            if (rawData) walletLookupData = rawData
+
+            const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+            const secondRes = await fetch(GROQ_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+              body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
+            })
+            if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
+          }
         } else if (fnName === 'get_stablecoin_data') {
           const origin = request.nextUrl.origin
           const symbol = (args.symbol ?? '').trim()
@@ -758,6 +809,7 @@ Never claim the transaction is done or already in progress — the system will s
           defi_data: defiData,
           sentiment_data: sentimentData,
           stablecoin_data: stablecoinData,
+          wallet_lookup_data: walletLookupData,
           created_at: assistantTs.toISOString(),
         },
       ]),
@@ -775,6 +827,7 @@ Never claim the transaction is done or already in progress — the system will s
       defi_data: defiData,
       sentiment_data: sentimentData,
       stablecoin_data: stablecoinData,
+      wallet_lookup_data: walletLookupData,
     })
 
   } catch (err) {
