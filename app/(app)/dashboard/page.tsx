@@ -38,7 +38,7 @@ interface AgentWalletData {
 
 interface LiveIdo {
   id: string; name: string; sym: string; mark: string; accent: string
-  raised: number; target: number
+  raised: number; target: number; price: number; minContribution: number
 }
 
 interface TxResult {
@@ -189,8 +189,16 @@ export default function DashboardPage() {
   const [accessToken, setAccessToken] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWalletData | null>(null)
   const [liveIdo, setLiveIdo] = useState<LiveIdo | null>(null)
+  const [idoAmount, setIdoAmount] = useState(100)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
+  useEffect(() => {
+    const prefill = sessionStorage.getItem('mp_agent_prefill')
+    if (prefill) {
+      sessionStorage.removeItem('mp_agent_prefill')
+      setInput(prefill)
+    }
+  }, [])
   const [sending, setSending] = useState(false)
   const [chatError, setChatError] = useState('')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -382,7 +390,7 @@ export default function DashboardPage() {
         .then(d => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const live = (d?.projects as any[])?.find(p => p.status === 'live')
-          if (live) setLiveIdo({ id: live.id, name: live.name, sym: live.sym, mark: live.mark, accent: live.accent, raised: live.raised, target: live.target })
+          if (live) setLiveIdo({ id: live.id, name: live.name, sym: live.sym, mark: live.mark, accent: live.accent, raised: live.raised, target: live.target, price: live.price ?? 0, minContribution: live.minContribution ?? 1 })
         })
         .catch(() => {})
 
@@ -1138,12 +1146,24 @@ export default function DashboardPage() {
                 ].map(c => (
                   <button key={c.text} onClick={c.fn} className="mp-btn-ghost" style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{c.text}</button>
                 ))}
-                {liveIdo && (
-                  <button onClick={() => handleSend(`Contribute $100 to ${liveIdo.name}`)} disabled={sending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 9999, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: sending ? .6 : 1 }}>
-                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20" /></svg>
-                    Buy $100 {liveIdo.sym}
-                  </button>
-                )}
+                {liveIdo && (() => {
+                  const idoMax = Math.max(agentBalance, liveIdo.minContribution)
+                  const idoVal = Math.min(idoAmount, idoMax)
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 9999, border: `1px solid ${liveIdo.accent}55`, background: 'rgba(var(--c-fg-rgb),.03)' }}>
+                      <input
+                        type="range" min={0} max={idoMax} step={1} value={idoVal}
+                        onChange={e => setIdoAmount(Number(e.target.value))}
+                        style={{ width: 70, accentColor: liveIdo.accent }}
+                        aria-label={`Amount to contribute to ${liveIdo.name}`}
+                      />
+                      <button onClick={() => handleSend(`Contribute $${idoVal} to ${liveIdo.name}`)} disabled={sending || idoVal <= 0} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 9999, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: (sending || idoVal <= 0) ? .6 : 1, whiteSpace: 'nowrap' as const }}>
+                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20" /></svg>
+                        Buy ${idoVal} {liveIdo.sym}
+                      </button>
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Input bar */}
@@ -1239,14 +1259,33 @@ export default function DashboardPage() {
                 <div style={{ height: 6, borderRadius: 9999, background: 'rgba(var(--c-fg-rgb),.05)', marginTop: 12, overflow: 'hidden', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
                   <div style={{ height: '100%', width: `${liveIdo.target ? Math.min(100, Math.round(liveIdo.raised / liveIdo.target * 100)) : 0}%`, borderRadius: 9999, background: `linear-gradient(90deg, ${liveIdo.accent}, ${liveIdo.accent}cc)` }} />
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button onClick={() => router.push(`/launchpad/${liveIdo.id}`)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-                    View details →
-                  </button>
-                  <button onClick={() => handleSend(`Contribute $100 to ${liveIdo.name}`)} disabled={sending} style={{ flex: 1, height: 36, borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: sending ? .6 : 1 }}>
-                    Buy $100 now
-                  </button>
-                </div>
+                {(() => {
+                  const idoMax = Math.max(agentBalance, liveIdo.minContribution)
+                  const idoVal = Math.min(idoAmount, idoMax)
+                  const idoTokens = liveIdo.price > 0 ? idoVal / liveIdo.price : 0
+                  return (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted2)', marginBottom: 4 }}>
+                        <span>${idoVal.toFixed(0)} USDC</span>
+                        <span>~{idoTokens.toLocaleString('en-US', { maximumFractionDigits: 2 })} {liveIdo.sym}</span>
+                      </div>
+                      <input
+                        type="range" min={0} max={idoMax} step={1} value={idoVal}
+                        onChange={e => setIdoAmount(Number(e.target.value))}
+                        style={{ width: '100%', accentColor: liveIdo.accent }}
+                        aria-label={`Amount to contribute to ${liveIdo.name}`}
+                      />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button onClick={() => router.push(`/launchpad/${liveIdo.id}`)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                          View details →
+                        </button>
+                        <button onClick={() => handleSend(`Contribute $${idoVal} to ${liveIdo.name}`)} disabled={sending || idoVal <= 0} style={{ flex: 1, height: 36, borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: (sending || idoVal <= 0) ? .6 : 1 }}>
+                          Buy ${idoVal.toFixed(0)} now
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             )}
 

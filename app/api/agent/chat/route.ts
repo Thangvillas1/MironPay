@@ -474,7 +474,11 @@ Never claim the transaction is done or already in progress — the system will s
         const blockReason = guard?.()
         if (blockReason) {
           console.warn(`[agent/chat] blocked hallucinated tool call ${fnName} (${blockReason}):`, message.slice(0, 200))
-          reply = "I won't guess on money-moving actions. Please state the action (send/swap/deposit/etc), the exact amount, and the recipient explicitly — I'll draft it for you to confirm once your instruction is unambiguous."
+          const noMoneyVerb = ![...SEND_VERBS, ...SWAP_VERBS, ...DEPOSIT_VERBS, ...WITHDRAW_VERBS, ...CONTRIBUTE_VERBS]
+            .some(k => message.toLowerCase().includes(k))
+          reply = noMoneyVerb
+            ? `Your Agent Wallet balance is ${onChainBalance.toFixed(4)} USDC.`
+            : "I won't guess on money-moving actions. Please state the action (send/swap/deposit/etc), the exact amount, and the recipient explicitly — I'll draft it for you to confirm once your instruction is unambiguous."
           continue
         }
 

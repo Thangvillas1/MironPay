@@ -115,7 +115,7 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
   }
   function openAgentChat() {
     sessionStorage.setItem('mp_agent_prefill', suggestedCommand)
-    router.push('/agent')
+    router.push('/dashboard')
   }
 
   const S = {
