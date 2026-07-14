@@ -184,7 +184,7 @@ function Nav({ isLight, onToggle, onSignIn }: { isLight: boolean; onToggle: () =
           <button onClick={onToggle} className="mp-iconbtn" title="Toggle theme" style={{ width: 38, height: 38, borderRadius: 10, border: '1px solid var(--c-border)', background: 'var(--c-input)', color: 'var(--lp-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             {isLight ? <IcSun /> : <IcMoon />}
           </button>
-          <button onClick={onSignIn} className="mp-btn mp-btn-bounce mp-lp-nav-signin" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 11, border: '1px solid rgba(0,0,0,.12)', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.12)', color: '#141221', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          <button onClick={onSignIn} className="mp-btn mp-btn-bounce mp-lp-nav-signin" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.625rem 1.5rem', borderRadius: 'var(--lp-btn-radius)', border: '1px solid rgba(0,0,0,.12)', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.12)', color: '#141221', fontSize: 'var(--lp-btn-font-size)', fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
             <IcGoogle size={15} className="ic-google-logo" /> <span>Launch App</span>
           </button>
         </div>
@@ -199,9 +199,10 @@ function Hero({ googleState, onSignIn, error }: { googleState: GoogleState; onSi
   const g = googleState
   const gBtn = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 11,
-    height: 58, padding: '0 14px 0 30px', borderRadius: 9999,
+    paddingBlock: '0.75rem', paddingInlineStart: '1.875rem', paddingInlineEnd: '0.875rem',
+    borderRadius: 'var(--lp-btn-radius)',
     border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
-    fontSize: 15.5, fontWeight: 600, cursor: 'pointer',
+    fontSize: 'var(--lp-btn-font-size)', fontWeight: 600, cursor: 'pointer',
     color: g === 'idle' ? '#141221' : '#fff',
     background: g === 'idle' ? '#fff' : 'var(--grad-primary)',
     boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
@@ -252,12 +253,12 @@ function Hero({ googleState, onSignIn, error }: { googleState: GoogleState; onSi
           Arc Blockchain · Powered by Circle
         </div>
         {/* headline */}
-        <h1 style={{ margin: '30px 0 0', fontSize: 'clamp(46px,5.4vw,84px)', lineHeight: .96, fontWeight: 800, letterSpacing: '-.045em' }}>
+        <h1 style={{ margin: '30px 0 0', fontSize: 'var(--lp-font-h1)', lineHeight: .96, fontWeight: 800, letterSpacing: '-.045em' }}>
           Send money<br />like a{' '}
           <span style={{ fontStyle: 'italic', fontWeight: 600, background: 'var(--grad-primary)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>message.</span>
         </h1>
         {/* subtext */}
-        <p style={{ margin: '30px 0 0', fontSize: 18.5, lineHeight: 1.62, color: 'var(--lp-muted)', maxWidth: 460 }}>
+        <p style={{ margin: '30px 0 0', fontSize: 'var(--lp-font-lead)', fontWeight: 400, lineHeight: 1.62, color: 'var(--lp-muted)', maxWidth: 460 }}>
           MironPay turns stablecoins into something you just send. Tag a <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--lp-text)' }}>@handle</span>, hit send — settled on Arc in under a second. No seed phrase, no gas token.
         </p>
         {/* CTA row */}
@@ -318,10 +319,10 @@ function SendSection() {
   }, [])
 
   return (
-    <section id="travel-sec" style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '120px 28px' }}>
+    <section id="travel-sec" className="mp-lp-section" style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto' }}>
       <div className="rv" style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 56px' }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#818cf8' }}>Pay anyone, instantly</div>
-        <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(34px,4.4vw,56px)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.05 }}>
+        <h2 style={{ margin: '16px 0 0', fontSize: 'var(--lp-font-h2)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.05 }}>
           Forget <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--lp-muted2)', fontWeight: 600, fontSize: '.62em' }}>0x7a3f…9c2e</span>.<br />
           Just send to <span style={{ color: '#818cf8' }}>@anyone</span>.
         </h2>
@@ -383,10 +384,10 @@ function Features() {
   const fCardStyle: React.CSSProperties = { borderRadius: 20, background: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))', WebkitBackdropFilter: 'blur(var(--glass-blur))', border: '1px solid var(--glass-border)', boxShadow: 'inset 0 1px 0 var(--glass-hi)' }
 
   return (
-    <section id="features" style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '80px 28px' }}>
+    <section id="features" className="mp-lp-section" style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto' }}>
       <div className="rv" style={{ textAlign: 'center', marginBottom: 56 }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#818cf8' }}>Why MironPay</div>
-        <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(32px,4.2vw,52px)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.05 }}>A wallet that feels<br />like a chat app</h2>
+        <h2 style={{ margin: '16px 0 0', fontSize: 'var(--lp-font-h2)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.05 }}>A wallet that feels<br />like a chat app</h2>
       </div>
       <div className="rv-s mp-lp-features-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 22 }}>
         {/* stacked small cards */}
@@ -397,8 +398,8 @@ function Features() {
                 {f.icon}
               </span>
               <div>
-                <h3 style={{ margin: 0, fontSize: 16.5, fontWeight: 700, letterSpacing: '-.01em' }}>{f.title}</h3>
-                <p style={{ margin: '5px 0 0', fontSize: 13.5, lineHeight: 1.5, color: 'var(--lp-muted)' }}>{f.desc}</p>
+                <h3 style={{ margin: 0, fontSize: 'var(--lp-font-card-title)', fontWeight: 600, letterSpacing: '-.01em' }}>{f.title}</h3>
+                <p style={{ margin: '5px 0 0', fontSize: 'var(--lp-font-body)', fontWeight: 400, lineHeight: 1.5, color: 'var(--lp-muted)' }}>{f.desc}</p>
               </div>
             </div>
           ))}
@@ -408,8 +409,8 @@ function Features() {
           <span style={{ display: 'flex', width: 84, height: 84, borderRadius: 24, alignItems: 'center', justifyContent: 'center', color: '#fff', background: `linear-gradient(140deg,${handle.c},${handle.c}bb)`, boxShadow: `0 16px 40px ${handle.c}55` }}>
             {handle.icon}
           </span>
-          <h3 style={{ margin: '26px 0 0', fontSize: 30, fontWeight: 700, letterSpacing: '-.02em' }}>{handle.title}</h3>
-          <p style={{ margin: '13px 0 0', fontSize: 16.5, lineHeight: 1.62, color: 'var(--lp-muted)', maxWidth: 420 }}>{handle.desc}</p>
+          <h3 style={{ margin: '26px 0 0', fontSize: 'var(--lp-font-card-title-featured)', fontWeight: 700, letterSpacing: '-.02em' }}>{handle.title}</h3>
+          <p style={{ margin: '13px 0 0', fontSize: 'var(--lp-font-body)', fontWeight: 400, lineHeight: 1.62, color: 'var(--lp-muted)', maxWidth: 420 }}>{handle.desc}</p>
         </div>
       </div>
     </section>
@@ -465,13 +466,13 @@ function AgentSection() {
   }, [runChat])
 
   return (
-    <section style={{ position: 'relative', zIndex: 1, maxWidth: 1080, margin: '0 auto', padding: '100px 28px' }}>
+    <section className="mp-lp-section" style={{ position: 'relative', zIndex: 1, maxWidth: 1080, margin: '0 auto' }}>
       <div className="mp-lp-agent-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 54, alignItems: 'center' }}>
         {/* left */}
         <div className="rv-l">
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#818cf8' }}>Miron Agent · Circle x402</div>
-          <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(30px,3.8vw,46px)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.08 }}>Just tell it<br />what to do</h2>
-          <p style={{ margin: '18px 0 0', fontSize: 16, lineHeight: 1.65, color: 'var(--lp-muted)', maxWidth: 420 }}>Send, swap, check a price — in plain language. Behind the scenes, the agent settles pay-per-request x402 micropayments on its own, cents at a time, no invoices.</p>
+          <h2 style={{ margin: '16px 0 0', fontSize: 'var(--lp-font-h2)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.08 }}>Just tell it<br />what to do</h2>
+          <p style={{ margin: '18px 0 0', fontSize: 'var(--lp-font-body)', fontWeight: 400, lineHeight: 1.65, color: 'var(--lp-muted)', maxWidth: 420 }}>Send, swap, check a price — in plain language. Behind the scenes, the agent settles pay-per-request x402 micropayments on its own, cents at a time, no invoices.</p>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 24, fontSize: 13, color: 'var(--lp-success)', fontWeight: 600 }}>
             <span className="mp-pulse-fast" style={{ width: 7, height: 7, borderRadius: '50%', background: '#2dd4bf', display: 'inline-block' }} />
             Online · on-chain verified
@@ -537,7 +538,7 @@ const SECURITY = [
 
 function Security() {
   return (
-    <section id="security" style={{ position: 'relative', zIndex: 1, maxWidth: 840, margin: '0 auto', padding: '90px 28px', textAlign: 'center' }}>
+    <section id="security" className="mp-lp-section" style={{ position: 'relative', zIndex: 1, maxWidth: 840, margin: '0 auto', textAlign: 'center' }}>
       {/* shield glow */}
       <div className="rv-s" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
         <div className="orb-sphere" style={{ position: 'absolute', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,102,241,.34),transparent 66%)', filter: 'blur(6px)' }} />
@@ -548,10 +549,10 @@ function Security() {
           </svg>
         </div>
       </div>
-      <h2 className="rv" style={{ margin: '24px 0 0', fontSize: 'clamp(30px,3.8vw,46px)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.08 }}>
+      <h2 className="rv" style={{ margin: '24px 0 0', fontSize: 'var(--lp-font-h2)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.08 }}>
         Your PIN. Your approval.<br />Enforced on-chain.
       </h2>
-      <p className="rv" style={{ margin: '18px auto 0', fontSize: 16, lineHeight: 1.6, color: 'var(--lp-muted)', maxWidth: 520 }}>
+      <p className="rv" style={{ margin: '18px auto 0', fontSize: 'var(--lp-font-body)', fontWeight: 400, lineHeight: 1.6, color: 'var(--lp-muted)', maxWidth: 520 }}>
         Circle-secured wallets, every transfer authorized by your PIN, agent spending capped on-chain — and every transaction verifiable on the Arc explorer.
       </p>
       <div className="rv" style={{ display: 'flex', justifyContent: 'center', gap: 38, marginTop: 36, flexWrap: 'wrap' }}>
@@ -607,15 +608,15 @@ function Transparency() {
   }
 
   return (
-    <section id="developers" style={{ position: 'relative', zIndex: 1, maxWidth: 1080, margin: '0 auto', padding: '90px 28px' }}>
+    <section id="developers" className="mp-lp-section" style={{ position: 'relative', zIndex: 1, maxWidth: 1080, margin: '0 auto' }}>
       <div className="mp-lp-transparency-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 54, alignItems: 'center' }}>
         {/* left */}
         <div className="rv-l">
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#818cf8' }}>On-chain transparency</div>
-          <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(30px,3.8vw,46px)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.08 }}>
+          <h2 style={{ margin: '16px 0 0', fontSize: 'var(--lp-font-h2)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.08 }}>
             Every payment,<br />on the record
           </h2>
-          <p style={{ margin: '18px 0 0', fontSize: 16, lineHeight: 1.65, color: 'var(--lp-muted)', maxWidth: 420 }}>
+          <p style={{ margin: '18px 0 0', fontSize: 'var(--lp-font-body)', fontWeight: 400, lineHeight: 1.65, color: 'var(--lp-muted)', maxWidth: 420 }}>
             No black box. Each transfer is a real transaction on Arc — with a hash, a block and a finalized status you can check yourself on the public explorer.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
@@ -655,20 +656,20 @@ function CTA({ googleState, onSignIn }: { googleState: GoogleState; onSignIn: ()
   const g = googleState
   const ctaBtn = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-    height: 60, padding: '0 34px', borderRadius: 16,
+    padding: '0.75rem 2rem', borderRadius: 'var(--lp-btn-radius)',
     border: g === 'idle' ? '1px solid rgba(0,0,0,.12)' : 'none',
-    fontSize: 17, fontWeight: 600, cursor: 'pointer',
+    fontSize: 'var(--lp-btn-font-size)', fontWeight: 600, cursor: 'pointer',
     color: g === 'idle' ? '#141221' : '#fff',
     background: g === 'idle' ? '#fff' : 'var(--grad-primary)',
     boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
   } as React.CSSProperties
 
   return (
-    <section style={{ position: 'relative', zIndex: 1, maxWidth: 820, margin: '0 auto', padding: '110px 28px 90px', textAlign: 'center' }}>
-      <h2 className="rv" style={{ margin: 0, fontSize: 'clamp(38px,5vw,64px)', fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.02 }}>
+    <section className="mp-lp-section" style={{ position: 'relative', zIndex: 1, maxWidth: 820, margin: '0 auto', textAlign: 'center' }}>
+      <h2 className="rv" style={{ margin: 0, fontSize: 'var(--lp-font-h2)', fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.02 }}>
         Start sending<br />in <span style={{ background: 'var(--grad-primary)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>seconds.</span>
       </h2>
-      <p className="rv" style={{ margin: '22px auto 0', fontSize: 17, color: 'var(--lp-muted)', maxWidth: 480, lineHeight: 1.6 }}>
+      <p className="rv" style={{ margin: '22px auto 0', fontSize: 'var(--lp-font-body)', fontWeight: 400, color: 'var(--lp-muted)', maxWidth: 480, lineHeight: 1.6 }}>
         No seed phrase. No gas surprises. Just your Google account and a handle.
       </p>
       <div className="rv" style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>

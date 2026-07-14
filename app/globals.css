@@ -66,6 +66,25 @@
   --wc-blue-border:   rgba(99,102,241,.32);
   --wc-purple-grad:   linear-gradient(135deg,rgba(139,124,255,.24),rgba(99,102,241,.14));
   --wc-purple-border: rgba(139,124,255,.32);
+
+  /* ── Landing page type scale (modular, ratio 1.25, base 16px) ──────── */
+  --lp-font-eyebrow:            0.75rem;   /* 12px  · weight 700 */
+  --lp-font-body:               1rem;      /* 16px  · weight 400 */
+  --lp-font-lead:               1.25rem;   /* 20px  · weight 400 */
+  --lp-font-card-title:         1.25rem;   /* 20px  · weight 600 */
+  --lp-font-card-title-featured: clamp(1.5rem, 4vw, 1.953rem); /* 24–31px · weight 700 */
+  --lp-font-h2:                 clamp(1.75rem, 4.5vw, 2.441rem); /* 28–39px · weight 800 */
+  --lp-font-h1:                 clamp(2.25rem, 6vw, 3.5rem);     /* 36–56px · weight 800 */
+
+  /* ── Landing page button (all "Launch App" CTAs share this spec) ──── */
+  --lp-btn-font-size:   1rem;
+  --lp-btn-font-weight: 600;
+  --lp-btn-padding:     0.75rem 2rem;
+  --lp-btn-radius:      9999px;
+
+  /* ── Landing page section rhythm ────────────────────────────────── */
+  --lp-section-pad-y:        6rem;  /* 96px desktop */
+  --lp-section-pad-y-mobile: 4rem;  /* 64px mobile */
 }
 :root.light {
   --c-page:           #f0eeff;
@@ -472,7 +491,10 @@ input[type="number"] {
 /* Landing page (app/page.tsx) — every section below is hand-built with
    inline styles and a hardcoded 2-column grid, so it never collapses on
    its own; these overrides make it a real single-column layout on phones. */
+.mp-lp-section { padding: var(--lp-section-pad-y) 28px; }
+
 @media (max-width: 860px) {
+  .mp-lp-section { padding: var(--lp-section-pad-y-mobile) 20px; }
   .mp-lp-nav-links { display: none !important; }
   .mp-lp-nav-inner { padding: 0 16px !important; }
   .mp-lp-nav-signin span { display: none !important; }
