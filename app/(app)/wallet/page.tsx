@@ -289,8 +289,18 @@ function TokenLogo({ symbol, logoUrl }: { symbol: string; logoUrl: string | null
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 type TxFilter = 'all' | 'send' | 'receive' | 'swap'
-type RangeKey = '24H' | '7D' | '1M' | '1Y' | 'All'
-const RANGES: RangeKey[] = ['24H', '7D', '1M', '1Y', 'All']
+type RangeKey = '24H' | '7D' | '1M' | 'All'
+const RANGES: RangeKey[] = ['24H', '7D', '1M', 'All']
+// Reconstructed from transaction history (no real balance-snapshot history
+// exists yet), so accuracy is bounded by how many transactions are fetched
+// (see pageSize in /api/wallet and /api/agent/wallet) — fine for these
+// short windows, not for "All" (would need full history since account
+// creation), which stays disabled below.
+const RANGE_BUCKETS: Record<Exclude<RangeKey, 'All'>, { count: number; stepMs: number; label: string }> = {
+  '24H': { count: 24, stepMs: 60 * 60 * 1000, label: '24-hour' },
+  '7D': { count: 7, stepMs: 24 * 60 * 60 * 1000, label: '7-day' },
+  '1M': { count: 30, stepMs: 24 * 60 * 60 * 1000, label: '30-day' },
+}
 
 export default function WalletPage() {
   const router = useRouter()
@@ -445,10 +455,9 @@ export default function WalletPage() {
     .reduce((s, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0)
   const mainBalanceBefore24h = combinedBalance - mainDelta24h
   const mainDeltaPct = mainBalanceBefore24h !== 0 ? (mainDelta24h / Math.abs(mainBalanceBefore24h)) * 100 : 0
-  const chartValues: number[] = Array.from({ length: 7 }, (_, i) => {
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - (6 - i))
-    cutoff.setHours(23, 59, 59, 999)
+  const rangeBucket = range === 'All' ? RANGE_BUCKETS['7D'] : RANGE_BUCKETS[range]
+  const chartValues: number[] = Array.from({ length: rangeBucket.count }, (_, i) => {
+    const cutoff = new Date(Date.now() - (rangeBucket.count - 1 - i) * rangeBucket.stepMs)
     const futureNet = allTransactions
       .filter(t => new Date(t.created_at) > cutoff)
       .reduce((s, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0)
@@ -612,12 +621,12 @@ export default function WalletPage() {
               <div style={{ display: 'flex', gap: 3, padding: 3, borderRadius: 9999, background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
                 {RANGES.map(r => {
                   const active = r === range
-                  const disabled = r !== '7D'
+                  const disabled = r === 'All'
                   return (
                     <span
                       key={r}
                       onClick={() => !disabled && setRange(r)}
-                      title={disabled ? 'Coming soon — only 7D uses real history right now' : undefined}
+                      title={disabled ? 'Coming soon — needs full transaction history since account creation' : undefined}
                       style={{
                         fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 9999,
                         color: disabled ? 'var(--c-muted2)' : active ? '#fff' : 'var(--c-muted)',
@@ -641,7 +650,7 @@ export default function WalletPage() {
               )}
             </div>
             <div style={{ fontSize: 11, color: 'var(--c-muted2)', marginTop: 4 }}>
-              7-day trend · Main + Agent Wallet combined
+              {rangeBucket.label} trend · Main + Agent Wallet combined
             </div>
             <TrendChart values={chartValues} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10, marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(var(--c-fg-rgb),.07)' }}>

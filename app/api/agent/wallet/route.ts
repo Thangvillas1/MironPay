@@ -77,7 +77,9 @@ export async function GET(request: NextRequest) {
       getGatewayAvailableBalance(agentWalletAddress as Address)
         .then(value => ({ value, online: true }))
         .catch(() => ({ value: 0, online: false })),
-      circleClient.listTransactions({ walletIds: [agentWalletId], pageSize: 20 }),
+      // 50 (Circle's practical page-size ceiling) instead of 20 — the wallet
+      // page reconstructs its 1M balance-history chart from this list.
+      circleClient.listTransactions({ walletIds: [agentWalletId], pageSize: 50 }),
     ])
     const gatewayReserved = gatewayResult.value
 

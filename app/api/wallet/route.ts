@@ -22,7 +22,10 @@ export async function GET(request: NextRequest) {
 
   const [balanceRes, txRes] = await Promise.all([
     circleClient.getWalletTokenBalance({ id: circleWalletId }),
-    circleClient.listTransactions({ walletIds: [circleWalletId], pageSize: 20 }),
+    // 50 (Circle's practical page-size ceiling) instead of 20 — the wallet
+    // page reconstructs its 1M balance-history chart from this list, and a
+    // deeper window needs more transactions to stay accurate.
+    circleClient.listTransactions({ walletIds: [circleWalletId], pageSize: 50 }),
   ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
