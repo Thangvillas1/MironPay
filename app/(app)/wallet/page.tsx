@@ -69,30 +69,71 @@ function computeWalletStats(tokenList: TokenBalance[], transactions: Transaction
 }
 
 // ── Portfolio trend chart (area + line, matches design's hero chart) ──────────
-function TrendChart({ values }: { values: number[] }) {
-  if (values.length < 2) return null
+interface ChartPoint { value: number; date: Date }
+function TrendChart({ points, dateFormat }: { points: ChartPoint[]; dateFormat: Intl.DateTimeFormatOptions }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  if (points.length < 2) return null
+  const values = points.map(p => p.value)
   const w = 600, h = 130, padTop = 8
   const max = Math.max(...values)
   const min = Math.min(...values)
   const span = max - min || max * 0.02 || 1
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * w
-    const y = h - padTop - ((v - min) / span) * (h - padTop * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
+  const xs = values.map((_, i) => (i / (values.length - 1)) * w)
+  const ys = values.map(v => h - padTop - ((v - min) / span) * (h - padTop * 2))
+  const pts = xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`)
   const linePath = `M${pts.join(' L')}`
   const fillPath = `M0,${h} L${pts.join(' L')} L${w},${h} Z`
+
+  function handleMove(e: React.MouseEvent<SVGSVGElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const relX = ((e.clientX - rect.left) / rect.width) * w
+    let closest = 0
+    let closestDist = Infinity
+    xs.forEach((x, i) => {
+      const dist = Math.abs(x - relX)
+      if (dist < closestDist) { closestDist = dist; closest = i }
+    })
+    setHoverIdx(closest)
+  }
+
+  const hovered = hoverIdx != null ? points[hoverIdx] : null
+  const hoverXPct = hoverIdx != null ? (xs[hoverIdx] / w) * 100 : null
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: 120, display: 'block', marginTop: 14 }}>
-      <defs>
-        <linearGradient id="walletTrendFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#818cf8" stopOpacity=".40" />
-          <stop offset="1" stopColor="#818cf8" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={fillPath} fill="url(#walletTrendFill)" />
-      <path d={linePath} fill="none" stroke="var(--c-indigo-light)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div style={{ position: 'relative', marginTop: 14 }}>
+      {hovered && hoverXPct != null && (
+        <div
+          style={{
+            position: 'absolute', top: 0, transform: hoverXPct > 75 ? 'translateX(-100%)' : hoverXPct < 5 ? 'translateX(0)' : 'translateX(-50%)',
+            left: `${hoverXPct}%`, pointerEvents: 'none', zIndex: 1,
+            background: 'var(--c-panel)', border: '1px solid rgba(var(--c-fg-rgb),.14)', borderRadius: 8,
+            padding: '5px 9px', boxShadow: '0 4px 16px rgba(0,0,0,.3)', whiteSpace: 'nowrap' as const,
+          }}
+        >
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--c-text)', fontVariantNumeric: 'tabular-nums' }}>${formatUSD(hovered.value)}</div>
+          <div style={{ fontSize: 10, color: 'var(--c-muted2)' }}>{hovered.date.toLocaleString('en-US', dateFormat)}</div>
+        </div>
+      )}
+      <svg
+        viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: 120, display: 'block', cursor: 'crosshair' }}
+        onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)}
+      >
+        <defs>
+          <linearGradient id="walletTrendFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#818cf8" stopOpacity=".40" />
+            <stop offset="1" stopColor="#818cf8" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={fillPath} fill="url(#walletTrendFill)" />
+        <path d={linePath} fill="none" stroke="var(--c-indigo-light)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+        {hoverIdx != null && (
+          <>
+            <line x1={xs[hoverIdx]} y1={0} x2={xs[hoverIdx]} y2={h} stroke="rgba(var(--c-fg-rgb),.18)" strokeWidth={1} />
+            <circle cx={xs[hoverIdx]} cy={ys[hoverIdx]} r={4} fill="var(--c-indigo-light)" stroke="var(--c-page)" strokeWidth={2} />
+          </>
+        )}
+      </svg>
+    </div>
   )
 }
 
@@ -456,13 +497,16 @@ export default function WalletPage() {
   const mainBalanceBefore24h = combinedBalance - mainDelta24h
   const mainDeltaPct = mainBalanceBefore24h !== 0 ? (mainDelta24h / Math.abs(mainBalanceBefore24h)) * 100 : 0
   const rangeBucket = range === 'All' ? RANGE_BUCKETS['7D'] : RANGE_BUCKETS[range]
-  const chartValues: number[] = Array.from({ length: rangeBucket.count }, (_, i) => {
+  const chartPoints: ChartPoint[] = Array.from({ length: rangeBucket.count }, (_, i) => {
     const cutoff = new Date(Date.now() - (rangeBucket.count - 1 - i) * rangeBucket.stepMs)
     const futureNet = allTransactions
       .filter(t => new Date(t.created_at) > cutoff)
       .reduce((s, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0)
-    return Math.max(0, combinedBalance - futureNet)
+    return { value: Math.max(0, combinedBalance - futureNet), date: cutoff }
   })
+  const chartDateFormat: Intl.DateTimeFormatOptions = range === '24H'
+    ? { hour: 'numeric', minute: '2-digit' }
+    : { month: 'short', day: 'numeric' }
 
   // Part 1 — Portfolio Card: asset count, wallet count, allocation split.
   // PnL is intentionally NOT computed — there's no cost-basis (avg buy price)
@@ -652,7 +696,7 @@ export default function WalletPage() {
             <div style={{ fontSize: 11, color: 'var(--c-muted2)', marginTop: 4 }}>
               {rangeBucket.label} trend · Main + Agent Wallet combined
             </div>
-            <TrendChart values={chartValues} />
+            <TrendChart points={chartPoints} dateFormat={chartDateFormat} />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10, marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--c-muted2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>Main</div>
