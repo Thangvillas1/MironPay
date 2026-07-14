@@ -21,6 +21,7 @@ import { StablecoinDataCard } from '@/app/components/StablecoinDataCard'
 import { WalletLookupCard } from '@/app/components/WalletLookupCard'
 import { DexPairCard } from '@/app/components/DexPairCard'
 import { SwapQuoteCard } from '@/app/components/SwapQuoteCard'
+import { getActivityIcon } from '@/app/lib/activity-icon'
 import { TypewriterText } from '@/app/components/TypewriterText'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
 import { fmtUsd } from '@/app/lib/launchpad-data'
@@ -919,14 +920,15 @@ export default function DashboardPage() {
           }}>
             {transactions.slice(0, 5).map(tx => {
               const hasMemo = !!tx.memo
+              const { bg: iconBg, color: iconColor, icon } = getActivityIcon(tx)
               return (
                 <div key={tx.id} onClick={() => setSelectedTx(tx)} className="flex items-center gap-3 px-2.5 py-2.5" style={{ borderBottom: '1px solid var(--mpm-border)', cursor: 'pointer' }}>
                   <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0" style={{
-                    background: hasMemo ? 'rgba(109,108,255,0.16)' : tx.type === 'credit' ? 'rgba(43,212,164,0.14)' : 'var(--mpm-input)',
-                    color: hasMemo ? 'var(--mpm-purple-accent)' : tx.type === 'credit' ? 'var(--mpm-success)' : 'var(--mpm-muted)',
+                    background: hasMemo ? 'rgba(109,108,255,0.16)' : iconBg,
+                    color: hasMemo ? 'var(--mpm-purple-accent)' : iconColor,
                   }}>
                     <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                      {tx.type === 'credit' ? <path d="M12 2v14M7 12l5 5 5-5" /> : <path d="M12 22V8M7 12l5-5 5 5" />}
+                      {icon}
                     </svg>
                   </span>
                   <div className="flex-1 min-w-0">
@@ -936,7 +938,7 @@ export default function DashboardPage() {
                       {hasMemo && <span style={{ color: 'var(--mpm-purple-accent)', opacity: .8 }}> · {tx.memo}</span>}
                     </div>
                   </div>
-                  <span style={{ fontSize: 14.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: tx.type === 'credit' ? 'var(--mpm-success)' : 'var(--mpm-text)', flexShrink: 0 }}>
+                  <span style={{ fontSize: 14.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: tx.type === 'credit' ? 'var(--mpm-success)' : 'var(--mpm-error)', flexShrink: 0 }}>
                     {tx.type === 'credit' ? '+' : '-'}{tx.amount.toFixed(2)} USDC
                   </span>
                 </div>
@@ -1357,16 +1359,17 @@ export default function DashboardPage() {
                     if (item.kind === 'tx') {
                       const tx = item.tx
                       const hasMemo = !!tx.memo
+                      const { bg: iconBg, color: iconColor, icon } = getActivityIcon(tx)
                       return (
                         <div key={item.id} onClick={() => setSelectedTx(tx)} className="activity-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 8px', margin: '0 -8px', borderTop: '1px solid rgba(var(--c-fg-rgb),.07)', cursor: 'pointer' }}>
                           <span style={{
                             width: 30, height: 30, borderRadius: 9,
-                            background: hasMemo ? 'rgba(124,107,245,.18)' : tx.type === 'credit' ? 'rgba(45,212,191,.12)' : 'rgba(251,111,132,.12)',
+                            background: hasMemo ? 'rgba(124,107,245,.18)' : iconBg,
                             border: hasMemo ? '1px solid rgba(124,107,245,.35)' : '1px solid transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: hasMemo ? 'var(--c-purple-accent)' : tx.type === 'credit' ? '#2dd4bf' : '#fb6f84', flexShrink: 0
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: hasMemo ? 'var(--c-purple-accent)' : iconColor, flexShrink: 0
                           }}>
                             <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                              {tx.type === 'credit' ? <path d="M12 19V5M5 12l7 7 7-7" /> : <path d="M12 5v14M5 12l7-7 7 7" />}
+                              {icon}
                             </svg>
                           </span>
                           <div style={{ flex: 1, minWidth: 0 }}>
