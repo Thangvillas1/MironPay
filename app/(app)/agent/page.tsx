@@ -617,6 +617,7 @@ export default function AgentPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const sendingRef = useRef(false)
   const prefillSentRef = useRef(false)
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [showDeposit, setShowDeposit] = useState(false)
@@ -872,7 +873,8 @@ export default function AgentPage() {
 
   async function handleSend(overrideText?: string) {
     const text = (overrideText ?? input).trim()
-    if (!text || sending) return
+    if (!text || sending || sendingRef.current) return
+    sendingRef.current = true
     setInput('')
     setError('')
     setSending(true)
@@ -908,6 +910,7 @@ export default function AgentPage() {
           setError(data.message ?? data.error ?? 'Connection error')
         }
         setSending(false)
+        sendingRef.current = false
         return
       }
 
@@ -949,6 +952,7 @@ export default function AgentPage() {
       setError('Connection error. Please try again.')
     } finally {
       setSending(false)
+      sendingRef.current = false
     }
   }
 

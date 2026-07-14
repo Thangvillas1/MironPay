@@ -200,6 +200,7 @@ export default function DashboardPage() {
     }
   }, [])
   const [sending, setSending] = useState(false)
+  const sendingRef = useRef(false)
   const [chatError, setChatError] = useState('')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [pendingMainAction, setPendingMainAction] = useState<{ action: any; token: string } | null>(null)
@@ -549,12 +550,13 @@ export default function DashboardPage() {
 
   async function handleSend(overrideText?: string) {
     const text = (overrideText ?? input).trim()
-    if (!text || sending) return
+    if (!text || sending || sendingRef.current) return
+    sendingRef.current = true
     setInput(''); setChatError(''); setSending(true)
 
     // Always fetch the freshest token to avoid it being expired
     const { data: { session: freshSession } } = await supabase.auth.getSession()
-    if (!freshSession) { setChatError('Session expired. Please log in again.'); setSending(false); return }
+    if (!freshSession) { setChatError('Session expired. Please log in again.'); setSending(false); sendingRef.current = false; return }
     const token = freshSession.access_token
     setAccessToken(token)
     const userMsg: ChatMessage = {
@@ -574,7 +576,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ message: text, walletContext }),
       })
       const data = await res.json()
-      if (!res.ok) { setChatError(data.message ?? data.error ?? 'Connection error'); setSending(false); return }
+      if (!res.ok) { setChatError(data.message ?? data.error ?? 'Connection error'); setSending(false); sendingRef.current = false; return }
 
       // Show the agent's reply
       const agentMsgId = `a_${Date.now()}`
@@ -605,7 +607,7 @@ export default function DashboardPage() {
         }
       }
     } catch { setChatError('Connection error. Please try again.') }
-    finally { setSending(false) }
+    finally { setSending(false); sendingRef.current = false }
   }
 
   // ── Computed ─────────────────────────────────────────────────────────────────
