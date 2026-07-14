@@ -185,11 +185,11 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'get_swap_quote',
-      description: 'Get a real swap route quote via 1inch (best route across DEXs, output amount, gas estimate) for any two tokens on a supported chain. RESEARCH/COMPARISON ONLY — this never executes a swap and is completely separate from execute_swap (which only runs on ARC via MironPay\'s own Agent Wallet). Call this when the user asks "how much would I get if I swapped X for Y" for a token pair or chain execute_swap doesn\'t support. Costs $0.01 USDC via x402.',
+      description: 'Get a real swap route quote via KyberSwap Aggregator (best route across DEXs, output value, gas cost) for any two tokens on a supported chain. RESEARCH/COMPARISON ONLY — this never executes a swap and is completely separate from execute_swap (which only runs on ARC via MironPay\'s own Agent Wallet). Call this when the user asks "how much would I get if I swapped X for Y" for a token pair or chain execute_swap doesn\'t support. Costs $0.01 USDC via x402.',
       parameters: {
         type: 'object',
         properties: {
-          tokenIn: { type: 'string', description: 'Symbol or contract address of the token being sold, e.g. "USDC" or "0xC02aaA...".' },
+          tokenIn: { type: 'string', description: 'Symbol (well-known ones like USDC/USDT/DAI/WETH/WBTC/ETH) or contract address of the token being sold.' },
           tokenOut: { type: 'string', description: 'Symbol or contract address of the token being bought.' },
           amount: { type: 'string', description: 'Amount of tokenIn to quote, in human units (e.g. "1000" not wei).' },
           chain: { type: 'string', enum: ['ethereum', 'polygon', 'arbitrum', 'optimism', 'base', 'bsc', 'avalanche'], description: 'Chain to quote on. Defaults to ethereum if not stated.' },
@@ -496,7 +496,7 @@ Never claim the transaction is done or already in progress — the system will s
       | { query: string; pairs: Array<{ chain: string; dex: string; pairLabel: string; priceUsd: number; liquidityUsd: number; volume24hUsd: number; change24hPct: number | null; url: string }> }
       | null = null
     let swapQuoteData:
-      | { chain: string; srcSymbol: string; dstSymbol: string; srcAmount: number; dstAmount: number; gasEstimate: number | null }
+      | { chain: string; tokenInSymbol: string; tokenOutSymbol: string; amountIn: number; amountInUsd: number | null; amountOutUsd: number | null; gasUsd: number | null; route: string[] }
       | null = null
 
     // Does the user's RAW text contain a standalone number the model could
@@ -702,11 +702,12 @@ Never claim the transaction is done or already in progress — the system will s
           } else {
             const path = `/api/x402/swap-quote?tokenIn=${encodeURIComponent(tokenIn)}&tokenOut=${encodeURIComponent(tokenOut)}&amount=${encodeURIComponent(amount)}&chain=${encodeURIComponent(chain)}`
             const { content, fee, data: rawData } = await callX402Tool<{
-              chain: string; srcSymbol: string; dstSymbol: string; srcAmount: number; dstAmount: number; gasEstimate: number | null
+              chain: string; tokenInSymbol: string; tokenOutSymbol: string; amountIn: number; amountInUsd: number | null; amountOutUsd: number | null; gasUsd: number | null; route: string[]
             }>(origin, path, profile, (data) =>
-              `Swap quote via 1inch on ${data.chain} (paid $${X402_DATA_FEE} via x402): ${data.srcAmount} ${data.srcSymbol} → ~${data.dstAmount} ${data.dstSymbol}`
-              + (data.gasEstimate != null ? `, estimated gas ${data.gasEstimate}` : '') + '. '
-              + `A stat card with these numbers is ALREADY shown to the user below — reply in ONE short sentence with the output amount. `
+              `Swap quote via KyberSwap on ${data.chain} (paid $${X402_DATA_FEE} via x402): ${data.amountIn} ${data.tokenInSymbol}`
+              + (data.amountInUsd != null ? ` (~$${data.amountInUsd})` : '') + ` → ~$${data.amountOutUsd} worth of ${data.tokenOutSymbol}`
+              + (data.gasUsd != null ? `, estimated gas cost ~$${data.gasUsd}` : '') + `. Route: ${data.route.join(' → ') || 'direct'}. `
+              + `A stat card with these numbers is ALREADY shown to the user below — reply in ONE short sentence with the output value. `
               + `IMPORTANT: this is a price-comparison quote only, NOT an executed swap — never say the swap happened or offer to confirm/execute it via this data.`)
             if (fee) dataFee = fee
             if (rawData) swapQuoteData = rawData

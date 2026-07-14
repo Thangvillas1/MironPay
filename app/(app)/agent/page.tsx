@@ -69,7 +69,7 @@ interface Message {
     query: string
     pairs: Array<{ chain: string; dex: string; pairLabel: string; priceUsd: number; liquidityUsd: number; volume24hUsd: number; change24hPct: number | null; url: string }>
   } | null
-  swapQuote?: { chain: string; srcSymbol: string; dstSymbol: string; srcAmount: number; dstAmount: number; gasEstimate: number | null } | null
+  swapQuote?: { chain: string; tokenInSymbol: string; tokenOutSymbol: string; amountIn: number; amountInUsd: number | null; amountOutUsd: number | null; gasUsd: number | null; route: string[] } | null
   animate?: boolean
 }
 
