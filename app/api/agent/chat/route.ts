@@ -445,7 +445,14 @@ Never claim the transaction is done or already in progress — the system will s
       for (const toolCall of assistantMsg.tool_calls) {
         const fnName = toolCall.function?.name
         let args: Record<string, string> = {}
-        try { args = JSON.parse(toolCall.function?.arguments ?? '{}') } catch { /* skip */ }
+        // Some models return the literal string "null" for tool calls with no
+        // required params (e.g. get_defi_data/get_trending_tokens with no
+        // arguments) — that's valid JSON, so JSON.parse succeeds but returns
+        // null instead of {}, and every args.xyz access below would throw.
+        try {
+          const parsed = JSON.parse(toolCall.function?.arguments ?? '{}')
+          if (parsed && typeof parsed === 'object') args = parsed
+        } catch { /* skip */ }
 
         // Server-side main wallet detection — model cannot override this
         const lowerMsg = message.toLowerCase()
