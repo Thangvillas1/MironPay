@@ -102,7 +102,7 @@ export default function TransactionHistoryModal({ transactions, onClose }: Props
                     </div>
 
                     <div className="flex flex-col items-end gap-0.5">
-                      <span className={`text-sm font-semibold ${tx.type === 'credit' ? 'text-mp-success' : 'text-mp-text'}`}>
+                      <span className={`text-sm font-semibold ${tx.type === 'credit' ? 'text-mp-success' : 'text-mp-danger'}`}>
                         {tx.type === 'credit' ? '+' : '-'}{formatTokenAmount(tx.amount)} {tx.tokenSymbol}
                       </span>
                       {tx.state && <span className="text-xs text-mp-muted">{tx.state}</span>}

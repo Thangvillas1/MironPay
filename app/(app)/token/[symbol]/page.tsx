@@ -305,7 +305,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-0.5">
-                    <span className={`text-sm font-semibold ${tx.type === 'credit' ? 'text-mp-success' : 'text-mp-text'}`}>
+                    <span className={`text-sm font-semibold ${tx.type === 'credit' ? 'text-mp-success' : 'text-mp-danger'}`}>
                       {tx.type === 'credit' ? '+' : '-'}{parseFloat(tx.amount.toFixed(6))} {tx.tokenSymbol}
                     </span>
                     {tx.state && <span className="text-xs text-mp-muted">{tx.state}</span>}

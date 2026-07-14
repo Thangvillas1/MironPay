@@ -82,7 +82,7 @@ export default function TransactionDetailModal({ tx, onClose }: Props) {
 
         <div className="px-5 py-4 flex flex-col gap-5">
           <div className="text-center">
-            <p className={`text-3xl font-semibold ${isOutbound ? 'text-mp-text' : 'text-mp-success'}`}>
+            <p className={`text-3xl font-semibold ${isOutbound ? 'text-mp-danger' : 'text-mp-success'}`}>
               {isOutbound ? '-' : '+'}{formatAmount(tx.amount)} {tx.tokenSymbol}
             </p>
             {state && (
