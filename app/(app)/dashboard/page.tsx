@@ -1148,24 +1148,6 @@ export default function DashboardPage() {
                 ].map(c => (
                   <button key={c.text} onClick={c.fn} className="mp-btn-ghost" style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{c.text}</button>
                 ))}
-                {liveIdo && (() => {
-                  const idoMax = Math.max(agentBalance, liveIdo.minContribution)
-                  const idoVal = Math.min(idoAmount, idoMax)
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 9999, border: `1px solid ${liveIdo.accent}55`, background: 'rgba(var(--c-fg-rgb),.03)' }}>
-                      <input
-                        type="range" min={0} max={idoMax} step={1} value={idoVal}
-                        onChange={e => setIdoAmount(Number(e.target.value))}
-                        style={{ width: 70, accentColor: liveIdo.accent }}
-                        aria-label={`Amount to contribute to ${liveIdo.name}`}
-                      />
-                      <button onClick={() => handleSend(`Contribute $${idoVal} to ${liveIdo.name}`)} disabled={sending || idoVal <= 0} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 9999, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: (sending || idoVal <= 0) ? .6 : 1, whiteSpace: 'nowrap' as const }}>
-                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20" /></svg>
-                        Buy ${idoVal} {liveIdo.sym}
-                      </button>
-                    </div>
-                  )
-                })()}
               </div>
 
               {/* Input bar */}
