@@ -3,6 +3,7 @@
 type DefiData =
   | { mode: 'protocol'; name: string; category: string | null; chains: string[]; tvl_usd: number | null; change_1d_pct: number | null; change_7d_pct: number | null }
   | { mode: 'top_yield'; pools: Array<{ project: string; symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
+  | { mode: 'protocol_yield'; protocol: string; pools: Array<{ symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
 
 function formatUsdCompact(n: number | null): string {
   if (n == null) return '—'
@@ -44,10 +45,12 @@ export function DefiDataCard({ data }: { data: DefiData }) {
 
   if (data.pools.length === 0) return null
 
+  const title = data.mode === 'protocol_yield' ? `🌾 Top APY — ${data.protocol}` : '🌾 Top DeFi Yields'
+
   return (
     <div className="mt-2 bg-mp-card border border-white/8 rounded-[12px] overflow-hidden w-full max-w-[320px]">
       <div className="px-3 py-2 border-b border-white/8">
-        <span className="text-xs font-semibold text-mp-text">🌾 Top DeFi Yields</span>
+        <span className="text-xs font-semibold text-mp-text">{title}</span>
       </div>
       <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 px-3 py-1.5 text-[10px] text-mp-muted">
         <span>Pool</span>
@@ -55,7 +58,7 @@ export function DefiDataCard({ data }: { data: DefiData }) {
         <span className="text-right">TVL</span>
       </div>
       {data.pools.map((p, i) => (
-        <div key={p.project + p.symbol + i} className="grid grid-cols-[1fr_auto_auto] gap-x-2 items-center px-3 py-1.5 border-t border-white/5 text-xs">
+        <div key={('project' in p ? p.project : '') + p.symbol + i} className="grid grid-cols-[1fr_auto_auto] gap-x-2 items-center px-3 py-1.5 border-t border-white/5 text-xs">
           <span className="text-mp-text font-medium truncate">{p.symbol} <span className="text-mp-muted">· {p.chain}</span></span>
           <span className="text-right font-medium" style={{ color: '#2dd4bf' }}>{p.apy_pct}%</span>
           <span className="text-mp-muted text-right font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUsdCompact(p.tvl_usd)}</span>

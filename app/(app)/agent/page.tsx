@@ -49,6 +49,7 @@ interface Message {
   defi?:
     | { mode: 'protocol'; name: string; category: string | null; chains: string[]; tvl_usd: number | null; change_1d_pct: number | null; change_7d_pct: number | null }
     | { mode: 'top_yield'; pools: Array<{ project: string; symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
+    | { mode: 'protocol_yield'; protocol: string; pools: Array<{ symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
     | null
   sentiment?: { value: number; classification: string } | null
   animate?: boolean

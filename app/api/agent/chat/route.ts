@@ -185,11 +185,12 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'get_defi_data',
-      description: 'Fetch real DeFi data from DeFiLlama: either a specific protocol\'s TVL (Total Value Locked) and 1d/7d change, or — if no protocol is named — the top 5 highest-APY yield pools across DeFi right now. Costs $0.01 USDC via x402 — no PIN needed. Call this when the user asks about TVL, a specific DeFi protocol, or yield/APY opportunities.',
+      description: 'Fetch real DeFi data from DeFiLlama. Three modes: (1) protocol + metric="tvl" (or metric omitted) → that protocol\'s TVL and 1d/7d change; (2) protocol + metric="yield" → that protocol\'s own top APY pools; (3) no protocol → top 5 highest-APY yield pools across ALL of DeFi. Costs $0.01 USDC via x402 — no PIN needed.',
       parameters: {
         type: 'object',
         properties: {
-          protocol: { type: 'string', description: 'Protocol name, e.g. "Aave", "Uniswap". Omit to get top yield pools instead.' },
+          protocol: { type: 'string', description: 'Protocol name, e.g. "Aave", "Uniswap". Omit to get top yield pools across all of DeFi instead.' },
+          metric: { type: 'string', enum: ['tvl', 'yield'], description: 'Only meaningful when protocol is set. Use "yield" when the user asks for APY/yield/interest rate FOR that named protocol (e.g. "top APY on Aave"). Use "tvl" (or omit) for TVL/size/change questions about that protocol.' },
         },
         required: [],
       },
@@ -418,6 +419,7 @@ Never claim the transaction is done or already in progress — the system will s
     let defiData:
       | { mode: 'protocol'; name: string; category: string | null; chains: string[]; tvl_usd: number | null; change_1d_pct: number | null; change_7d_pct: number | null }
       | { mode: 'top_yield'; pools: Array<{ project: string; symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
+      | { mode: 'protocol_yield'; protocol: string; pools: Array<{ symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
       | null = null
     let sentimentData: { value: number; classification: string } | null = null
 
@@ -616,15 +618,24 @@ Never claim the transaction is done or already in progress — the system will s
         } else if (fnName === 'get_defi_data') {
           const origin = request.nextUrl.origin
           const protocol = (args.protocol ?? '').trim()
-          const path = protocol ? `/api/x402/defi?protocol=${encodeURIComponent(protocol)}` : '/api/x402/defi'
+          const metric = (args.metric ?? '').trim()
+          const path = protocol
+            ? `/api/x402/defi?protocol=${encodeURIComponent(protocol)}${metric === 'yield' ? '&metric=yield' : ''}`
+            : '/api/x402/defi'
           const { content, fee, data: rawData } = await callX402Tool<
             | { mode: 'protocol'; name: string; category: string | null; chains: string[]; tvl_usd: number | null; change_1d_pct: number | null; change_7d_pct: number | null }
             | { mode: 'top_yield'; pools: Array<{ project: string; symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
+            | { mode: 'protocol_yield'; protocol: string; pools: Array<{ symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
           >(origin, path, profile, (data) => {
             if (data.mode === 'protocol') {
               return `DeFiLlama data for ${data.name} (paid $${X402_DATA_FEE} via x402): TVL=$${data.tvl_usd}, category=${data.category}, `
                 + `chains=[${data.chains.join(', ')}], 1d change=${data.change_1d_pct}%, 7d change=${data.change_7d_pct}%. `
                 + `A stat card with these numbers is ALREADY shown to the user below — reply in ONE short sentence, do not repeat every number.`
+            }
+            if (data.mode === 'protocol_yield') {
+              return `Top yield pools for ${data.protocol} (DeFiLlama, paid $${X402_DATA_FEE} via x402): `
+                + data.pools.map(p => `${p.symbol} on ${p.chain} (${p.apy_pct}% APY, $${p.tvl_usd} TVL)`).join(', ')
+                + `. A table with full details is ALREADY shown to the user below — reply in ONE short sentence, mention smart-contract/impermanent-loss risk briefly, never guarantee returns, do not repeat the full list.`
             }
             return `Top yield pools (DeFiLlama, paid $${X402_DATA_FEE} via x402): `
               + data.pools.map(p => `${p.project} ${p.symbol} on ${p.chain} (${p.apy_pct}% APY)`).join(', ')
