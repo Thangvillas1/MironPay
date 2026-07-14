@@ -941,10 +941,15 @@ export default function AgentPage() {
       }
       // Input fee is charged for the message just sent — attach the real
       // on-chain receipt to the user's own bubble, not the assistant's reply.
-      setMessages(prev => [
-        ...prev.map(m => m.id === userMsg.id ? { ...m, cost: data.cost, inputFeeTxHash: data.input_fee_tx_hash ?? null } : m),
-        agentMsg,
-      ])
+      setMessages(prev => {
+        const withUserCost = prev.map(m => m.id === userMsg.id ? { ...m, cost: data.cost, inputFeeTxHash: data.input_fee_tx_hash ?? null } : m)
+        // The realtime subscription below can win the race and append this
+        // exact assistant row (real DB id) before this fetch's own .then()
+        // continuation runs — don't add a second copy under the local a_ id.
+        const alreadyArrivedViaRealtime = withUserCost.some(m =>
+          !m.id.startsWith('tmp_') && !m.id.startsWith('a_') && m.role === 'assistant' && m.content === agentMsg.content)
+        return alreadyArrivedViaRealtime ? withUserCost : [...withUserCost, agentMsg]
+      })
 
       if (data.action) {
         setPendingAction(data.action)

@@ -474,13 +474,24 @@ export default function DashboardPage() {
         if (!payload.new) return
         const m = payload.new as { id: string; role: string; content: string; cost: number; created_at: string }
         setMessages(prev => {
-          if (prev.some(x => x.id === m.id)) return prev // dedup
-          return [...prev, {
+          if (prev.some(x => x.id === m.id)) return prev // dedup against a previous delivery of this same row
+          const incoming = {
             id: m.id, role: m.role as 'user' | 'assistant',
             content: m.content, cost: m.cost,
             time: new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
             created_at: m.created_at,
-          }]
+          }
+          // The tab that sent this message may already have appended a local
+          // copy under a temp id before this DB row existed — reconcile onto
+          // that placeholder instead of adding a duplicate bubble.
+          const placeholderIdx = prev.findIndex(x =>
+            (x.id.startsWith('tmp_') || x.id.startsWith('a_')) && x.role === m.role && x.content === m.content)
+          if (placeholderIdx !== -1) {
+            const next = prev.slice()
+            next[placeholderIdx] = { ...next[placeholderIdx], ...incoming }
+            return next
+          }
+          return [...prev, incoming]
         })
       })
       .subscribe()
@@ -580,20 +591,30 @@ export default function DashboardPage() {
 
       // Show the agent's reply
       const agentMsgId = `a_${Date.now()}`
-      setMessages(prev => [
-        ...prev.map(m => m.id === userMsg.id ? { ...m, cost: data.cost, inputFeeTxHash: data.input_fee_tx_hash ?? null } : m),
-        {
-          id: agentMsgId, role: 'assistant' as const, content: data.reply,
-          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          created_at: new Date().toISOString(),
-          dataFee: data.data_fee ?? null,
-          chart: data.token_chart ?? null,
-          trending: data.trending_data ?? null,
-          defi: data.defi_data ?? null,
-          sentiment: data.sentiment_data ?? null,
-          animate: true,
-        },
-      ])
+      setMessages(prev => {
+        const withUserCost = prev.map(m => m.id === userMsg.id ? { ...m, cost: data.cost, inputFeeTxHash: data.input_fee_tx_hash ?? null } : m)
+        // The realtime subscription (rt-agent-messages) can win the race and
+        // append this exact assistant row (real DB id, inserted server-side
+        // in /api/agent/chat) before this fetch's own continuation runs —
+        // don't add a second copy under a local a_ id.
+        const alreadyArrivedViaRealtime = withUserCost.some(m =>
+          !m.id.startsWith('tmp_') && !m.id.startsWith('a_') && m.role === 'assistant' && m.content === data.reply)
+        if (alreadyArrivedViaRealtime) return withUserCost
+        return [
+          ...withUserCost,
+          {
+            id: agentMsgId, role: 'assistant' as const, content: data.reply,
+            time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            created_at: new Date().toISOString(),
+            dataFee: data.data_fee ?? null,
+            chart: data.token_chart ?? null,
+            trending: data.trending_data ?? null,
+            defi: data.defi_data ?? null,
+            sentiment: data.sentiment_data ?? null,
+            animate: true,
+          },
+        ]
+      })
       if (agentWallet) setAgentWallet(prev => prev ? { ...prev, balance: data.balance_after, daily_spent: prev.daily_spent + (data.cost ?? 0) } : prev)
 
       // If there's an action → execute it and show the full result. Main Wallet actions
