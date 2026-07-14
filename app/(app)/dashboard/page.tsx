@@ -920,7 +920,7 @@ export default function DashboardPage() {
             {transactions.slice(0, 5).map(tx => {
               const hasMemo = !!tx.memo
               return (
-                <div key={tx.id} className="flex items-center gap-3 px-2.5 py-2.5" style={{ borderBottom: '1px solid var(--mpm-border)' }}>
+                <div key={tx.id} onClick={() => setSelectedTx(tx)} className="flex items-center gap-3 px-2.5 py-2.5" style={{ borderBottom: '1px solid var(--mpm-border)', cursor: 'pointer' }}>
                   <span className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0" style={{
                     background: hasMemo ? 'rgba(109,108,255,0.16)' : tx.type === 'credit' ? 'rgba(43,212,164,0.14)' : 'var(--mpm-input)',
                     color: hasMemo ? 'var(--mpm-purple-accent)' : tx.type === 'credit' ? 'var(--mpm-success)' : 'var(--mpm-muted)',
