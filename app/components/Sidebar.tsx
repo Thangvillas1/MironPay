@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
-    activeOn: ['/dashboard', '/token'],
+    activeOn: ['/dashboard', '/token', '/agent'],
     icon: (
       <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 10.5 12 4l9 6.5" /><path d="M5 9.5V20h14V9.5" /><path d="M9.5 20v-5h5v5" />

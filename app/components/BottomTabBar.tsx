@@ -23,6 +23,16 @@ const TABS: Tab[] = [
     ),
   },
   {
+    label: 'Agent',
+    href: '/agent',
+    activeOn: ['/agent'],
+    icon: (active) => (
+      <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.2 : 1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="w-[21px] h-[21px]">
+        <path d="M12 2l2.4 6.4L21 9l-5.4 5 1.8 7L12 17.5 6.6 21l1.8-7L3 9l6.6-.6z" />
+      </svg>
+    ),
+  },
+  {
     label: 'Launchpad',
     href: '/launchpad',
     activeOn: ['/launchpad'],
