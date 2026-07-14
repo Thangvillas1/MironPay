@@ -185,7 +185,7 @@ function Nav({ isLight, onToggle, onSignIn }: { isLight: boolean; onToggle: () =
             {isLight ? <IcSun /> : <IcMoon />}
           </button>
           <button onClick={onSignIn} className="mp-btn mp-btn-bounce mp-lp-nav-signin" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 11, border: '1px solid rgba(0,0,0,.12)', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.12)', color: '#141221', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            <IcGoogle size={15} className="ic-google-logo" /> <span>Sign in</span>
+            <IcGoogle size={15} className="ic-google-logo" /> <span>Launch App</span>
           </button>
         </div>
       </div>
@@ -263,7 +263,7 @@ function Hero({ googleState, onSignIn, error }: { googleState: GoogleState; onSi
         {/* CTA row */}
         <div style={{ marginTop: 42 }}>
           <button onClick={onSignIn} className="mp-btn mp-btn-bounce" style={gBtn}>
-            {g === 'idle' && <><IcGoogle size={20} className="ic-google-logo" /><span>Continue with Google</span><span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,.06)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}><IcArrow stroke="#141221" /></span></>}
+            {g === 'idle' && <><IcGoogle size={20} className="ic-google-logo" /><span>Launch App</span><span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,0,0,.06)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}><IcArrow stroke="#141221" /></span></>}
             {g === 'busy' && <><IcSpinner /><span>Connecting…</span></>}
             {g === 'done' && <><IcCheckWhite /><span>Opening your wallet…</span></>}
           </button>
@@ -673,7 +673,7 @@ function CTA({ googleState, onSignIn }: { googleState: GoogleState; onSignIn: ()
       </p>
       <div className="rv" style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>
         <button onClick={onSignIn} className="mp-btn mp-btn-bounce" style={ctaBtn}>
-          {g === 'idle' && <><IcGoogle size={22} className="ic-google-logo" /><span>Continue with Google</span></>}
+          {g === 'idle' && <><IcGoogle size={22} className="ic-google-logo" /><span>Launch App</span></>}
           {g === 'busy' && <><IcSpinner /><span>Connecting…</span></>}
           {g === 'done' && <><IcCheckWhite size={21} /><span>Opening your wallet…</span></>}
         </button>
@@ -774,7 +774,7 @@ function StandaloneLoginScreen({ googleState, onSignIn, error }: { googleState: 
           boxShadow: g === 'idle' ? '0 1px 3px rgba(0,0,0,.12)' : 'var(--glow-primary)',
         }}
       >
-        {g === 'idle' && <><IcGoogle size={20} />Sign in with Google</>}
+        {g === 'idle' && <><IcGoogle size={20} />Launch App</>}
         {g === 'busy' && <><IcSpinner />Connecting…</>}
         {g === 'done' && <><IcCheckWhite />Opening your wallet…</>}
       </button>
