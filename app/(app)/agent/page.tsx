@@ -31,6 +31,8 @@ interface TxAction {
   tokenOut?: string
   projectId?: string
   walletSource?: 'agent' | 'main'
+  sym?: string
+  tokensEstimate?: string
 }
 
 interface Message {
@@ -135,6 +137,12 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
               <span className="text-mp-muted">Project</span>
               <span className="font-semibold text-mp-text">{action.projectId}</span>
             </div>
+            {action.tokensEstimate && (
+              <div className="flex justify-between text-xs">
+                <span className="text-mp-muted">Received</span>
+                <span className="font-semibold text-mp-success">~{action.tokensEstimate} {action.sym}</span>
+              </div>
+            )}
           </>
         )}
         <div className="flex justify-between text-xs">
@@ -219,6 +227,12 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
               <span className="text-mp-muted">Project</span>
               <span className="font-semibold text-mp-text">{action.projectId}</span>
             </div>
+            {action.tokensEstimate && (
+              <div className="flex justify-between text-xs">
+                <span className="text-mp-muted">You&apos;ll receive</span>
+                <span className="font-semibold text-mp-primary">~{action.tokensEstimate} {action.sym}</span>
+              </div>
+            )}
           </>
         )}
         {error && <p className="text-[11px] text-mp-danger">{error}</p>}
@@ -679,6 +693,14 @@ export default function AgentPage() {
       // Independent of each other — no reason to make history wait on the
       // Circle balance round-trip (or vice versa).
       await Promise.all([loadWallet(data.session.access_token), loadHistory(data.session.access_token)])
+
+      // Prefilled from the Launchpad "Open Agent chat" button — send it
+      // straight away instead of making the user retype/paste the command.
+      const prefill = sessionStorage.getItem('mp_agent_prefill')
+      if (prefill) {
+        sessionStorage.removeItem('mp_agent_prefill')
+        handleSend(prefill)
+      }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
@@ -846,8 +868,8 @@ export default function AgentPage() {
     return { daily_limit: data.daily_limit, onChain: data.onChain, txHash: data.txHash }
   }
 
-  async function handleSend() {
-    const text = input.trim()
+  async function handleSend(overrideText?: string) {
+    const text = (overrideText ?? input).trim()
     if (!text || sending) return
     setInput('')
     setError('')
@@ -1124,7 +1146,7 @@ export default function AgentPage() {
               />
               <span className="text-[9px] text-mp-muted/40 shrink-0 self-start pt-0.5">{MSG_COST}$/msg</span>
               <button
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 disabled={sending || !input.trim()}
                 className="w-8 h-8 bg-mp-primary rounded-[8px] flex items-center justify-center disabled:opacity-40 hover:bg-blue-600 transition-colors shrink-0"
               >

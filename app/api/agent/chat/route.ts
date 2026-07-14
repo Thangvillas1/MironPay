@@ -312,7 +312,7 @@ Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
     // exact project_id slug for execute_launchpad_contribute.
     const { data: liveSubmissions } = await supabase
       .from('launchpad_submissions')
-      .select('project_id, name, sym, target, min_contribution, cap, start_at, end_at')
+      .select('project_id, name, sym, price, target, min_contribution, cap, start_at, end_at')
       .eq('status', 'approved')
       .lte('start_at', new Date().toISOString())
       .gte('end_at', new Date().toISOString())
@@ -495,8 +495,16 @@ Never claim the transaction is done or already in progress — the system will s
           action = { type: 'gateway_withdraw', amount: args.amount }
           reply = `Ready to withdraw ${args.amount} USDC from the X402 reserve. Confirm below to proceed.`
         } else if (fnName === 'execute_launchpad_contribute') {
-          action = { type: 'launchpad_contribute', projectId: args.projectId, amount: args.amount }
-          reply = `Ready to contribute ${args.amount} USDC to ${args.projectId} sale from Agent Wallet. Confirm below to proceed.`
+          const sale = liveSubmissions?.find(s => s.project_id === args.projectId)
+          const sym = sale?.sym
+          const tokensEstimate = sale?.price ? (parseFloat(args.amount) / sale.price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : undefined
+          action = {
+            type: 'launchpad_contribute', projectId: args.projectId, amount: args.amount,
+            ...(sym ? { sym } : {}), ...(tokensEstimate ? { tokensEstimate } : {}),
+          }
+          reply = `Ready to contribute ${args.amount} USDC to ${args.projectId} sale from Agent Wallet`
+            + (tokensEstimate ? ` — you'll receive ~${tokensEstimate} $${sym} (subject to the project's vesting schedule).` : '.')
+            + ' Confirm below to proceed.'
         } else if (fnName === 'get_token_price') {
           let toolResultContent: string
           const symbol = (args.symbol ?? '').trim()

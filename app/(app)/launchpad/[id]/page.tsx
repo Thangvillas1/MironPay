@@ -107,10 +107,15 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
   }
 
   const suggestedCommand = `Contribute $${suggestAmount || '0'} to ${project.name}`
+  const estTokens = project.price > 0 ? (parseFloat(suggestAmount || '0') / project.price) : 0
   function copyCommand() {
     navigator.clipboard.writeText(suggestedCommand)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+  function openAgentChat() {
+    sessionStorage.setItem('mp_agent_prefill', suggestedCommand)
+    router.push('/agent')
   }
 
   const S = {
@@ -324,6 +329,10 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
                     <span style={{ display: 'flex', alignItems: 'center', fontSize: 13, color: 'var(--c-muted)' }}>$</span>
                     <input value={suggestAmount} onChange={e => setSuggestAmount(e.target.value.replace(/[^0-9.]/g, ''))} style={{ width: 80, height: 34, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, outline: 'none' }} />
                   </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderRadius: 10, background: 'rgba(43,212,164,.08)', border: '1px solid rgba(43,212,164,.2)', fontSize: 12.5, marginBottom: 10 }}>
+                    <span style={{ color: 'var(--c-muted)' }}>You&apos;ll receive</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#2dd4bf' }}>~{estTokens.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${project.sym}</span>
+                  </div>
                   <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.07)', fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--c-text)', marginBottom: 10 }}>
                     &quot;{suggestedCommand}&quot;
                   </div>
@@ -331,7 +340,7 @@ export default function LaunchpadProjectPage({ params }: { params: Promise<{ id:
                     <button onClick={copyCommand} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
                       {copied ? 'Copied ✓' : 'Copy command'}
                     </button>
-                    <button onClick={() => router.push('/agent')} style={{ flex: 1, height: 38, borderRadius: 10, border: 'none', background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={openAgentChat} style={{ flex: 1, height: 38, borderRadius: 10, border: 'none', background: 'var(--grad-primary)', boxShadow: 'var(--glow-primary)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
                       Open Agent chat
                     </button>
                   </div>

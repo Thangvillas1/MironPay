@@ -468,6 +468,21 @@ input[type="number"] {
 .mp-nav-link::after { content:"";position:absolute;left:0;right:100%;bottom:-5px;height:2px;background:#818cf8;border-radius:2px;transition:right .22s cubic-bezier(.22,1,.36,1) }
 .mp-nav-link:hover { color:#ececf8!important }
 .mp-nav-link:hover::after { right:0 }
+
+/* Landing page (app/page.tsx) — every section below is hand-built with
+   inline styles and a hardcoded 2-column grid, so it never collapses on
+   its own; these overrides make it a real single-column layout on phones. */
+@media (max-width: 860px) {
+  .mp-lp-nav-links { display: none !important; }
+  .mp-lp-nav-inner { padding: 0 16px !important; }
+  .mp-lp-nav-signin span { display: none !important; }
+  .mp-lp-nav-signin { padding: 0 10px !important; width: 40px; justify-content: center; }
+
+  .mp-lp-hero { grid-template-columns: 1fr !important; padding: 128px 20px 60px !important; min-height: 0 !important; }
+  .mp-lp-features-grid { grid-template-columns: 1fr !important; }
+  .mp-lp-agent-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .mp-lp-transparency-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+}
 .mp-btn  { transition:transform .16s cubic-bezier(.22,1,.36,1),filter .16s,box-shadow .2s }
 .mp-btn:hover  { filter:brightness(1.07);box-shadow:0 12px 38px rgba(99,102,241,.5) }
 .mp-btn:active { transform:scale(.97) }

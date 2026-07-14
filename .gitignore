@@ -53,3 +53,6 @@ scratch_*.mjs
 MironPay\ Home\ (standalone).html
 MironPay\ Wallet\ +\ Send\ Receive\ Swap\ (standalone).html
 miron-baner.html
+
+.vercel
+.env*

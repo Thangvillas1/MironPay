@@ -50,6 +50,8 @@ interface TxResult {
   tokenOut?: string
   to?: string
   projectId?: string
+  sym?: string
+  tokensEstimate?: string
   txHash?: string
   txId?: string
   error?: string
@@ -499,6 +501,8 @@ export default function DashboardPage() {
       tokenOut: action.tokenOut,
       to: action.to,
       projectId: action.projectId,
+      sym: action.sym,
+      tokensEstimate: action.tokensEstimate,
       error: execData.error ?? 'Unknown error',
     } : {
       success: true,
@@ -509,6 +513,8 @@ export default function DashboardPage() {
       tokenOut: action.tokenOut,
       to: action.to,
       projectId: action.projectId,
+      sym: action.sym,
+      tokensEstimate: action.tokensEstimate,
       txHash: execData.txHash,
       txId: execData.txId,
     }
@@ -533,8 +539,8 @@ export default function DashboardPage() {
     if (txResult.success) setTimeout(() => refreshAgentWallet(token), 3000)
   }
 
-  async function handleSend() {
-    const text = input.trim()
+  async function handleSend(overrideText?: string) {
+    const text = (overrideText ?? input).trim()
     if (!text || sending) return
     setInput(''); setChatError(''); setSending(true)
 
@@ -1042,6 +1048,7 @@ export default function DashboardPage() {
                                   <>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Contributed</span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>−{msg.txResult.amountIn} USDC</span></div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Project</span><span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text)' }}>{msg.txResult.projectId}</span></div>
+                                    {msg.txResult.tokensEstimate && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Received</span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#2dd4bf' }}>~{msg.txResult.tokensEstimate} {msg.txResult.sym}</span></div>}
                                   </>
                                 ) : (
                                   <>
@@ -1128,10 +1135,15 @@ export default function DashboardPage() {
                     : lastSend?.to
                     ? [{ text: `Send to ${lastSend.to} again`, fn: () => setInput(`Send USDC to ${lastSend.to}`) }]
                     : [{ text: 'Send USDC to a friend', fn: () => setInput('Send USDC to @') }]),
-                  ...(liveIdo ? [{ text: `Contribute $100 to ${liveIdo.name}`, fn: () => setInput(`Contribute $100 to ${liveIdo.name}`) }] : []),
                 ].map(c => (
                   <button key={c.text} onClick={c.fn} className="mp-btn-ghost" style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{c.text}</button>
                 ))}
+                {liveIdo && (
+                  <button onClick={() => handleSend(`Contribute $100 to ${liveIdo.name}`)} disabled={sending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 9999, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: sending ? .6 : 1 }}>
+                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M2 12h20" /></svg>
+                    Buy $100 {liveIdo.sym}
+                  </button>
+                )}
               </div>
 
               {/* Input bar */}
@@ -1145,7 +1157,7 @@ export default function DashboardPage() {
                     onFocus={() => setAgentExcited(true)} onBlur={() => setAgentExcited(false)}
                     placeholder="Ask Miron Agent anything…" disabled={sending} className="flex-1 bg-transparent text-sm outline-none" style={{ color: 'var(--c-text)' }}
                   />
-                  <button onClick={handleSend} disabled={sending || !input.trim()} style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 6px 24px rgba(99,102,241,.42)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (sending || !input.trim()) ? .4 : 1 }}>
+                  <button onClick={() => handleSend()} disabled={sending || !input.trim()} style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 6px 24px rgba(99,102,241,.42)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (sending || !input.trim()) ? .4 : 1 }}>
                     <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m21 3-9.5 9.5" /><path d="M21 3 14 21l-3.5-7.5L3 10z" /></svg>
                   </button>
                 </div>
@@ -1227,9 +1239,14 @@ export default function DashboardPage() {
                 <div style={{ height: 6, borderRadius: 9999, background: 'rgba(var(--c-fg-rgb),.05)', marginTop: 12, overflow: 'hidden', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
                   <div style={{ height: '100%', width: `${liveIdo.target ? Math.min(100, Math.round(liveIdo.raised / liveIdo.target * 100)) : 0}%`, borderRadius: 9999, background: `linear-gradient(90deg, ${liveIdo.accent}, ${liveIdo.accent}cc)` }} />
                 </div>
-                <button onClick={() => router.push(`/launchpad/${liveIdo.id}`)} style={{ width: '100%', height: 36, marginTop: 12, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-                  View details →
-                </button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button onClick={() => router.push(`/launchpad/${liveIdo.id}`)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                    View details →
+                  </button>
+                  <button onClick={() => handleSend(`Contribute $100 to ${liveIdo.name}`)} disabled={sending} style={{ flex: 1, height: 36, borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: sending ? .6 : 1 }}>
+                    Buy $100 now
+                  </button>
+                </div>
               </div>
             )}
 

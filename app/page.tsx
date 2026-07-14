@@ -165,7 +165,7 @@ function Nav({ isLight, onToggle, onSignIn }: { isLight: boolean; onToggle: () =
 
   return (
     <header ref={navRef} style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40, transition: 'background .3s,backdrop-filter .3s' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', height: 70, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
+      <div className="mp-lp-nav-inner" style={{ maxWidth: 1200, margin: '0 auto', height: 70, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
         {/* Logo */}
         <div onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -174,18 +174,18 @@ function Nav({ isLight, onToggle, onSignIn }: { isLight: boolean; onToggle: () =
           <img src="/logo/miron-logo-lockup-horizontal-light.png" alt="MironPay" className="mp-logo-light" style={{ height: 40, width: 'auto' }} />
         </div>
         {/* Links */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
+        <nav className="mp-lp-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
           <a onClick={() => scrollTo('features')} className="mp-nav-link" style={{ fontSize: 14, fontWeight: 500, color: 'var(--lp-muted)', cursor: 'pointer' }}>Product</a>
           <a onClick={() => scrollTo('security')} className="mp-nav-link" style={{ fontSize: 14, fontWeight: 500, color: 'var(--lp-muted)', cursor: 'pointer' }}>Security</a>
           <a onClick={() => scrollTo('developers')} className="mp-nav-link" style={{ fontSize: 14, fontWeight: 500, color: 'var(--lp-muted)', cursor: 'pointer' }}>Transparency</a>
         </nav>
         {/* Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-          <button onClick={onToggle} className="mp-iconbtn" title="Toggle theme" style={{ width: 38, height: 38, borderRadius: 10, border: '1px solid var(--c-border)', background: 'var(--c-input)', color: 'var(--lp-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <button onClick={onToggle} className="mp-iconbtn" title="Toggle theme" style={{ width: 38, height: 38, borderRadius: 10, border: '1px solid var(--c-border)', background: 'var(--c-input)', color: 'var(--lp-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             {isLight ? <IcSun /> : <IcMoon />}
           </button>
-          <button onClick={onSignIn} className="mp-btn mp-btn-bounce" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 11, border: '1px solid rgba(0,0,0,.12)', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.12)', color: '#141221', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-            <IcGoogle size={15} className="ic-google-logo" /> Sign in
+          <button onClick={onSignIn} className="mp-btn mp-btn-bounce mp-lp-nav-signin" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 11, border: '1px solid rgba(0,0,0,.12)', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.12)', color: '#141221', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            <IcGoogle size={15} className="ic-google-logo" /> <span>Sign in</span>
           </button>
         </div>
       </div>
@@ -236,7 +236,7 @@ function Hero({ googleState, onSignIn, error }: { googleState: GoogleState; onSi
   }, [])
 
   return (
-    <section ref={sectionRef} style={{ position: 'relative', zIndex: 1, isolation: 'isolate', maxWidth: 1240, margin: '0 auto', padding: '164px 28px 90px', minHeight: '100vh', display: 'grid', gridTemplateColumns: '1.15fr .85fr', gap: 24, alignItems: 'center' }}>
+    <section ref={sectionRef} className="mp-lp-hero" style={{ position: 'relative', zIndex: 1, isolation: 'isolate', maxWidth: 1240, margin: '0 auto', padding: '164px 28px 90px', minHeight: '100vh', display: 'grid', gridTemplateColumns: '1.15fr .85fr', gap: 24, alignItems: 'center' }}>
       {/* falling coins/leaves banner — full-bleed across the viewport, breaking out of the section's maxWidth, masked to skip the text column */}
       <iframe
         src="/miron-banner.html"
@@ -388,7 +388,7 @@ function Features() {
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#818cf8' }}>Why MironPay</div>
         <h2 style={{ margin: '16px 0 0', fontSize: 'clamp(32px,4.2vw,52px)', fontWeight: 800, letterSpacing: '-.035em', lineHeight: 1.05 }}>A wallet that feels<br />like a chat app</h2>
       </div>
-      <div className="rv-s" style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 22 }}>
+      <div className="rv-s mp-lp-features-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 22 }}>
         {/* stacked small cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           {small.map(f => (
@@ -466,7 +466,7 @@ function AgentSection() {
 
   return (
     <section style={{ position: 'relative', zIndex: 1, maxWidth: 1080, margin: '0 auto', padding: '100px 28px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 54, alignItems: 'center' }}>
+      <div className="mp-lp-agent-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 54, alignItems: 'center' }}>
         {/* left */}
         <div className="rv-l">
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#818cf8' }}>Miron Agent · Circle x402</div>
@@ -608,7 +608,7 @@ function Transparency() {
 
   return (
     <section id="developers" style={{ position: 'relative', zIndex: 1, maxWidth: 1080, margin: '0 auto', padding: '90px 28px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 54, alignItems: 'center' }}>
+      <div className="mp-lp-transparency-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 54, alignItems: 'center' }}>
         {/* left */}
         <div className="rv-l">
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#818cf8' }}>On-chain transparency</div>
