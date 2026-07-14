@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { isOnboardingComplete } from '@/app/lib/onboarding'
@@ -611,6 +611,7 @@ export default function AgentPage() {
   const { tokenList } = useWalletStore()
   const keyboardOpen = useUiStore(s => s.keyboardOpen)
   const setKeyboardOpen = useUiStore(s => s.setKeyboardOpen)
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean | null>(null)
   const [accessToken, setAccessToken] = useState('')
   const [userId, setUserId] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWallet | null>(null)
@@ -688,9 +689,13 @@ export default function AgentPage() {
 
   // This page is the mobile-only agent chat surface — desktop uses the chat
   // panel built into /dashboard instead. Bounce desktop-width visitors there
-  // rather than maintaining two full chat UIs on wide screens.
-  useEffect(() => {
-    if (window.matchMedia('(min-width: 1024px)').matches) router.replace('/dashboard')
+  // rather than maintaining two full chat UIs on wide screens. Runs in a
+  // layout effect (before paint) and gates the whole render below on it, so
+  // desktop visitors never see this page flash before the redirect fires.
+  useLayoutEffect(() => {
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches
+    if (isDesktop) router.replace('/dashboard')
+    setIsMobileViewport(!isDesktop)
   }, [router])
 
   useEffect(() => {
@@ -968,6 +973,8 @@ export default function AgentPage() {
   const msgsToday = agentWallet ? Math.floor(agentWallet.daily_spent / MSG_COST) : 0
   const msgsRemaining = agentWallet ? Math.max(0, Math.floor((agentWallet.daily_limit - agentWallet.daily_spent) / MSG_COST)) : 0
   const msgsFromBalance = agentWallet ? Math.floor(agentWallet.balance / MSG_COST) : 0
+
+  if (!isMobileViewport) return null
 
   return (
     <div
