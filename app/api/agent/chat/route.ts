@@ -474,10 +474,26 @@ Never claim the transaction is done or already in progress — the system will s
         const blockReason = guard?.()
         if (blockReason) {
           console.warn(`[agent/chat] blocked hallucinated tool call ${fnName} (${blockReason}):`, message.slice(0, 200))
-          const noMoneyVerb = ![...SEND_VERBS, ...SWAP_VERBS, ...DEPOSIT_VERBS, ...WITHDRAW_VERBS, ...CONTRIBUTE_VERBS]
-            .some(k => message.toLowerCase().includes(k))
-          reply = noMoneyVerb
-            ? `Your Agent Wallet balance is ${onChainBalance.toFixed(4)} USDC.`
+          // Don't hand the user a hard-coded refusal — the block reason just means
+          // this specific tool call was unjustified, not that the user's actual
+          // message was itself a money command. Feed the reason back as a tool
+          // result and let the model answer the real question in text (e.g. a
+          // balance check, a price lookup, general chat) with no tool calls.
+          const toolResultContent = `This tool call was rejected: ${blockReason}. Do not call any money-moving tool. `
+            + `Re-read the user's actual message and answer it directly in plain text. `
+            + `If it truly was an incomplete money command, ask them to restate it with the action, exact amount, and recipient.`
+          const secondMessages = [
+            ...messages,
+            assistantMsg,
+            { role: 'tool', tool_call_id: toolCall.id, content: toolResultContent },
+          ]
+          const secondRes = await fetch(GROQ_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
+          })
+          reply = secondRes.ok
+            ? ((await secondRes.json()).choices?.[0]?.message?.content ?? '')
             : "I won't guess on money-moving actions. Please state the action (send/swap/deposit/etc), the exact amount, and the recipient explicitly — I'll draft it for you to confirm once your instruction is unambiguous."
           continue
         }
