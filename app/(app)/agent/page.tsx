@@ -14,6 +14,7 @@ import { TrendingTable } from '@/app/components/TrendingTable'
 import { DefiDataCard } from '@/app/components/DefiDataCard'
 import { StablecoinDataCard } from '@/app/components/StablecoinDataCard'
 import { WalletLookupCard } from '@/app/components/WalletLookupCard'
+import { DexPairCard } from '@/app/components/DexPairCard'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
 
 interface AgentWallet {
@@ -62,6 +63,10 @@ interface Message {
     address: string
     chains: Array<{ blockchain: string; total_usd: number; tokens: Array<{ symbol: string; name: string; amount: number; usd_value: number; rank: number | null }> }>
     total_usd: number
+  } | null
+  dexPair?: {
+    query: string
+    pairs: Array<{ chain: string; dex: string; pairLabel: string; priceUsd: number; liquidityUsd: number; volume24hUsd: number; change24hPct: number | null; url: string }>
   } | null
   animate?: boolean
 }
@@ -754,7 +759,7 @@ export default function AgentPage() {
             data_fee_amount: number | null; data_fee_tx_hash: string | null
             chart_symbol: string | null; chart_points: Array<[number, number]> | null
             trending_data: Message['trending']; defi_data: Message['defi']; sentiment_data: Message['sentiment']
-            stablecoin_data: Message['stablecoin']; wallet_lookup_data: Message['walletLookup']
+            stablecoin_data: Message['stablecoin']; wallet_lookup_data: Message['walletLookup']; dex_pair_data: Message['dexPair']
           }
           const incoming: Message = {
             id: m.id,
@@ -770,6 +775,7 @@ export default function AgentPage() {
             sentiment: m.sentiment_data ?? null,
             stablecoin: m.stablecoin_data ?? null,
             walletLookup: m.wallet_lookup_data ?? null,
+            dexPair: m.dex_pair_data ?? null,
           }
           setMessages(prev => {
             if (prev.some(existing => existing.id === m.id)) return prev
@@ -805,7 +811,7 @@ export default function AgentPage() {
   async function loadHistory(token: string) {
     const { data } = await supabase
       .from('agent_messages')
-      .select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data, stablecoin_data, wallet_lookup_data')
+      .select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data, stablecoin_data, wallet_lookup_data, dex_pair_data')
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -824,6 +830,7 @@ export default function AgentPage() {
         sentiment: m.sentiment_data ?? null,
         stablecoin: m.stablecoin_data ?? null,
         walletLookup: m.wallet_lookup_data ?? null,
+        dexPair: m.dex_pair_data ?? null,
       })))
     }
   }
@@ -956,6 +963,7 @@ export default function AgentPage() {
         sentiment: data.sentiment_data ?? null,
         stablecoin: data.stablecoin_data ?? null,
         walletLookup: data.wallet_lookup_data ?? null,
+        dexPair: data.dex_pair_data ?? null,
         animate: true,
       }
       // Input fee is charged for the message just sent — attach the real
@@ -1125,6 +1133,9 @@ export default function AgentPage() {
                 )}
                 {msg.role === 'assistant' && msg.walletLookup && (
                   <WalletLookupCard data={msg.walletLookup} />
+                )}
+                {msg.role === 'assistant' && msg.dexPair && (
+                  <DexPairCard data={msg.dexPair} />
                 )}
                 {msg.role === 'assistant' && msg.sentiment && (
                   <SentimentMeter value={msg.sentiment.value} classification={msg.sentiment.classification} />

@@ -184,6 +184,20 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'get_dex_pair_data',
+      description: 'Fetch real on-chain DEX pair data (price, liquidity, 24h volume/change) for a token, sorted by liquidity — via DexScreener/GeckoTerminal, across any chain, not just ARC. Different from get_token_price (aggregate CEX-style spot price): use this when the user asks specifically about a DEX/pool/liquidity/on-chain price for a token. Costs $0.01 USDC via x402 — no PIN needed.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Token symbol, name, or contract address to search DEX pairs for, e.g. "PEPE", "0xC02aaA...".' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_defi_data',
       description: 'Fetch real DeFi data from DeFiLlama. Three modes: (1) protocol + metric="tvl" (or metric omitted) → that protocol\'s TVL and 1d/7d change; (2) protocol + metric="yield" → that protocol\'s own top APY pools; (3) no protocol → top 5 highest-APY yield pools across ALL of DeFi. Costs $0.01 USDC via x402 — no PIN needed.',
       parameters: {
@@ -461,6 +475,9 @@ Never claim the transaction is done or already in progress — the system will s
           total_usd: number
         }
       | null = null
+    let dexPairData:
+      | { query: string; pairs: Array<{ chain: string; dex: string; pairLabel: string; priceUsd: number; liquidityUsd: number; volume24hUsd: number; change24hPct: number | null; url: string }> }
+      | null = null
 
     // Does the user's RAW text contain a standalone number the model could
     // legitimately have read as an amount? Strips 0x addresses and @handles
@@ -654,6 +671,32 @@ Never claim the transaction is done or already in progress — the system will s
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
+        } else if (fnName === 'get_dex_pair_data') {
+          const origin = request.nextUrl.origin
+          const query = (args.query ?? '').trim()
+          if (!query) {
+            reply = 'Please provide the token symbol, name, or contract address you want DEX pair data for.'
+          } else {
+            const { content, fee, data: rawData } = await callX402Tool<{
+              query: string
+              pairs: Array<{ chain: string; dex: string; pairLabel: string; priceUsd: number; liquidityUsd: number; volume24hUsd: number; change24hPct: number | null; url: string }>
+            }>(origin, `/api/x402/dex-pair?query=${encodeURIComponent(query)}`, profile, (data) => {
+              if (data.pairs.length === 0) return `No DEX pairs found for "${data.query}" (paid $${X402_DATA_FEE} via x402).`
+              return `Top DEX pairs for "${data.query}" by liquidity (paid $${X402_DATA_FEE} via x402): `
+                + data.pairs.map(p => `${p.pairLabel} on ${p.dex} (${p.chain}): $${p.priceUsd}, liquidity $${p.liquidityUsd}, 24h vol $${p.volume24hUsd}`).join(' | ')
+                + `. A table with full details is ALREADY shown to the user below — reply in ONE short sentence naming the top pair's price and liquidity, do not repeat the full list.`
+            })
+            if (fee) dataFee = fee
+            if (rawData) dexPairData = rawData
+
+            const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+            const secondRes = await fetch(GROQ_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+              body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
+            })
+            if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
+          }
         } else if (fnName === 'get_defi_data') {
           const origin = request.nextUrl.origin
           const protocol = (args.protocol ?? '').trim()
@@ -810,6 +853,7 @@ Never claim the transaction is done or already in progress — the system will s
           sentiment_data: sentimentData,
           stablecoin_data: stablecoinData,
           wallet_lookup_data: walletLookupData,
+          dex_pair_data: dexPairData,
           created_at: assistantTs.toISOString(),
         },
       ]),
@@ -828,6 +872,7 @@ Never claim the transaction is done or already in progress — the system will s
       sentiment_data: sentimentData,
       stablecoin_data: stablecoinData,
       wallet_lookup_data: walletLookupData,
+      dex_pair_data: dexPairData,
     })
 
   } catch (err) {
