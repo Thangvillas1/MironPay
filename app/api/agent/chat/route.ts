@@ -207,6 +207,20 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'get_stablecoin_data',
+      description: 'Fetch real stablecoin data from DeFiLlama: either the top 8 stablecoins by market cap and their current peg price, or — if a specific stablecoin symbol/name is named — that one\'s peg price and market cap. Costs $0.01 USDC via x402 — no PIN needed. Call this when the user asks about a stablecoin\'s peg, de-peg risk, or market cap (e.g. USDT, USDC, DAI).',
+      parameters: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string', description: 'Stablecoin symbol or name, e.g. "USDT", "DAI". Omit to get the top stablecoins by market cap instead.' },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'save_memory',
       description: 'Save important user preferences or habits for future conversations, such as frequent recipients, preferred tokens, or risk tolerance.',
       parameters: {
@@ -422,6 +436,10 @@ Never claim the transaction is done or already in progress — the system will s
       | { mode: 'protocol_yield'; protocol: string; pools: Array<{ symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
       | null = null
     let sentimentData: { value: number; classification: string } | null = null
+    let stablecoinData:
+      | { mode: 'top'; coins: Array<{ symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number }> }
+      | { mode: 'single'; coin: { symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number } }
+      | null = null
 
     // Does the user's RAW text contain a standalone number the model could
     // legitimately have read as an amount? Strips 0x addresses and @handles
@@ -667,6 +685,34 @@ Never claim the transaction is done or already in progress — the system will s
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
+        } else if (fnName === 'get_stablecoin_data') {
+          const origin = request.nextUrl.origin
+          const symbol = (args.symbol ?? '').trim()
+          const path = symbol ? `/api/x402/stablecoins?symbol=${encodeURIComponent(symbol)}` : '/api/x402/stablecoins'
+          const { content, fee, data: rawData } = await callX402Tool<
+            | { mode: 'top'; coins: Array<{ symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number }> }
+            | { mode: 'single'; coin: { symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number } }
+          >(origin, path, profile, (data) => {
+            if (data.mode === 'single') {
+              const c = data.coin
+              const deviationPct = ((c.price_usd - 1) * 100).toFixed(2)
+              return `${c.name} (${c.symbol}) (DeFiLlama, paid $${X402_DATA_FEE} via x402): price=$${c.price_usd} (${deviationPct}% from peg), market cap=$${c.market_cap_usd}. `
+                + `A stat card with these numbers is ALREADY shown to the user below — reply in ONE short sentence, mention de-peg risk only if the deviation is notable (>0.5%).`
+            }
+            return `Top stablecoins by market cap (DeFiLlama, paid $${X402_DATA_FEE} via x402): `
+              + data.coins.map(c => `${c.symbol} ($${c.market_cap_usd}, price $${c.price_usd})`).join(', ')
+              + `. A table with full details is ALREADY shown to the user below — reply in ONE short sentence, do not repeat the full list.`
+          })
+          if (fee) dataFee = fee
+          if (rawData) stablecoinData = rawData
+
+          const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+          const secondRes = await fetch(GROQ_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
+          })
+          if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
         } else if (fnName === 'save_memory') {
           await supabase.from('agent_memory').upsert(
             { user_id: user.id, key: args.key, value: args.value, updated_at: new Date().toISOString() },
@@ -711,6 +757,7 @@ Never claim the transaction is done or already in progress — the system will s
           trending_data: trendingData,
           defi_data: defiData,
           sentiment_data: sentimentData,
+          stablecoin_data: stablecoinData,
           created_at: assistantTs.toISOString(),
         },
       ]),
@@ -727,6 +774,7 @@ Never claim the transaction is done or already in progress — the system will s
       trending_data: trendingData,
       defi_data: defiData,
       sentiment_data: sentimentData,
+      stablecoin_data: stablecoinData,
     })
 
   } catch (err) {

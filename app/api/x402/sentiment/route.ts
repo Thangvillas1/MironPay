@@ -1,16 +1,36 @@
 import { createX402GetHandler } from '@/app/lib/x402-seller'
 
-async function fetchFearGreed() {
-  const res = await fetch('https://api.alternative.me/fng/?limit=1')
-  if (!res.ok) throw new Error(`Fear & Greed fetch failed: ${res.status}`)
-  const data = await res.json()
-  const point = data.data?.[0]
-  if (!point) throw new Error('No Fear & Greed data available')
+interface FearGreedResult {
+  value: number
+  classification: string
+  fetchedAt: string
+  stale?: boolean
+}
 
-  return {
-    value: Number(point.value),
-    classification: point.value_classification as string,
-    fetchedAt: new Date(Number(point.timestamp) * 1000).toISOString(),
+// alternative.me is effectively the only free Fear & Greed source — there's
+// no real second provider to fall back to. Best available degradation is
+// serving the last successful reading (marked stale) instead of a hard
+// error. Per-instance only (Fluid Compute), same tradeoff already accepted
+// for the price cache in the chat route.
+let lastGood: FearGreedResult | null = null
+
+async function fetchFearGreed(): Promise<FearGreedResult> {
+  try {
+    const res = await fetch('https://api.alternative.me/fng/?limit=1')
+    if (!res.ok) throw new Error(`Fear & Greed fetch failed: ${res.status}`)
+    const data = await res.json()
+    const point = data.data?.[0]
+    if (!point) throw new Error('No Fear & Greed data available')
+
+    lastGood = {
+      value: Number(point.value),
+      classification: point.value_classification as string,
+      fetchedAt: new Date(Number(point.timestamp) * 1000).toISOString(),
+    }
+    return lastGood
+  } catch (err) {
+    if (lastGood) return { ...lastGood, stale: true }
+    throw err
   }
 }
 

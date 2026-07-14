@@ -17,6 +17,7 @@ import { TokenPriceChart } from '@/app/components/TokenPriceChart'
 import { SentimentMeter } from '@/app/components/SentimentMeter'
 import { TrendingTable } from '@/app/components/TrendingTable'
 import { DefiDataCard } from '@/app/components/DefiDataCard'
+import { StablecoinDataCard } from '@/app/components/StablecoinDataCard'
 import { TypewriterText } from '@/app/components/TypewriterText'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
 import { fmtUsd } from '@/app/lib/launchpad-data'
@@ -75,6 +76,10 @@ interface ChatMessage {
     | { mode: 'protocol_yield'; protocol: string; pools: Array<{ symbol: string; chain: string; apy_pct: number; tvl_usd: number }> }
     | null
   sentiment?: { value: number; classification: string } | null
+  stablecoin?:
+    | { mode: 'top'; coins: Array<{ symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number }> }
+    | { mode: 'single'; coin: { symbol: string; name: string; price_usd: number; peg_type: string; market_cap_usd: number } }
+    | null
   animate?: boolean
 }
 
@@ -397,7 +402,7 @@ export default function DashboardPage() {
         .catch(() => {})
 
       const [msgRes] = await Promise.all([
-        supabase.from('agent_messages').select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data')
+        supabase.from('agent_messages').select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data, stablecoin_data')
           .eq('user_id', session.user.id)
           .order('created_at', { ascending: false }).limit(100), // load the 100 most recent, then reverse to display
         refreshAgentWallet(session.access_token),
@@ -424,6 +429,7 @@ export default function DashboardPage() {
             trending: m.trending_data ?? null,
             defi: m.defi_data ?? null,
             sentiment: m.sentiment_data ?? null,
+            stablecoin: m.stablecoin_data ?? null,
           }
         }))
       }
@@ -612,6 +618,7 @@ export default function DashboardPage() {
             trending: data.trending_data ?? null,
             defi: data.defi_data ?? null,
             sentiment: data.sentiment_data ?? null,
+            stablecoin: data.stablecoin_data ?? null,
             animate: true,
           },
         ]
@@ -1113,6 +1120,9 @@ export default function DashboardPage() {
                       )}
                       {msg.role === 'assistant' && msg.defi && (
                         <DefiDataCard data={msg.defi} />
+                      )}
+                      {msg.role === 'assistant' && msg.stablecoin && (
+                        <StablecoinDataCard data={msg.stablecoin} />
                       )}
                       {msg.role === 'assistant' && msg.sentiment && (
                         <SentimentMeter value={msg.sentiment.value} classification={msg.sentiment.classification} />

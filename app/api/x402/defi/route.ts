@@ -38,11 +38,50 @@ function findBestProtocolMatch(protocols: any[], q: string) {
   return candidates.reduce((best, p) => (p.tvl ?? 0) > (best.tvl ?? 0) ? p : best)
 }
 
+// DeFiLlama is effectively the only free TVL/APY aggregator with this
+// coverage — there's no real second provider to fall back to. Cache the raw
+// list payloads (shared across all 3 modes below) and serve the last good
+// copy on a failed refetch instead of erroring out. Per-instance only
+// (Fluid Compute), same tradeoff already accepted for the price cache.
+const LIST_CACHE_TTL_MS = 60_000
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let protocolsCache: { data: any[]; fetchedAt: number } | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let poolsCache: { data: any[]; fetchedAt: number } | null = null
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getProtocolsList(): Promise<any[]> {
+  if (protocolsCache && Date.now() - protocolsCache.fetchedAt < LIST_CACHE_TTL_MS) return protocolsCache.data
+  try {
+    const res = await fetch('https://api.llama.fi/protocols')
+    if (!res.ok) throw new Error(`DeFiLlama protocols fetch failed: ${res.status}`)
+    const data = await res.json()
+    protocolsCache = { data, fetchedAt: Date.now() }
+    return data
+  } catch (err) {
+    if (protocolsCache) return protocolsCache.data
+    throw err
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getPoolsList(): Promise<any[]> {
+  if (poolsCache && Date.now() - poolsCache.fetchedAt < LIST_CACHE_TTL_MS) return poolsCache.data
+  try {
+    const res = await fetch('https://yields.llama.fi/pools')
+    if (!res.ok) throw new Error(`DeFiLlama yields fetch failed: ${res.status}`)
+    const json = await res.json()
+    const data = json.data ?? []
+    poolsCache = { data, fetchedAt: Date.now() }
+    return data
+  } catch (err) {
+    if (poolsCache) return poolsCache.data
+    throw err
+  }
+}
+
 async function fetchProtocolTvl(protocolQuery: string): Promise<DefiProtocolResult> {
-  const res = await fetch('https://api.llama.fi/protocols')
-  if (!res.ok) throw new Error(`DeFiLlama protocols fetch failed: ${res.status}`)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const protocols: any[] = await res.json()
+  const protocols = await getProtocolsList()
   const match = findBestProtocolMatch(protocols, protocolQuery.toLowerCase())
   if (!match) throw new Error(`Protocol "${protocolQuery}" not found on DeFiLlama`)
 
@@ -59,11 +98,7 @@ async function fetchProtocolTvl(protocolQuery: string): Promise<DefiProtocolResu
 }
 
 async function fetchTopYield(): Promise<DefiYieldResult> {
-  const res = await fetch('https://yields.llama.fi/pools')
-  if (!res.ok) throw new Error(`DeFiLlama yields fetch failed: ${res.status}`)
-  const json = await res.json()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pools: any[] = json.data ?? []
+  const pools = await getPoolsList()
 
   // Require meaningful TVL and cap APY — pools with tiny liquidity or
   // reward-token-inflated APY (seen up to 600,000%+) aren't realistic yields.
@@ -86,11 +121,7 @@ async function fetchTopYield(): Promise<DefiYieldResult> {
  * pool `project` is a slug (e.g. "aave-v3", "aave-v4") that a bare protocol
  * name substring-matches directly, unlike the /protocols name matching above. */
 async function fetchProtocolYield(protocolQuery: string): Promise<DefiProtocolYieldResult> {
-  const res = await fetch('https://yields.llama.fi/pools')
-  if (!res.ok) throw new Error(`DeFiLlama yields fetch failed: ${res.status}`)
-  const json = await res.json()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pools: any[] = json.data ?? []
+  const pools = await getPoolsList()
   const q = protocolQuery.toLowerCase()
 
   // Lower TVL floor than the global top-yield list — a single protocol's
