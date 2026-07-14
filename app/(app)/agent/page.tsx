@@ -617,6 +617,7 @@ export default function AgentPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const prefillSentRef = useRef(false)
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [showDeposit, setShowDeposit] = useState(false)
   const [showLimit, setShowLimit] = useState(false)
@@ -697,7 +698,8 @@ export default function AgentPage() {
       // Prefilled from the Launchpad "Open Agent chat" button — send it
       // straight away instead of making the user retype/paste the command.
       const prefill = sessionStorage.getItem('mp_agent_prefill')
-      if (prefill) {
+      if (prefill && !prefillSentRef.current) {
+        prefillSentRef.current = true
         sessionStorage.removeItem('mp_agent_prefill')
         handleSend(prefill)
       }
