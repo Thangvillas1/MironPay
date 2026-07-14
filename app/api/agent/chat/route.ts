@@ -184,6 +184,23 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'get_swap_quote',
+      description: 'Get a real swap route quote via 1inch (best route across DEXs, output amount, gas estimate) for any two tokens on a supported chain. RESEARCH/COMPARISON ONLY — this never executes a swap and is completely separate from execute_swap (which only runs on ARC via MironPay\'s own Agent Wallet). Call this when the user asks "how much would I get if I swapped X for Y" for a token pair or chain execute_swap doesn\'t support. Costs $0.01 USDC via x402.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tokenIn: { type: 'string', description: 'Symbol or contract address of the token being sold, e.g. "USDC" or "0xC02aaA...".' },
+          tokenOut: { type: 'string', description: 'Symbol or contract address of the token being bought.' },
+          amount: { type: 'string', description: 'Amount of tokenIn to quote, in human units (e.g. "1000" not wei).' },
+          chain: { type: 'string', enum: ['ethereum', 'polygon', 'arbitrum', 'optimism', 'base', 'bsc', 'avalanche'], description: 'Chain to quote on. Defaults to ethereum if not stated.' },
+        },
+        required: ['tokenIn', 'tokenOut', 'amount'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_dex_pair_data',
       description: 'Fetch real on-chain DEX pair data (price, liquidity, 24h volume/change) for a token, sorted by liquidity — via DexScreener/GeckoTerminal, across any chain, not just ARC. Different from get_token_price (aggregate CEX-style spot price): use this when the user asks specifically about a DEX/pool/liquidity/on-chain price for a token. Costs $0.01 USDC via x402 — no PIN needed.',
       parameters: {
@@ -478,6 +495,9 @@ Never claim the transaction is done or already in progress — the system will s
     let dexPairData:
       | { query: string; pairs: Array<{ chain: string; dex: string; pairLabel: string; priceUsd: number; liquidityUsd: number; volume24hUsd: number; change24hPct: number | null; url: string }> }
       | null = null
+    let swapQuoteData:
+      | { chain: string; srcSymbol: string; dstSymbol: string; srcAmount: number; dstAmount: number; gasEstimate: number | null }
+      | null = null
 
     // Does the user's RAW text contain a standalone number the model could
     // legitimately have read as an amount? Strips 0x addresses and @handles
@@ -671,6 +691,34 @@ Never claim the transaction is done or already in progress — the system will s
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
+        } else if (fnName === 'get_swap_quote') {
+          const origin = request.nextUrl.origin
+          const tokenIn = (args.tokenIn ?? '').trim()
+          const tokenOut = (args.tokenOut ?? '').trim()
+          const amount = (args.amount ?? '').trim()
+          const chain = (args.chain ?? 'ethereum').trim()
+          if (!tokenIn || !tokenOut || !amount) {
+            reply = 'Please provide the two tokens and the amount you want a swap quote for.'
+          } else {
+            const path = `/api/x402/swap-quote?tokenIn=${encodeURIComponent(tokenIn)}&tokenOut=${encodeURIComponent(tokenOut)}&amount=${encodeURIComponent(amount)}&chain=${encodeURIComponent(chain)}`
+            const { content, fee, data: rawData } = await callX402Tool<{
+              chain: string; srcSymbol: string; dstSymbol: string; srcAmount: number; dstAmount: number; gasEstimate: number | null
+            }>(origin, path, profile, (data) =>
+              `Swap quote via 1inch on ${data.chain} (paid $${X402_DATA_FEE} via x402): ${data.srcAmount} ${data.srcSymbol} → ~${data.dstAmount} ${data.dstSymbol}`
+              + (data.gasEstimate != null ? `, estimated gas ${data.gasEstimate}` : '') + '. '
+              + `A stat card with these numbers is ALREADY shown to the user below — reply in ONE short sentence with the output amount. `
+              + `IMPORTANT: this is a price-comparison quote only, NOT an executed swap — never say the swap happened or offer to confirm/execute it via this data.`)
+            if (fee) dataFee = fee
+            if (rawData) swapQuoteData = rawData
+
+            const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+            const secondRes = await fetch(GROQ_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+              body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
+            })
+            if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
+          }
         } else if (fnName === 'get_dex_pair_data') {
           const origin = request.nextUrl.origin
           const query = (args.query ?? '').trim()
@@ -854,6 +902,7 @@ Never claim the transaction is done or already in progress — the system will s
           stablecoin_data: stablecoinData,
           wallet_lookup_data: walletLookupData,
           dex_pair_data: dexPairData,
+          swap_quote_data: swapQuoteData,
           created_at: assistantTs.toISOString(),
         },
       ]),
@@ -873,6 +922,7 @@ Never claim the transaction is done or already in progress — the system will s
       stablecoin_data: stablecoinData,
       wallet_lookup_data: walletLookupData,
       dex_pair_data: dexPairData,
+      swap_quote_data: swapQuoteData,
     })
 
   } catch (err) {
