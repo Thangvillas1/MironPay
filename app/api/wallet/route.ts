@@ -90,13 +90,17 @@ export async function GET(request: NextRequest) {
   // Fetch memos for these txHashes (RLS ensures only sender/recipient can read)
   const txHashes = rawTxs.map((tx) => tx.txHash).filter(Boolean)
   const memoMap: Record<string, string> = {}
+  const kindMap: Record<string, string> = {}
   if (txHashes.length > 0) {
-    const { data: memos } = await supabase
-      .from('transaction_memos')
-      .select('tx_hash, memo')
-      .in('tx_hash', txHashes)
+    const [{ data: memos }, { data: kinds }] = await Promise.all([
+      supabase.from('transaction_memos').select('tx_hash, memo').in('tx_hash', txHashes),
+      supabase.from('transaction_kinds').select('tx_hash, kind').in('tx_hash', txHashes),
+    ])
     for (const m of memos ?? []) {
       memoMap[m.tx_hash] = m.memo
+    }
+    for (const k of kinds ?? []) {
+      kindMap[k.tx_hash] = k.kind
     }
   }
 
@@ -105,7 +109,13 @@ export async function GET(request: NextRequest) {
     type: (tx.transactionType === 'INBOUND' ? 'credit' : 'debit') as 'credit' | 'debit',
     amount: parseFloat(tx.amounts?.[0] ?? '0'),
     tokenSymbol: (tx.token?.symbol ?? txTokenMap[tx.tokenId ?? ''] ?? 'USDC') as string,
-    description: tx.transactionType === 'INBOUND' ? 'Received' : 'Sent',
+    // Circle only ever reports a generic Sent/Received — swap the label to
+    // "Swap" when this tx_hash was tagged at execution time (see
+    // app/api/wallet/swap/route.ts), so the shared activity-icon logic
+    // (which keys off "swap" in the description) picks it up everywhere.
+    description: tx.txHash && kindMap[tx.txHash] === 'swap'
+      ? 'Swap'
+      : tx.transactionType === 'INBOUND' ? 'Received' : 'Sent',
     created_at: tx.createDate ?? new Date().toISOString(),
     state: tx.state,
     txHash: tx.txHash,

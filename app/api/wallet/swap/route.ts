@@ -54,6 +54,17 @@ export async function POST(request: NextRequest) {
           config: { slippageBps, allowanceStrategy: 'permit', kitKey: CIRCLE_KIT_KEY },
         })
 
+        // Circle's transaction list only ever reports a generic Sent/Received
+        // for this — tag the tx_hash so the history UI can show it as a swap
+        // instead (see app/lib/activity-icon.tsx, which keys off "swap" in
+        // the description). Best-effort: a failed insert shouldn't fail the
+        // swap that already succeeded on-chain.
+        if (result.txHash) {
+          await supabase.from('transaction_kinds').insert({
+            tx_hash: result.txHash, kind: 'swap', wallet_address: walletAddress,
+          }).then(undefined, () => {})
+        }
+
         return NextResponse.json({
           transactionId: result.txHash,
           txHash: result.txHash,

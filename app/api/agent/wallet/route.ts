@@ -142,12 +142,27 @@ export async function GET(request: NextRequest) {
         if (tx.transactionType !== 'INBOUND' && parseFloat(tx.amounts?.[0] ?? '0') === 0) return false
         return true
       })
+
+    // Circle only ever reports a generic Sent/Received — swap the label to
+    // "Swap" when this tx_hash was tagged at execution time (see
+    // app/api/wallet/swap/route.ts), same as the Main Wallet's tx list.
+    const txHashes = rawTxs.map((tx) => tx.txHash).filter(Boolean)
+    const kindMap: Record<string, string> = {}
+    if (txHashes.length > 0) {
+      const { data: kinds } = await supabase.from('transaction_kinds').select('tx_hash, kind').in('tx_hash', txHashes)
+      for (const k of kinds ?? []) {
+        kindMap[k.tx_hash] = k.kind
+      }
+    }
+
     const transactions = rawTxs.map((tx) => ({
       id: tx.id,
       type: (tx.transactionType === 'INBOUND' ? 'credit' : 'debit') as 'credit' | 'debit',
       amount: parseFloat(tx.amounts?.[0] ?? '0'),
       tokenSymbol: (tx.token?.symbol ?? 'USDC') as string,
-      description: tx.transactionType === 'INBOUND' ? 'Received' : 'Sent',
+      description: tx.txHash && kindMap[tx.txHash] === 'swap'
+        ? 'Swap'
+        : tx.transactionType === 'INBOUND' ? 'Received' : 'Sent',
       created_at: tx.createDate ?? new Date().toISOString(),
       state: tx.state,
       txHash: tx.txHash,
