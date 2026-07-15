@@ -1222,7 +1222,16 @@ export default function AgentPage() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                 onFocus={() => setKeyboardOpen(true)}
-                onBlur={() => setKeyboardOpen(false)}
+                onBlur={() => {
+                  setKeyboardOpen(false)
+                  // Focusing the textarea makes mobile browsers auto-scroll the
+                  // whole page to keep it above the keyboard (even with
+                  // overflow:hidden on html/body) — that scroll never reverts on
+                  // its own once the keyboard closes, leaving the composer
+                  // visibly offset from where it started. Force it back after
+                  // the keyboard-close animation settles.
+                  setTimeout(() => window.scrollTo(0, 0), 300)
+                }}
                 placeholder="Ask MironPay Agent..."
                 rows={1}
                 disabled={sending}
