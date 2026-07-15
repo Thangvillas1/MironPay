@@ -660,6 +660,16 @@ export default function AgentPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const [viewportRect, setViewportRect] = useState<{ top: number; height: number } | null>(null)
+  const [isStandalone, setIsStandalone] = useState(false)
+
+  // Detect standalone (installed PWA) launch — matchMedia covers Android/
+  // desktop installs, navigator.standalone covers iOS Safari's older API.
+  useEffect(() => {
+    setIsStandalone(
+      window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as { standalone?: boolean }).standalone === true
+    )
+  }, [])
 
   // 100dvh / interactive-widget=resizes-content are unreliable in an
   // installed iOS PWA (standalone display mode) when the keyboard opens —
@@ -668,7 +678,12 @@ export default function AgentPage() {
   // (offsetTop) independent of the layout viewport once the keyboard is up,
   // so a plain shorter box left in normal flow ends up with its bottom
   // hanging off-screen. Track both and pin this container to the exact rect.
+  // Scoped to standalone only — in a regular browser tab, the browser's own
+  // chrome (address bar) resizes the viewport too, and pinning to
+  // visualViewport there fights that instead of helping, causing a visible
+  // jump when the keyboard closes.
   useEffect(() => {
+    if (!isStandalone) return
     const vv = window.visualViewport
     if (!vv) return
     const updateRect = () => setViewportRect({ top: vv.offsetTop, height: vv.height })
@@ -679,7 +694,7 @@ export default function AgentPage() {
       vv.removeEventListener('resize', updateRect)
       vv.removeEventListener('scroll', updateRect)
     }
-  }, [])
+  }, [isStandalone])
 
   // Only the message list should scroll. `overflow: hidden` on html/body alone
   // isn't enough on iOS Safari — while the keyboard is up, WebKit still lets
