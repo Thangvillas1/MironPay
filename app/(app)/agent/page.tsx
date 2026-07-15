@@ -659,6 +659,7 @@ export default function AgentPage() {
   }
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [viewportRect, setViewportRect] = useState<{ top: number; height: number } | null>(null)
 
   // 100dvh / interactive-widget=resizes-content are unreliable in an
@@ -702,6 +703,7 @@ export default function AgentPage() {
       html.style.overflow = prevHtmlOverflow
       document.body.style.overflow = prevBodyOverflow
       document.removeEventListener('touchmove', blockOuterScroll)
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
       setKeyboardOpen(false)
     }
   }, [setKeyboardOpen])
@@ -1206,8 +1208,16 @@ export default function AgentPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                onFocus={() => setKeyboardOpen(true)}
-                onBlur={() => setKeyboardOpen(false)}
+                onFocus={() => {
+                  if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
+                  setKeyboardOpen(true)
+                }}
+                onBlur={() => {
+                  // Wait out the iOS keyboard-collapse animation before switching
+                  // this container back to static h-dvh layout — flipping instantly
+                  // makes the composer visibly jump/bounce mid-collapse.
+                  blurTimeoutRef.current = setTimeout(() => setKeyboardOpen(false), 200)
+                }}
                 placeholder="Ask MironPay Agent..."
                 rows={1}
                 disabled={sending}
