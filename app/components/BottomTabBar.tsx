@@ -8,6 +8,7 @@ type Tab = {
   label: string
   href: string
   activeOn: string[]
+  hideLabel?: boolean
   icon: (active: boolean) => React.ReactNode
 }
 
@@ -26,9 +27,14 @@ const TABS: Tab[] = [
     label: 'Agent',
     href: '/agent',
     activeOn: ['/agent'],
+    hideLabel: true,
     icon: (active) => (
       <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.2 : 1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="w-[21px] h-[21px]">
-        <path d="M12 2l2.4 6.4L21 9l-5.4 5 1.8 7L12 17.5 6.6 21l1.8-7L3 9l6.6-.6z" />
+        <rect x="4" y="9" width="16" height="11" rx="3" />
+        <path d="M12 9V5" /><circle cx="12" cy="3.5" r="1.3" fill="currentColor" stroke="none" />
+        <circle cx="9" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
+        <circle cx="15" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
+        <path d="M2 13v3M22 13v3" />
       </svg>
     ),
   },
@@ -83,7 +89,7 @@ export default function BottomTabBar() {
               style={{ color: isActive ? 'var(--mpm-primary)' : 'var(--mpm-muted)' }}
             >
               {tab.icon(isActive)}
-              <span className="text-[9px] font-medium tracking-wide">{tab.label}</span>
+              {!tab.hideLabel && <span className="text-[9px] font-medium tracking-wide">{tab.label}</span>}
             </Link>
           )
         })}
