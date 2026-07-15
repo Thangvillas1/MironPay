@@ -660,16 +660,6 @@ export default function AgentPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const [viewportRect, setViewportRect] = useState<{ top: number; height: number } | null>(null)
-  const [isStandalone, setIsStandalone] = useState(false)
-
-  // Detect standalone (installed PWA) launch — matchMedia covers Android/
-  // desktop installs, navigator.standalone covers iOS Safari's older API.
-  useEffect(() => {
-    setIsStandalone(
-      window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as { standalone?: boolean }).standalone === true
-    )
-  }, [])
 
   // 100dvh / interactive-widget=resizes-content are unreliable in an
   // installed iOS PWA (standalone display mode) when the keyboard opens —
@@ -678,12 +668,7 @@ export default function AgentPage() {
   // (offsetTop) independent of the layout viewport once the keyboard is up,
   // so a plain shorter box left in normal flow ends up with its bottom
   // hanging off-screen. Track both and pin this container to the exact rect.
-  // Scoped to standalone only — in a regular browser tab, the browser's own
-  // chrome (address bar) resizes the viewport too, and pinning to
-  // visualViewport there fights that instead of helping, causing a visible
-  // jump when the keyboard closes.
   useEffect(() => {
-    if (!isStandalone) return
     const vv = window.visualViewport
     if (!vv) return
     const updateRect = () => setViewportRect({ top: vv.offsetTop, height: vv.height })
@@ -694,7 +679,7 @@ export default function AgentPage() {
       vv.removeEventListener('resize', updateRect)
       vv.removeEventListener('scroll', updateRect)
     }
-  }, [isStandalone])
+  }, [])
 
   // Only the message list should scroll. `overflow: hidden` on html/body alone
   // isn't enough on iOS Safari — while the keyboard is up, WebKit still lets
@@ -1222,16 +1207,7 @@ export default function AgentPage() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                 onFocus={() => setKeyboardOpen(true)}
-                onBlur={() => {
-                  setKeyboardOpen(false)
-                  // Focusing the textarea makes mobile browsers auto-scroll the
-                  // whole page to keep it above the keyboard (even with
-                  // overflow:hidden on html/body) — that scroll never reverts on
-                  // its own once the keyboard closes, leaving the composer
-                  // visibly offset from where it started. Force it back after
-                  // the keyboard-close animation settles.
-                  setTimeout(() => window.scrollTo(0, 0), 300)
-                }}
+                onBlur={() => setKeyboardOpen(false)}
                 placeholder="Ask MironPay Agent..."
                 rows={1}
                 disabled={sending}
