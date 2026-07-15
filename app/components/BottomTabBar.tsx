@@ -17,6 +17,7 @@ const TABS: Tab[] = [
     label: 'Home',
     href: '/dashboard',
     activeOn: ['/dashboard', '/token'],
+    hideLabel: true,
     icon: (active) => (
       <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.2 : 1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="w-[21px] h-[21px]">
         <path d="M3 10.5 12 4l9 6.5" /><path d="M5 9.5V20h14V9.5" /><path d="M9.5 20v-5h5v5" />
@@ -42,6 +43,7 @@ const TABS: Tab[] = [
     label: 'Launchpad',
     href: '/launchpad',
     activeOn: ['/launchpad'],
+    hideLabel: true,
     icon: (active) => (
       <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.2 : 1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="w-[21px] h-[21px]">
         <path d="M5 16c-1.5 1.3-2 5-2 5s3.7-.5 5-2" /><path d="M9 14c5-8 9-9 12-9 0 3-1 7-9 12" />
@@ -53,6 +55,7 @@ const TABS: Tab[] = [
     label: 'Settings',
     href: '/settings',
     activeOn: ['/settings'],
+    hideLabel: true,
     icon: (active) => (
       <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.2 : 1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="w-[21px] h-[21px]">
         <circle cx="12" cy="12" r="3" />
