@@ -24,7 +24,6 @@ import { SwapQuoteCard } from '@/app/components/SwapQuoteCard'
 import { getActivityIcon } from '@/app/lib/activity-icon'
 import { TypewriterText } from '@/app/components/TypewriterText'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
-import { fmtUsd } from '@/app/lib/launchpad-data'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STALE_MS = 30_000
@@ -41,14 +40,9 @@ interface AgentWalletData {
   tokenList?: TokenBalance[]
 }
 
-interface LiveIdo {
-  id: string; name: string; sym: string; mark: string; accent: string
-  raised: number; target: number; price: number; minContribution: number
-}
-
 interface TxResult {
   success: boolean
-  type: 'send' | 'swap' | 'gateway_deposit' | 'gateway_withdraw' | 'launchpad_contribute'
+  type: 'send' | 'swap' | 'gateway_deposit' | 'gateway_withdraw'
   amountIn?: string
   tokenIn?: string
   amountOut?: string
@@ -208,8 +202,6 @@ export default function DashboardPage() {
   // Agent + chat
   const [accessToken, setAccessToken] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWalletData | null>(null)
-  const [liveIdo, setLiveIdo] = useState<LiveIdo | null>(null)
-  const [idoAmount, setIdoAmount] = useState(100)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   useEffect(() => {
@@ -404,16 +396,6 @@ export default function DashboardPage() {
       // Load agent on-chain identity
       supabase.from('miron_agent_identity').select('agent_id, tx_hash').single()
         .then(({ data }) => { if (data) setAgentIdentity(data) })
-
-      // Load the featured live Launchpad sale, if any (real on-chain data)
-      fetch('/api/launchpad/sales')
-        .then(r => r.ok ? r.json() : null)
-        .then(d => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const live = (d?.projects as any[])?.find(p => p.status === 'live')
-          if (live) setLiveIdo({ id: live.id, name: live.name, sym: live.sym, mark: live.mark, accent: live.accent, raised: live.raised, target: live.target, price: live.price ?? 0, minContribution: live.minContribution ?? 1 })
-        })
-        .catch(() => {})
 
       const [msgRes] = await Promise.all([
         supabase.from('agent_messages').select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data, stablecoin_data, wallet_lookup_data, dex_pair_data, swap_quote_data')
@@ -1085,8 +1067,8 @@ export default function DashboardPage() {
                             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={msg.txResult.success ? '#2dd4bf' : '#fb6f84'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d={msg.txResult.success ? 'm8.5 12 2.5 2.5L16 9' : 'M15 9l-6 6M9 9l6 6'} /></svg>
                             <span style={{ fontSize: 13.5, fontWeight: 700, color: msg.txResult.success ? '#2dd4bf' : '#fb6f84' }}>
                               {msg.txResult.success
-                                ? (msg.txResult.type === 'swap' ? 'Swap successful' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit successful' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal successful' : msg.txResult.type === 'launchpad_contribute' ? 'Contribution successful' : 'Transfer successful')
-                                : (msg.txResult.type === 'swap' ? 'Swap failed' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit failed' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal failed' : msg.txResult.type === 'launchpad_contribute' ? 'Contribution failed' : 'Transfer failed')}
+                                ? (msg.txResult.type === 'swap' ? 'Swap successful' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit successful' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal successful' : 'Transfer successful')
+                                : (msg.txResult.type === 'swap' ? 'Swap failed' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit failed' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal failed' : 'Transfer failed')}
                             </span>
                           </div>
                           <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--c-panel-2)' }}>
@@ -1104,12 +1086,6 @@ export default function DashboardPage() {
                                       {msg.txResult.type === 'gateway_deposit' ? '−' : '+'}{msg.txResult.amountIn} USDC
                                     </span>
                                   </div>
-                                ) : msg.txResult.type === 'launchpad_contribute' ? (
-                                  <>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Contributed</span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>−{msg.txResult.amountIn} USDC</span></div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Project</span><span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text)' }}>{msg.txResult.projectId}</span></div>
-                                    {msg.txResult.tokensEstimate && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Received</span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#2dd4bf' }}>~{msg.txResult.tokensEstimate} {msg.txResult.sym}</span></div>}
-                                  </>
                                 ) : (
                                   <>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Amount</span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>−{msg.txResult.amountIn} {msg.txResult.tokenIn}</span></div>
@@ -1285,55 +1261,6 @@ export default function DashboardPage() {
               </div>
               <button onClick={() => setShowAgentInfo(true)} className="mp-btn-primary" style={{ width: '100%', height: 40, marginTop: 14, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 6px 24px rgba(99,102,241,.38)', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>View details</button>
             </div>
-
-            {/* Live IDO — real-time on-chain raise progress */}
-            {liveIdo && (
-              <div style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--c-panel)', border: '1px solid rgba(var(--c-fg-rgb),.07)', boxShadow: '0 1px 3px rgba(3,8,20,.42)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: 'var(--c-muted2)', textTransform: 'uppercase' as const }}>Live IDO</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#2dd4bf', background: 'rgba(45,212,191,.12)', padding: '2px 8px', borderRadius: 9999 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2dd4bf' }} />Live
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, color: '#fff', background: `linear-gradient(140deg, ${liveIdo.accent}, ${liveIdo.accent}bb)` }}>{liveIdo.mark}</span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{liveIdo.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--c-muted)', fontWeight: 500 }}>${liveIdo.sym}</span></div>
-                    <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fmtUsd(liveIdo.raised)} raised of {fmtUsd(liveIdo.target)}</div>
-                  </div>
-                </div>
-                <div style={{ height: 6, borderRadius: 9999, background: 'rgba(var(--c-fg-rgb),.05)', marginTop: 12, overflow: 'hidden', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
-                  <div style={{ height: '100%', width: `${liveIdo.target ? Math.min(100, Math.round(liveIdo.raised / liveIdo.target * 100)) : 0}%`, borderRadius: 9999, background: `linear-gradient(90deg, ${liveIdo.accent}, ${liveIdo.accent}cc)` }} />
-                </div>
-                {(() => {
-                  const idoMax = Math.max(agentBalance, liveIdo.minContribution)
-                  const idoVal = Math.min(idoAmount, idoMax)
-                  const idoTokens = liveIdo.price > 0 ? idoVal / liveIdo.price : 0
-                  return (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted2)', marginBottom: 4 }}>
-                        <span>${idoVal.toFixed(0)} USDC</span>
-                        <span>~{idoTokens.toLocaleString('en-US', { maximumFractionDigits: 2 })} {liveIdo.sym}</span>
-                      </div>
-                      <input
-                        type="range" min={0} max={idoMax} step={1} value={idoVal}
-                        onChange={e => setIdoAmount(Number(e.target.value))}
-                        style={{ width: '100%', accentColor: liveIdo.accent }}
-                        aria-label={`Amount to contribute to ${liveIdo.name}`}
-                      />
-                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                        <button onClick={() => router.push(`/launchpad/${liveIdo.id}`)} style={{ flex: 1, height: 36, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-                          View details →
-                        </button>
-                        <button onClick={() => handleSend(`Contribute $${idoVal} to ${liveIdo.name}`)} disabled={sending || idoVal <= 0} style={{ flex: 1, height: 36, borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${liveIdo.accent}, ${liveIdo.accent}cc)`, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: sending ? 'default' : 'pointer', opacity: (sending || idoVal <= 0) ? .6 : 1 }}>
-                          Buy ${idoVal.toFixed(0)} now
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
 
             {/* Miron Score — hidden until public launch; scoring still runs server-side */}
 

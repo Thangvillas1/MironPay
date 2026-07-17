@@ -40,18 +40,6 @@ const TABS: Tab[] = [
     ),
   },
   {
-    label: 'Launchpad',
-    href: '/launchpad',
-    activeOn: ['/launchpad'],
-    hideLabel: true,
-    icon: (active) => (
-      <svg viewBox="0 0 24 24" fill="none" strokeWidth={active ? 2.2 : 1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" className="w-[21px] h-[21px]">
-        <path d="M5 16c-1.5 1.3-2 5-2 5s3.7-.5 5-2" /><path d="M9 14c5-8 9-9 12-9 0 3-1 7-9 12" />
-        <path d="M9 14l-3-1 1-3" /><path d="M10 15l1 3 3-1" /><circle cx="15" cy="9" r="1.4" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
     label: 'Settings',
     href: '/settings',
     activeOn: ['/settings'],

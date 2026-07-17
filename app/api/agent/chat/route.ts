@@ -30,6 +30,11 @@ async function callX402Tool<T>(
 
 const MSG_COST = 0.01 // placeholder for testnet — revisit for mainnet
 const TREASURY_ADDRESS = process.env.AGENT_OWNER_ADDRESS!
+// TEMP (2026-07-18): the per-message on-chain fee charge (chargeInputFee)
+// waits for Circle to confirm a real transaction before every single chat
+// reply, adding noticeable latency to every message. Disabled until mainnet
+// — flip back to true to re-enable the real charge + balance/limit gating.
+const CHARGE_MESSAGE_FEE = false
 
 // Repeated price lookups for the same symbol within this window are served
 // from here instead of re-running the full x402 payment (Gateway funding
@@ -141,21 +146,6 @@ const TOOLS = [
           amount: { type: 'string', description: 'Exact numeric amount of USDC to withdraw from the X402 reserve' },
         },
         required: ['amount'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'execute_launchpad_contribute',
-      description: 'Contribute USDC from the Agent Wallet to a live MironPay Launchpad (IDO) sale. Call this ONLY when the user clearly wants to buy/contribute/invest into a named project with a specific numeric amount, and that project appears in the "Live Launchpad sales" list above. If the project isn\'t in that list, tell the user it\'s not live instead of calling this.',
-      parameters: {
-        type: 'object',
-        properties: {
-          projectId: { type: 'string', description: 'Exact projectId slug from the Live Launchpad sales list, e.g. "helios"' },
-          amount: { type: 'string', description: 'Exact numeric amount of USDC to contribute' },
-        },
-        required: ['projectId', 'amount'],
       },
     },
   },
@@ -316,11 +306,11 @@ export async function POST(request: NextRequest) {
       usdcTokenId = usdc?.token?.id
     }
 
-    if (onChainBalance < MSG_COST) {
+    if (CHARGE_MESSAGE_FEE && onChainBalance < MSG_COST) {
       return NextResponse.json({ error: 'insufficient_balance', message: 'Insufficient Agent Wallet balance. Please deposit USDC.' }, { status: 402 })
     }
 
-    if (wallet.daily_spent + MSG_COST > wallet.daily_limit) {
+    if (CHARGE_MESSAGE_FEE && wallet.daily_spent + MSG_COST > wallet.daily_limit) {
       return NextResponse.json({ error: 'daily_limit_exceeded', message: `Daily spending limit of ${wallet.daily_limit} USDC reached.` }, { status: 402 })
     }
 
@@ -328,13 +318,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'wallet_not_ready', message: 'Agent Wallet not initialized.' }, { status: 400 })
     }
 
-    let msgFeeTxHash: string | null
-    try {
-      msgFeeTxHash = await chargeInputFee(profile.agent_wallet_id, usdcTokenId)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      console.error('[agent/chat] input fee charge failed:', msg)
-      return NextResponse.json({ error: 'input_fee_failed', message: 'Could not charge the message fee. Please try again.' }, { status: 500 })
+    let msgFeeTxHash: string | null = null
+    if (CHARGE_MESSAGE_FEE) {
+      try {
+        msgFeeTxHash = await chargeInputFee(profile.agent_wallet_id, usdcTokenId)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('[agent/chat] input fee charge failed:', msg)
+        return NextResponse.json({ error: 'input_fee_failed', message: 'Could not charge the message fee. Please try again.' }, { status: 500 })
+      }
     }
 
     const { data: memories } = await supabase
@@ -368,21 +360,6 @@ Agent Wallet: ${agentSummary}
 Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
     }
 
-    // Live Launchpad sales — lets the model resolve a project name to its
-    // exact project_id slug for execute_launchpad_contribute.
-    const { data: liveSubmissions } = await supabase
-      .from('launchpad_submissions')
-      .select('project_id, name, sym, price, target, min_contribution, cap, start_at, end_at')
-      .eq('status', 'approved')
-      .lte('start_at', new Date().toISOString())
-      .gte('end_at', new Date().toISOString())
-
-    const launchpadContext = liveSubmissions && liveSubmissions.length > 0
-      ? `\n## Live Launchpad sales (for execute_launchpad_contribute)\n${liveSubmissions.map(s =>
-          `- ${s.name} (projectId: "${s.project_id}"), $${s.sym}, target $${s.target}, per-wallet $${s.min_contribution}-$${s.cap}, ends ${s.end_at}`
-        ).join('\n')}`
-      : ''
-
     const { data: history } = await supabase
       .from('agent_messages').select('role, content')
       .eq('user_id', user.id).order('created_at', { ascending: false }).limit(8)
@@ -401,7 +378,7 @@ Reply in the same language the user writes in — Vietnamese or English.
 ## Tone and length
 Be concise and professional — get to the point. Default to 1-3 short sentences. Never pad with filler ("As an AI...", "I'd be happy to help..."), never repeat the question back, never restate data that is already shown to the user visually (chart, table, gauge — those are called out explicitly in tool results when they apply).
 
-${portfolioContext}${launchpadContext}${memoryContext}
+${portfolioContext}${memoryContext}
 
 ## Available tokens
 Only USDC and EURC can be sent or swapped — that's all that exists as a wallet balance on ARC Testnet. Never call execute_send/execute_swap for any other token.
@@ -457,7 +434,6 @@ Never claim the transaction is done or already in progress — the system will s
     const SWAP_VERBS = ['swap', 'exchange', 'convert', 'đổi', 'doi']
     const DEPOSIT_VERBS = ['deposit', 'top up', 'topup', 'nạp', 'nap']
     const WITHDRAW_VERBS = ['withdraw', 'rút', 'rut']
-    const CONTRIBUTE_VERBS = ['contribute', 'buy', 'invest', 'mua', 'góp', 'gop', 'đầu tư', 'dau tu']
     function hasAnyKeyword(raw: string, keywords: string[]): boolean {
       const lower = raw.toLowerCase()
       return keywords.some(k => lower.includes(k))
@@ -467,7 +443,6 @@ Never claim the transaction is done or already in progress — the system will s
       execute_swap: SWAP_VERBS,
       execute_gateway_deposit: DEPOSIT_VERBS,
       execute_gateway_withdraw: WITHDRAW_VERBS,
-      execute_launchpad_contribute: CONTRIBUTE_VERBS,
     }
     const activeTools = TOOLS.filter(t => {
       const verbs = MONEY_TOOL_VERBS[t.function.name]
@@ -572,8 +547,6 @@ Never claim the transaction is done or already in progress — the system will s
             : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
           execute_gateway_withdraw: () => !hasAnyKeyword(message, WITHDRAW_VERBS) ? 'no withdraw verb in the user message'
             : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
-          execute_launchpad_contribute: () => !hasAnyKeyword(message, CONTRIBUTE_VERBS) ? 'no contribute verb in the user message'
-            : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
         }
         const guard = moneyToolGuards[fnName]
         const blockReason = guard?.()
@@ -619,17 +592,6 @@ Never claim the transaction is done or already in progress — the system will s
         } else if (fnName === 'execute_gateway_withdraw') {
           action = { type: 'gateway_withdraw', amount: args.amount }
           reply = `Ready to withdraw ${args.amount} USDC from the X402 reserve. Confirm below to proceed.`
-        } else if (fnName === 'execute_launchpad_contribute') {
-          const sale = liveSubmissions?.find(s => s.project_id === args.projectId)
-          const sym = sale?.sym
-          const tokensEstimate = sale?.price ? (parseFloat(args.amount) / sale.price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : undefined
-          action = {
-            type: 'launchpad_contribute', projectId: args.projectId, amount: args.amount,
-            ...(sym ? { sym } : {}), ...(tokensEstimate ? { tokensEstimate } : {}),
-          }
-          reply = `Ready to contribute ${args.amount} USDC to ${args.projectId} sale from Agent Wallet`
-            + (tokensEstimate ? ` — you'll receive ~${tokensEstimate} $${sym} (subject to the project's vesting schedule).` : '.')
-            + ' Confirm below to proceed.'
         } else if (fnName === 'get_token_price') {
           let toolResultContent: string
           const symbol = (args.symbol ?? '').trim()
@@ -910,7 +872,7 @@ Never claim the transaction is done or already in progress — the system will s
 
     await Promise.all([
       supabase.from('agent_messages').insert([
-        { user_id: user.id, role: 'user', content: message, cost: MSG_COST, input_fee_tx_hash: msgFeeTxHash, created_at: userTs.toISOString() },
+        { user_id: user.id, role: 'user', content: message, cost: CHARGE_MESSAGE_FEE ? MSG_COST : 0, input_fee_tx_hash: msgFeeTxHash, created_at: userTs.toISOString() },
         {
           user_id: user.id, role: 'assistant', content: reply, cost: 0,
           data_fee_amount: dataFee?.amount ?? null,
@@ -928,12 +890,12 @@ Never claim the transaction is done or already in progress — the system will s
         },
       ]),
       supabase.from('agent_wallets').update({
-        daily_spent: wallet.daily_spent + MSG_COST,
+        daily_spent: wallet.daily_spent + (CHARGE_MESSAGE_FEE ? MSG_COST : 0),
       }).eq('user_id', user.id),
     ])
 
     return NextResponse.json({
-      reply, action, cost: MSG_COST, balance_after: onChainBalance - MSG_COST,
+      reply, action, cost: CHARGE_MESSAGE_FEE ? MSG_COST : 0, balance_after: onChainBalance - (CHARGE_MESSAGE_FEE ? MSG_COST : 0),
       input_fee_tx_hash: msgFeeTxHash,
       data_fee: dataFee,
       token_chart: tokenChart,
