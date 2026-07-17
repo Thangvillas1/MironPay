@@ -52,7 +52,7 @@ type CachedPrice = {
 }
 const priceCache = new Map<string, CachedPrice>()
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_MODEL = 'llama-3.1-8b-instant'
 
 /**
  * Charge the real per-message input fee — a genuine on-chain USDC transfer,
