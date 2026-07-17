@@ -52,7 +52,7 @@ type CachedPrice = {
 }
 const priceCache = new Map<string, CachedPrice>()
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.1-8b-instant'
+const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
 /**
  * Charge the real per-message input fee — a genuine on-chain USDC transfer,
@@ -408,14 +408,7 @@ Only USDC and EURC can be sent or swapped — that's all that exists as a wallet
 Price lookups (get_token_price) are NOT limited to USDC/EURC — any real-world coin (BTC, ETH, SOL, etc.) can be looked up.
 
 ## How to use tools
-- execute_send: use when user clearly wants to send/transfer USDC or EURC with a known recipient AND amount
-- execute_swap: use when user clearly wants to swap between USDC and EURC with a known amount
-- execute_gateway_deposit: use when user wants to top up / nạp the X402 reserve with a known amount
-- execute_gateway_withdraw: use when user wants to withdraw / rút from the X402 reserve with a known amount
-- execute_launchpad_contribute: use when user wants to buy/contribute into a named Launchpad project that's in the live sales list, with a known amount
-- get_token_price: use when user asks the price/rate/chart of ANY specific named coin, including ones not supported for send/swap on ARC. This is also the ONLY way to show a chart — "chart of X" / "biểu đồ X" always means get_token_price with symbol=X, NEVER get_trending_tokens.
-- get_trending_tokens: use ONLY for a general "what's trending" question with no specific coin named — never when a coin symbol/name appears in the message
-- save_memory: use when user shares a preference or habit worth remembering
+Each tool's own description below states exactly when to call it — follow those, don't guess beyond them.
 - When any required info is missing, ask ONE concise question — never guess or fill in blanks
 - A message that is JUST a 0x address or contract, with no verb and no amount, is NEVER a send/swap/deposit command — never invent an amount (e.g. "1") to make a tool call fit. Ask the user what they want to do with that address (e.g. "look up this token, or send funds to it? If sending, how much?").
 - Money-moving tools only fire on an explicit, unambiguous instruction from the user (action + amount + recipient, all stated by them, not inferred). The user is responsible for stating commands clearly — if their message is vague, partial, or could be read multiple ways, you must ask instead of guessing, no matter how "obvious" the likely intent seems.
@@ -445,13 +438,49 @@ Never claim the transaction is done or already in progress — the system will s
       { role: 'user', content: message },
     ]
 
+    // Lean context for the second (tool-result summarization) pass — the full
+    // systemPrompt's tool-selection/disambiguation rules aren't needed once a
+    // tool has already been picked and run; resending them just to get the
+    // model to phrase a summary doubles input tokens for no benefit.
+    const secondPassSystemPrompt = `You are Miron Agent, an AI financial assistant for MironPay on ARC Testnet. Reply in the same language the user wrote in — Vietnamese or English. Be concise: 1-3 short sentences, no filler, no restating data already shown in the UI (chart/table/gauge). Use the tool result below to answer the user's message directly.`
+    const secondPassMessages = [
+      { role: 'system', content: secondPassSystemPrompt },
+      { role: 'user', content: message },
+    ]
+
+    // Money-moving tools each require a specific verb in the user's raw
+    // message (enforced again, post-hoc, by moneyToolGuards below — this is
+    // the same check applied earlier so an unmatched tool is never offered
+    // to the model in the first place, saving its schema's tokens on every
+    // message that isn't actually a money command).
+    const SEND_VERBS = ['send', 'transfer', 'pay', 'gửi', 'gui', 'chuyển', 'chuyen']
+    const SWAP_VERBS = ['swap', 'exchange', 'convert', 'đổi', 'doi']
+    const DEPOSIT_VERBS = ['deposit', 'top up', 'topup', 'nạp', 'nap']
+    const WITHDRAW_VERBS = ['withdraw', 'rút', 'rut']
+    const CONTRIBUTE_VERBS = ['contribute', 'buy', 'invest', 'mua', 'góp', 'gop', 'đầu tư', 'dau tu']
+    function hasAnyKeyword(raw: string, keywords: string[]): boolean {
+      const lower = raw.toLowerCase()
+      return keywords.some(k => lower.includes(k))
+    }
+    const MONEY_TOOL_VERBS: Record<string, string[]> = {
+      execute_send: SEND_VERBS,
+      execute_swap: SWAP_VERBS,
+      execute_gateway_deposit: DEPOSIT_VERBS,
+      execute_gateway_withdraw: WITHDRAW_VERBS,
+      execute_launchpad_contribute: CONTRIBUTE_VERBS,
+    }
+    const activeTools = TOOLS.filter(t => {
+      const verbs = MONEY_TOOL_VERBS[t.function.name]
+      return !verbs || hasAnyKeyword(message, verbs)
+    })
+
     const groqRes = await fetch(GROQ_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
       body: JSON.stringify({
         model: GROQ_MODEL,
         messages,
-        tools: TOOLS,
+        tools: activeTools,
         tool_choice: 'auto',
         max_tokens: 1024,
         temperature: 0.2,
@@ -509,15 +538,6 @@ Never claim the transaction is done or already in progress — the system will s
       const stripped = raw.replace(/0x[a-fA-F0-9]+/g, ' ').replace(/@\w+/g, ' ')
       return /\b\d+(\.\d+)?\b/.test(stripped)
     }
-    const SEND_VERBS = ['send', 'transfer', 'pay', 'gửi', 'gui', 'chuyển', 'chuyen']
-    const SWAP_VERBS = ['swap', 'exchange', 'convert', 'đổi', 'doi']
-    const DEPOSIT_VERBS = ['deposit', 'top up', 'topup', 'nạp', 'nap']
-    const WITHDRAW_VERBS = ['withdraw', 'rút', 'rut']
-    const CONTRIBUTE_VERBS = ['contribute', 'buy', 'invest', 'mua', 'góp', 'gop', 'đầu tư', 'dau tu']
-    function hasAnyKeyword(raw: string, keywords: string[]): boolean {
-      const lower = raw.toLowerCase()
-      return keywords.some(k => lower.includes(k))
-    }
 
     if (choice?.finish_reason === 'tool_calls' && assistantMsg?.tool_calls?.length > 0) {
       for (const toolCall of assistantMsg.tool_calls) {
@@ -568,7 +588,7 @@ Never claim the transaction is done or already in progress — the system will s
             + `Re-read the user's actual message and answer it directly in plain text. `
             + `If it truly was an incomplete money command, ask them to restate it with the action, exact amount, and recipient.`
           const secondMessages = [
-            ...messages,
+            ...secondPassMessages,
             assistantMsg,
             { role: 'tool', tool_call_id: toolCall.id, content: toolResultContent },
           ]
@@ -660,7 +680,7 @@ Never claim the transaction is done or already in progress — the system will s
             }
           }
           const secondMessages = [
-            ...messages,
+            ...secondPassMessages,
             assistantMsg,
             { role: 'tool', tool_call_id: toolCall.id, content: toolResultContent },
           ]
@@ -684,7 +704,7 @@ Never claim the transaction is done or already in progress — the system will s
           if (fee) dataFee = fee
           if (rawData) trendingData = rawData
 
-          const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+          const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -712,7 +732,7 @@ Never claim the transaction is done or already in progress — the system will s
             if (fee) dataFee = fee
             if (rawData) swapQuoteData = rawData
 
-            const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+            const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -738,7 +758,7 @@ Never claim the transaction is done or already in progress — the system will s
             if (fee) dataFee = fee
             if (rawData) dexPairData = rawData
 
-            const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+            const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -775,7 +795,7 @@ Never claim the transaction is done or already in progress — the system will s
           if (fee) dataFee = fee
           if (rawData) defiData = rawData
 
-          const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+          const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -791,7 +811,7 @@ Never claim the transaction is done or already in progress — the system will s
           if (fee) dataFee = fee
           if (rawData) sentimentData = rawData
 
-          const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+          const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -820,7 +840,7 @@ Never claim the transaction is done or already in progress — the system will s
             if (fee) dataFee = fee
             if (rawData) walletLookupData = rawData
 
-            const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+            const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -849,7 +869,7 @@ Never claim the transaction is done or already in progress — the system will s
           if (fee) dataFee = fee
           if (rawData) stablecoinData = rawData
 
-          const secondMessages = [...messages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
+          const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -862,7 +882,7 @@ Never claim the transaction is done or already in progress — the system will s
             { onConflict: 'user_id,key' }
           )
           const secondMessages = [
-            ...messages,
+            ...secondPassMessages,
             assistantMsg,
             { role: 'tool', tool_call_id: toolCall.id, content: `Saved: ${args.key} = ${args.value}` },
           ]
