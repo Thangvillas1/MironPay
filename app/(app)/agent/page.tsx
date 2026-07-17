@@ -1123,12 +1123,19 @@ export default function AgentPage() {
                     </a>
                   )}
                   {msg.role === 'assistant' && msg.dataFee && (
-                    <span
-                      className="text-[10px] text-mp-primary/70"
-                      title={msg.dataFee.txHash ?? undefined}
-                    >
-                      🔎 -{msg.dataFee.amount} USDC (live data via x402)
-                    </span>
+                    msg.dataFee.txHash ? (
+                      <a
+                        href={`https://testnet.arcscan.app/tx/${msg.dataFee.txHash}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] font-mono text-mp-primary/70 hover:text-mp-primary transition-colors"
+                      >
+                        🔎 -{msg.dataFee.amount} USDC (live data via x402) · View TX ↗
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-mp-primary/70">
+                        🔎 -{msg.dataFee.amount} USDC (live data via x402)
+                      </span>
+                    )
                   )}
                 </div>
               </div>

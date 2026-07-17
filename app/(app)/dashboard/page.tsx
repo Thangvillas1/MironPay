@@ -1148,9 +1148,19 @@ export default function DashboardPage() {
                           </a>
                         )}
                         {msg.role === 'assistant' && msg.dataFee && (
-                          <span style={{ fontSize: 11, color: 'var(--c-indigo-light)', fontWeight: 600 }} title={msg.dataFee.txHash ?? undefined}>
-                            🔎 −{msg.dataFee.amount} USDC (live data via x402)
-                          </span>
+                          msg.dataFee.txHash ? (
+                            <a
+                              href={`https://testnet.arcscan.app/tx/${msg.dataFee.txHash}`}
+                              target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize: 11, color: 'var(--c-indigo-light)', fontWeight: 600, textDecoration: 'none' }}
+                            >
+                              🔎 −{msg.dataFee.amount} USDC (live data via x402) · View TX ↗
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--c-indigo-light)', fontWeight: 600 }}>
+                              🔎 −{msg.dataFee.amount} USDC (live data via x402)
+                            </span>
+                          )
                         )}
                       </div>
                     </div>
