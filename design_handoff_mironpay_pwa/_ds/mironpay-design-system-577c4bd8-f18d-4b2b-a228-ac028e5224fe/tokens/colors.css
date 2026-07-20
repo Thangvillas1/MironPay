@@ -1,0 +1,90 @@
+/* ============================================================
+   MironPay — Color Tokens  ·  "Sapphire / Neo-fintech"
+   Deep navy canvas, sapphire accent, glass surfaces.
+   Two themes: dark (default, :root) and light (:root.light).
+   Use the semantic --c-* tokens, not raw hex, in product UI.
+   ============================================================ */
+
+:root {
+  /* ---- Base palette (raw) ---- */
+  --mp-sapphire-600: #1b4ad6;   /* deep sapphire */
+  --mp-sapphire-500: #2f6bff;   /* brand primary */
+  --mp-sapphire-400: #5b8cff;   /* accent on dark */
+  --mp-azure-400:    #58a6ff;   /* links / info */
+  --mp-indigo-500:   #6d6cff;   /* agent wallet */
+  --mp-cyan-500:     #22c6e0;   /* status wallet */
+  --mp-mint-500:     #2bd4a4;   /* success / positive */
+  --mp-mint-700:     #0f9d76;   /* success on light */
+  --mp-coral-500:    #ff5d6c;   /* error / negative */
+  --mp-gold-500:     #f5b748;   /* warning / streak (champagne) */
+
+  /* ---- Semantic (dark theme, default) ---- */
+  --c-page:          #070b15;
+  --c-panel:         #0f1626;
+  --c-panel-2:       #16203a;            /* raised panel / hover surface */
+  --c-sidebar:       #0a0f1d;
+  --c-text:          #eaf0fb;
+  --c-muted:         #8595b8;
+  --c-muted2:        #515f80;
+  --c-border:        rgba(255, 255, 255, 0.07);
+  --c-border-strong: rgba(255, 255, 255, 0.14);
+  --c-input:         rgba(255, 255, 255, 0.045);
+  --c-overlay:       rgba(4, 8, 18, 0.74);
+
+  --c-success:       #2bd4a4;
+  --c-error:         #ff5d6c;
+  --c-warning:       #f5b748;
+  --c-purple-accent: #5b8cff;            /* (legacy name) brand accent */
+  --c-purple-light:  #7da6ff;
+  --c-blue-accent:   #58a6ff;
+
+  /* primary action / active nav */
+  --c-primary:       #2f6bff;
+  --c-primary-hover: #4d83ff;
+  --c-on-primary:    #ffffff;
+
+  /* wallet accents — analogous blue family */
+  --c-wallet-blue:   #2f6bff;
+  --c-wallet-purple: #6d6cff;
+  --c-wallet-cyan:   #22c6e0;
+
+  /* ---- Glass ---- */
+  --glass-bg:     rgba(20, 30, 54, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-hi:     rgba(255, 255, 255, 0.07);  /* top-edge inner highlight */
+  --glass-blur:   18px;
+}
+
+:root.light {
+  --c-page:          #eef2fb;
+  --c-panel:         #ffffff;
+  --c-panel-2:       #f4f7fe;
+  --c-sidebar:       #e8edf9;
+  --c-text:          #0b1220;
+  --c-muted:         #586484;
+  --c-muted2:        #8b96ad;
+  --c-border:        rgba(13, 28, 64, 0.10);
+  --c-border-strong: rgba(13, 28, 64, 0.16);
+  --c-input:         rgba(13, 28, 64, 0.04);
+  --c-overlay:       rgba(20, 30, 60, 0.35);
+
+  --c-success:       #0f9d76;
+  --c-error:         #e23b4e;
+  --c-warning:       #c2870a;
+  --c-purple-accent: #1d4ed8;
+  --c-purple-light:  #2456e6;
+  --c-blue-accent:   #1d6fe0;
+
+  --c-primary:       #1d4ed8;
+  --c-primary-hover: #1746c4;
+  --c-on-primary:    #ffffff;
+
+  --c-wallet-blue:   #2456e6;
+  --c-wallet-purple: #5b54e8;
+  --c-wallet-cyan:   #0c9fc0;
+
+  --glass-bg:     rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(13, 28, 64, 0.08);
+  --glass-hi:     rgba(255, 255, 255, 0.9);
+  --glass-blur:   18px;
+}

@@ -27,12 +27,13 @@ interface AgentWallet {
 }
 
 interface TxAction {
-  type: 'send' | 'swap' | 'gateway_deposit' | 'gateway_withdraw'
+  type: 'send' | 'swap' | 'gateway_deposit' | 'gateway_withdraw' | 'launchpad_contribute'
   to?: string
   amount: string
   token?: string
   tokenIn?: string
   tokenOut?: string
+  projectId?: string
   walletSource?: 'agent' | 'main'
 }
 
@@ -93,6 +94,7 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
   const isSwap = action.type === 'swap'
   const isGatewayDeposit = action.type === 'gateway_deposit'
   const isGatewayWithdraw = action.type === 'gateway_withdraw'
+  const isLaunchpadContribute = action.type === 'launchpad_contribute'
   const isMain = action.walletSource === 'main'
 
   if (done) return (
@@ -103,7 +105,7 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
           <svg className="w-3 h-3 text-mp-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
         </div>
         <span className="text-xs font-semibold text-mp-success">
-          {isSend ? 'Transfer Successful' : isSwap ? 'Swap Successful' : isGatewayDeposit ? 'X402 Deposit Successful' : 'X402 Withdrawal Successful'}
+          {isSend ? 'Transfer Successful' : isSwap ? 'Swap Successful' : isGatewayDeposit ? 'X402 Deposit Successful' : isGatewayWithdraw ? 'X402 Withdrawal Successful' : 'Contribution Successful'}
         </span>
       </div>
       {/* Tx details */}
@@ -141,6 +143,18 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
               {isGatewayDeposit ? '-' : '+'}{action.amount} USDC
             </span>
           </div>
+        )}
+        {isLaunchpadContribute && (
+          <>
+            <div className="flex justify-between text-xs">
+              <span className="text-mp-muted">Contributed</span>
+              <span className="font-semibold text-mp-danger">-{action.amount} USDC</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-mp-muted">Project</span>
+              <span className="font-semibold text-mp-text">{action.projectId}</span>
+            </div>
+          </>
         )}
         <div className="flex justify-between text-xs">
           <span className="text-mp-muted">Network</span>
@@ -213,6 +227,18 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
             <span className="text-mp-muted">Amount</span>
             <span className="font-semibold text-mp-text">{action.amount} USDC</span>
           </div>
+        )}
+        {isLaunchpadContribute && (
+          <>
+            <div className="flex justify-between text-xs">
+              <span className="text-mp-muted">Amount</span>
+              <span className="font-semibold text-mp-text">{action.amount} USDC</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-mp-muted">Project</span>
+              <span className="font-semibold text-mp-text">{action.projectId}</span>
+            </div>
+          </>
         )}
         {error && <p className="text-[11px] text-mp-danger">{error}</p>}
       </div>
@@ -844,6 +870,7 @@ export default function AgentPage() {
           action.type === 'send' ? `Agent transfer to ${action.to}` :
           action.type === 'swap' ? `Agent swap to ${action.tokenOut}` :
           action.type === 'gateway_deposit' ? 'Agent X402 deposit' :
+          action.type === 'launchpad_contribute' ? `Agent Launchpad contribution to ${action.projectId}` :
           'Agent X402 withdrawal',
         created_at: new Date().toISOString(),
         txHash: d.txHash as string | undefined,

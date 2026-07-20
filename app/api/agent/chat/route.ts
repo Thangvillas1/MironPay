@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { payX402 } from '@/app/lib/x402-buyer'
+import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 
 const X402_DATA_FEE = 0.01 // placeholder for testnet — revisit for mainnet
 
@@ -22,7 +23,7 @@ async function callX402Tool<T>(
   }
   try {
     const { data, txHash } = await payX402<T>(`${origin}${path}`, profile.agent_wallet_id, profile.agent_wallet_address as `0x${string}`)
-    return { content: formatResult(data), fee: { amount: X402_DATA_FEE, txHash }, data }
+    return { content: formatResult(data), fee: txHash ? { amount: X402_DATA_FEE, txHash } : null, data }
   } catch (e) {
     return { content: `Data lookup unavailable (${e instanceof Error ? e.message : 'unknown error'}). Answer using general knowledge instead.`, fee: null, data: null }
   }
@@ -146,6 +147,21 @@ const TOOLS = [
           amount: { type: 'string', description: 'Exact numeric amount of USDC to withdraw from the X402 reserve' },
         },
         required: ['amount'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'execute_launchpad_contribute',
+      description: 'Contribute USDC from the Agent Wallet to a live MironPay Launchpad (IDO) sale. Call this ONLY when the user clearly wants to buy/contribute/invest into a named project with a specific numeric amount, and that project appears in the "Live Launchpad sales" list above. If the project isn\'t in that list, tell the user it\'s not live instead of calling this.',
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string', description: 'Exact projectId slug from the Live Launchpad sales list, e.g. "helios"' },
+          amount: { type: 'string', description: 'Exact numeric amount of USDC to contribute' },
+        },
+        required: ['projectId', 'amount'],
       },
     },
   },
@@ -296,6 +312,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: profile } = await supabase.from('profiles').select('agent_wallet_id, agent_wallet_address, circle_wallet_id, wallet_address').eq('id', user.id).single()
+    // circle_wallet_id on profiles can be null for legacy users — resolve (and backfill)
+    // it the same way the Wallet page does, so agent chat sees the same Main Wallet balance.
+    const resolvedMainWallet = await resolveCircleWalletId(supabase, user.id)
     let onChainBalance = 0
     let usdcTokenId: string | undefined
     if (profile?.agent_wallet_id) {
@@ -338,10 +357,10 @@ export async function POST(request: NextRequest) {
 
     // Load real portfolio from Circle
     let portfolioContext = 'Portfolio: unavailable.'
-    if (profile?.circle_wallet_id) {
+    if (resolvedMainWallet) {
       const [mainBal, agentBal] = await Promise.all([
-        circleClient.getWalletTokenBalance({ id: profile.circle_wallet_id }),
-        profile.agent_wallet_id
+        circleClient.getWalletTokenBalance({ id: resolvedMainWallet.circleWalletId }),
+        profile?.agent_wallet_id
           ? circleClient.getWalletTokenBalance({ id: profile.agent_wallet_id })
           : Promise.resolve(null),
       ])
@@ -354,11 +373,26 @@ export async function POST(request: NextRequest) {
       const agentSummary = agentTokens.map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || '0 USDC'
 
       portfolioContext = `## Current portfolio
-Main Wallet address: ${profile.wallet_address ?? 'unknown'}
+Main Wallet address: ${resolvedMainWallet.walletAddress}
 Main Wallet: ${mainSummary}
 Agent Wallet: ${agentSummary}
 Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
     }
+
+    // Live Launchpad sales — lets the model resolve a project name to its
+    // exact project_id slug for execute_launchpad_contribute.
+    const { data: liveSubmissions } = await supabase
+      .from('launchpad_submissions')
+      .select('project_id, name, sym, target, min_contribution, cap, start_at, end_at')
+      .eq('status', 'approved')
+      .lte('start_at', new Date().toISOString())
+      .gte('end_at', new Date().toISOString())
+
+    const launchpadContext = liveSubmissions && liveSubmissions.length > 0
+      ? `\n## Live Launchpad sales (for execute_launchpad_contribute)\n${liveSubmissions.map(s =>
+          `- ${s.name} (projectId: "${s.project_id}"), $${s.sym}, target $${s.target}, per-wallet $${s.min_contribution}-$${s.cap}, ends ${s.end_at}`
+        ).join('\n')}`
+      : ''
 
     const { data: history } = await supabase
       .from('agent_messages').select('role, content')
@@ -378,7 +412,7 @@ Reply in the same language the user writes in — Vietnamese or English.
 ## Tone and length
 Be concise and professional — get to the point. Default to 1-3 short sentences. Never pad with filler ("As an AI...", "I'd be happy to help..."), never repeat the question back, never restate data that is already shown to the user visually (chart, table, gauge — those are called out explicitly in tool results when they apply).
 
-${portfolioContext}${memoryContext}
+${portfolioContext}${launchpadContext}${memoryContext}
 
 ## Available tokens
 Only USDC and EURC can be sent or swapped — that's all that exists as a wallet balance on ARC Testnet. Never call execute_send/execute_swap for any other token.
@@ -399,6 +433,7 @@ Each tool's own description below states exactly when to call it — follow thos
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
 - "nạp/deposit vào X402/Gateway" / "top up X402" → execute_gateway_deposit
 - "rút/withdraw từ X402/Gateway" → execute_gateway_withdraw
+- "mua/buy/contribute/góp vào <project>" (project must be in Live Launchpad sales list) → execute_launchpad_contribute
 
 ## Wallets
 - Agent Wallet: default for all transactions (gasless, no PIN needed)
@@ -434,6 +469,7 @@ Never claim the transaction is done or already in progress — the system will s
     const SWAP_VERBS = ['swap', 'exchange', 'convert', 'đổi', 'doi']
     const DEPOSIT_VERBS = ['deposit', 'top up', 'topup', 'nạp', 'nap']
     const WITHDRAW_VERBS = ['withdraw', 'rút', 'rut']
+    const CONTRIBUTE_VERBS = ['buy', 'contribute', 'invest', 'mua', 'góp', 'gop', 'đầu tư', 'dau tu']
     function hasAnyKeyword(raw: string, keywords: string[]): boolean {
       const lower = raw.toLowerCase()
       return keywords.some(k => lower.includes(k))
@@ -443,6 +479,7 @@ Never claim the transaction is done or already in progress — the system will s
       execute_swap: SWAP_VERBS,
       execute_gateway_deposit: DEPOSIT_VERBS,
       execute_gateway_withdraw: WITHDRAW_VERBS,
+      execute_launchpad_contribute: CONTRIBUTE_VERBS,
     }
     const activeTools = TOOLS.filter(t => {
       const verbs = MONEY_TOOL_VERBS[t.function.name]
@@ -547,6 +584,8 @@ Never claim the transaction is done or already in progress — the system will s
             : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
           execute_gateway_withdraw: () => !hasAnyKeyword(message, WITHDRAW_VERBS) ? 'no withdraw verb in the user message'
             : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
+          execute_launchpad_contribute: () => !hasAnyKeyword(message, CONTRIBUTE_VERBS) ? 'no contribute verb in the user message'
+            : !hasExplicitAmount(message) ? 'no explicit amount in the user message' : null,
         }
         const guard = moneyToolGuards[fnName]
         const blockReason = guard?.()
@@ -592,6 +631,9 @@ Never claim the transaction is done or already in progress — the system will s
         } else if (fnName === 'execute_gateway_withdraw') {
           action = { type: 'gateway_withdraw', amount: args.amount }
           reply = `Ready to withdraw ${args.amount} USDC from the X402 reserve. Confirm below to proceed.`
+        } else if (fnName === 'execute_launchpad_contribute') {
+          action = { type: 'launchpad_contribute', projectId: args.projectId, amount: args.amount }
+          reply = `Ready to contribute ${args.amount} USDC to ${args.projectId} from Agent Wallet. Confirm below to proceed.`
         } else if (fnName === 'get_token_price') {
           let toolResultContent: string
           const symbol = (args.symbol ?? '').trim()

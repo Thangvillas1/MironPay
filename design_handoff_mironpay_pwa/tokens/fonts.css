@@ -1,0 +1,10 @@
+/* ============================================================
+   MironPay — Fonts
+   Geist Sans + Geist Mono (loaded via Next.js `next/font` in the
+   real app). Here they are served from Google Fonts, which hosts
+   the same families. If you have the original .woff2 binaries,
+   drop them in assets/fonts/ and swap these @import lines for
+   local @font-face rules.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap');

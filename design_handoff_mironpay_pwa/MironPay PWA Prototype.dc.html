@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/tokens/animations.css">
+  <link rel="stylesheet" href="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/styles.css">
+  <script src="_ds/mironpay-design-system-577c4bd8-f18d-4b2b-a228-ac028e5224fe/_ds_bundle.js"></script>
+  <style>
+    body { margin: 0; font-family: var(--font-sans); }
+    .frame {
+      position: relative;
+      background: var(--c-page);
+      border-radius: 46px;
+      border: 10px solid #14161f;
+      box-shadow: 0 30px 90px rgba(0,0,0,0.5), 0 0 0 1px rgba(91,140,255,0.10), inset 0 0 0 1px rgba(255,255,255,0.04);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .notch {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      width: 110px; height: 24px; background: #14161f; border-radius: 0 0 16px 16px; z-index: 50;
+    }
+    .screen { position: relative; height: 100%; overflow: hidden; }
+    .screen ::-webkit-scrollbar { width: 0; height: 0; }
+    .tabbar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 62px;
+      display: flex; align-items: center; justify-content: space-around;
+      padding: 0 4px 8px;
+      background: color-mix(in srgb, var(--c-sidebar) 88%, transparent);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--c-border);
+      z-index: 30;
+    }
+    .ctl-btn { border: 1px solid var(--c-border-strong); background: var(--c-input); color: var(--c-muted); font: 600 12.5px var(--font-sans); padding: 7px 13px; border-radius: 9999px; cursor: pointer; white-space: nowrap; }
+    .ctl-btn.active { background: var(--c-primary); color: var(--c-on-primary); border-color: transparent; }
+  </style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 26px; padding: 40px 24px 60px;
+  background: radial-gradient(70% 55% at 15% 0%, rgba(47,107,255,0.14), transparent 58%), radial-gradient(60% 55% at 100% 100%, rgba(34,198,224,0.10), transparent 55%), var(--c-page);">
+
+  <div style="text-align: center; max-width: 640px;">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-purple-accent); margin-bottom: 8px;">MIRONPAY · PWA PROTOTYPE</div>
+    <h1 style="font-size: 26px; font-weight: 700; color: var(--c-text); margin: 0 0 8px; letter-spacing: -0.02em;">Toàn bộ flow: Auth → Onboarding → App</h1>
+    <p style="font-size: 14.5px; color: var(--c-muted); margin: 0; line-height: 1.5;">Bấm thật để đi qua Google sign-in, đặt username, tạo PIN, rồi vào Dashboard / Wallet / Agent / Launchpad / Settings với tab bar cố định. Đổi kích thước máy, theme và layout dashboard bên dưới.</p>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+    <sc-for list="{{ deviceOptions }}" as="d" hint-placeholder-count="3">
+      <button class="ctl-btn {{ d.activeClass }}" onclick="{{ d.onClick }}">{{ d.label }}</button>
+    </sc-for>
+    <span style="width: 1px; background: var(--c-border-strong); margin: 4px 2px;"></span>
+    <button class="ctl-btn {{ themeIsDark }}" onclick="{{ setThemeDark }}">🌙 Dark</button>
+    <button class="ctl-btn {{ themeIsLight }}" onclick="{{ setThemeLight }}">☀️ Light</button>
+    <span style="width: 1px; background: var(--c-border-strong); margin: 4px 2px;"></span>
+    <button class="ctl-btn {{ layoutIsCards }}" onclick="{{ setLayoutCards }}">Dashboard: Cards</button>
+    <button class="ctl-btn {{ layoutIsCompact }}" onclick="{{ setLayoutCompact }}">Dashboard: Compact</button>
+    <span style="width: 1px; background: var(--c-border-strong); margin: 4px 2px;"></span>
+    <button class="ctl-btn" onclick="{{ restart }}">⟲ Về Splash</button>
+  </div>
+
+  <div style="position:absolute;width:0;height:0;overflow:hidden;">
+    <x-import component-from-global-scope="Icons.wallet" from="./icons.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="LoginScreen" from="./LoginScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="UsernameScreen" from="./OnboardingScreens.jsx" username="" set-username="{{ noop }}" on-next="{{ noop }}" on-back="{{ noop }}" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="PinModal" from="./PinModal.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="SendScreen" from="./SendScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="ReceiveScreen" from="./ReceiveScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="AgentScreen" from="./AgentScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="WalletScreen" from="./WalletScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="LaunchpadScreen" from="./LaunchpadScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="LeaderboardScreen" from="./LeaderboardScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="SettingsScreen" from="./SettingsScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="SplashScreen" from="./PwaScreens.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="ScanPayScreen" from="./ScanPayScreen.jsx" hint-size="0,0"></x-import>
+    <x-import component-from-global-scope="DashboardScreen" from="./DashboardScreen.jsx" hint-size="0,0"></x-import>
+  </div>
+
+  <div style="display: flex; gap: 44px; flex-wrap: wrap; justify-content: center; align-items: flex-start;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+      <span style="font-size: 13px; font-weight: 600; color: var(--c-muted);">Prototype — {{ deviceLabel }}</span>
+      <div class="frame" style="{{ frameStyle }}">
+        <div class="notch"></div>
+        <x-import component-from-global-scope="AppMain" from="./AppMain.jsx" theme="{{ theme }}" set-theme="{{ setTheme }}" dashboard-layout="{{ dashboardLayout }}" hint-size="100%,100%"></x-import>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+      <span style="font-size: 13px; font-weight: 600; color: var(--c-muted);">Home screen &amp; cài đặt PWA</span>
+      <div class="frame" style="width: 320px; height: 690px;">
+        <div class="notch"></div>
+        <x-import component-from-global-scope="InstallScreen" from="./PwaScreens.jsx" hint-size="100%,100%"></x-import>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const DEVICE_SIZES = {
+  se: { label: 'iPhone SE 375×667', width: 355, height: 630 },
+  standard: { label: 'Standard 390×844', width: 370, height: 800 },
+  pro: { label: 'Pro Max 430×932', width: 410, height: 880 },
+};
+
+class Component extends DCLogic {
+  state = {
+    device: 'standard',
+    theme: 'dark',
+    dashboardLayout: 'cards',
+    resetKey: 0,
+  };
+
+  renderVals() {
+    const s = this.state;
+    const d = DEVICE_SIZES[s.device];
+    const deviceOptions = Object.keys(DEVICE_SIZES).map((key) => ({
+      label: DEVICE_SIZES[key].label,
+      activeClass: s.device === key ? 'active' : '',
+      onClick: () => this.setState({ device: key }),
+    }));
+
+    return {
+      noop: () => {},
+      deviceOptions,
+      deviceLabel: d.label,
+      frameStyle: `width:${d.width}px;height:${d.height}px;`,
+      theme: s.theme,
+      setTheme: (fnOrVal) => this.setState((st) => ({ theme: typeof fnOrVal === 'function' ? fnOrVal(st.theme) : fnOrVal })),
+      setThemeDark: () => this.setState({ theme: 'dark' }),
+      setThemeLight: () => this.setState({ theme: 'light' }),
+      themeIsDark: s.theme === 'dark' ? 'active' : '',
+      themeIsLight: s.theme === 'light' ? 'active' : '',
+      dashboardLayout: s.dashboardLayout,
+      setLayoutCards: () => this.setState({ dashboardLayout: 'cards' }),
+      setLayoutCompact: () => this.setState({ dashboardLayout: 'compact' }),
+      layoutIsCards: s.dashboardLayout === 'cards' ? 'active' : '',
+      layoutIsCompact: s.dashboardLayout === 'compact' ? 'active' : '',
+      resetKey: s.resetKey,
+      restart: () => this.setState((st) => ({ resetKey: st.resetKey + 1 })),
+    };
+  }
+}
+</script>
+</body>
+</html>

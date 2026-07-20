@@ -49,7 +49,18 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    label: 'Business',
+    label: 'Launchpad',
+    href: '/launchpad',
+    activeOn: ['/launchpad'],
+    icon: (
+      <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 16c-1.5 1.3-2 5-2 5s3.7-.5 5-2" /><path d="M9 14c5-8 9-9 12-9 0 3-1 7-9 12" />
+        <path d="M9 14l-3-1 1-3" /><path d="M10 15l1 3 3-1" /><circle cx="15" cy="9" r="1.4" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Payroll',
     href: '#',
     activeOn: [],
     disabled: true,

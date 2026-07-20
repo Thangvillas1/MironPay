@@ -1,0 +1,37 @@
+/* ============================================================
+   MironPay — Effects: radius, shadow, glow, gradient, motion, glass
+   Sapphire / Neo-fintech — sharper corners, blue-tuned elevation.
+   ============================================================ */
+
+:root {
+  /* corner radius — sharper, more premium */
+  --radius-sm:   6px;
+  --radius-md:   10px;   /* inputs, small controls */
+  --radius-lg:   14px;   /* cards, wallet cards */
+  --radius-xl:   20px;   /* sheets, large panels */
+  --radius-full: 9999px; /* pills, avatars, dots */
+
+  /* elevation — deep, blue-tuned */
+  --shadow-sm:  0 1px 2px rgba(3, 8, 20, 0.40);
+  --shadow-md:  0 8px 28px rgba(3, 8, 20, 0.45);
+  --shadow-lg:  0 24px 64px rgba(3, 8, 20, 0.55);
+
+  /* wallet-card colored glows (subtle azure family) */
+  --glow-blue:    0 10px 40px rgba(47, 107, 255, 0.30);
+  --glow-purple:  0 10px 40px rgba(109, 108, 255, 0.30);
+  --glow-cyan:    0 10px 40px rgba(34, 198, 224, 0.28);
+  --glow-primary: 0 8px 30px rgba(47, 107, 255, 0.42);
+
+  /* gradients */
+  --grad-primary:  linear-gradient(135deg, #4d8bff 0%, #2f6bff 52%, #1b4ad6 100%); /* @kind color */
+  --grad-sapphire: linear-gradient(135deg, rgba(91, 140, 255, 0.22), rgba(13, 28, 64, 0.04)); /* @kind color */
+  --grad-score:    linear-gradient(135deg, rgba(47, 107, 255, 0.18), rgba(109, 108, 255, 0.06)); /* @kind color */
+  --grad-sheen:    linear-gradient(180deg, var(--glass-hi), transparent 38%);
+
+  /* motion */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* @kind other */
+  --dur-fast:    140ms; /* @kind other */
+  --dur-base:    220ms; /* @kind other */
+  --dur-slow:    340ms; /* @kind other */
+}

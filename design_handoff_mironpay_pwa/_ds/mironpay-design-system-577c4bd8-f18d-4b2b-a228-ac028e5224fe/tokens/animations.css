@@ -1,0 +1,31 @@
+/* ============================================================
+   MironPay — shared keyframes
+   Referenced by components (spinners, skeletons, PIN shake).
+   ============================================================ */
+
+@keyframes mp-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mp-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes mp-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes mp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes mp-slideup {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}

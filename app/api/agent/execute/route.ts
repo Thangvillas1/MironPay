@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { getOnChainLimit } from '@/app/lib/spending-limit'
 import { depositToGateway, withdrawFromGateway } from '@/app/lib/x402-buyer'
+import { contributeToSale } from '@/app/lib/launchpad-chain'
 
 export async function POST(request: NextRequest) {
   try {
@@ -135,6 +136,7 @@ export async function POST(request: NextRequest) {
     const actionDetail =
       action.type === 'send' ? `Send to ${action.to}` :
       action.type === 'swap' ? `Swap ${action.tokenIn} -> ${action.tokenOut}` :
+      action.type === 'launchpad_contribute' ? `Launchpad contribute to ${action.projectId}` :
       action.type
 
     // On-chain validation (fire-and-forget)
@@ -201,6 +203,19 @@ export async function POST(request: NextRequest) {
       txHash = swapData.txHash as string
       amountOut = swapData.amountOut as string
 
+    } else if (action.type === 'launchpad_contribute') {
+      const projectId: string = action.projectId ?? ''
+      const { data: sale } = await supabase.from('launchpad_sales').select('project_id').eq('project_id', projectId).maybeSingle()
+      if (!sale) {
+        return NextResponse.json({ error: `"${projectId}" is not a live Launchpad sale.` }, { status: 404 })
+      }
+
+      const { txHash: contributeTxHash } = await contributeToSale(agentWalletId, agentWalletAddress, projectId, amount)
+      txHash = contributeTxHash
+
+      await supabase.from('launchpad_contributions').insert({
+        project_id: projectId, user_id: user.id, amount, tx_hash: txHash,
+      })
     }
 
     if (countsTowardLimit) {
@@ -229,6 +244,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         actionType: action.type, success: true, txHash, amount,
         detail: action.type === 'send' ? `Send ${amount} ${checkSymbol} to ${action.to}` :
+          action.type === 'launchpad_contribute' ? `Launchpad contribute ${amount} USDC to ${action.projectId}` :
           `Swap ${amount} ${action.tokenIn} -> ${action.tokenOut}`,
       }),
     }).catch(() => {})
