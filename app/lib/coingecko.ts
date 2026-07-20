@@ -9,7 +9,7 @@ const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
  * making the user wait noticeably longer or re-triggering the x402 charge
  * (this runs before the seller settles payment).
  */
-export async function fetchWithRetry(url: string, retries = 1, backoffMs = 900): Promise<Response> {
+export async function fetchWithRetry(url: string, retries = 2, backoffMs = 900): Promise<Response> {
   const res = await fetch(url)
   if (res.status === 429 && retries > 0) {
     await new Promise(r => setTimeout(r, backoffMs))

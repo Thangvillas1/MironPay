@@ -8,16 +8,20 @@ const BINANCE_BASE = 'https://api.binance.com/api/v3'
  * CoinGecko's richer metadata (market cap, description, socials, etc.).
  */
 export async function fetchBinancePrice(symbol: string): Promise<{ priceUsd: number; change24hPct: number | null } | null> {
+  const pair = `${symbol.toUpperCase()}USDT`
   try {
-    const pair = `${symbol.toUpperCase()}USDT`
     const res = await fetch(`${BINANCE_BASE}/ticker/24hr?symbol=${pair}`)
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error(`[binance] ticker/24hr ${pair} failed: ${res.status} ${await res.text().catch(() => '')}`.slice(0, 300))
+      return null
+    }
     const data = await res.json()
     const price = parseFloat(data.lastPrice)
     if (!Number.isFinite(price)) return null
     const change = parseFloat(data.priceChangePercent)
     return { priceUsd: price, change24hPct: Number.isFinite(change) ? Number(change.toFixed(2)) : null }
-  } catch {
+  } catch (e) {
+    console.error(`[binance] ticker/24hr ${pair} threw:`, e instanceof Error ? e.message : e)
     return null
   }
 }
