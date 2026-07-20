@@ -276,7 +276,8 @@ export async function payX402<T = unknown>(
   )
 
   if (!paidRes.ok) {
-    throw new Error(`x402 payment failed: ${settleResponse?.errorReason ?? paidRes.status}`)
+    const bodyText = await paidRes.clone().text().catch(() => '')
+    throw new Error(`x402 payment failed: ${settleResponse?.errorReason ?? paidRes.status}${bodyText ? ` — ${bodyText.slice(0, 300)}` : ''}`)
   }
 
   return {
