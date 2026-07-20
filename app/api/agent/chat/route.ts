@@ -237,7 +237,7 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'get_wallet_lookup',
-      description: 'Look up token holdings for ANY wallet address (not just the user\'s own MironPay wallets) across major EVM chains (Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche, Fantom) via CoinStats. READ-ONLY RESEARCH ONLY — this never sends, swaps, or moves funds, and is unrelated to execute_send/execute_swap. Costs $0.01 USDC via x402. Call this when the user pastes/names a wallet address (0x...) and asks what\'s in it, its portfolio, or its balance — for any chain, not just ARC.',
+      description: 'Look up token holdings for a THIRD-PARTY wallet address across major EVM chains (Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche, Fantom) via CoinStats — does NOT cover ARC Testnet. READ-ONLY RESEARCH ONLY — this never sends, swaps, or moves funds, and is unrelated to execute_send/execute_swap. Costs $0.01 USDC via x402. Call this ONLY when the user pastes/names a specific 0x... address that is not their own MironPay wallet. NEVER call this for "what\'s my balance" / "check my balance" — the user\'s own MironPay balance is already given to you above in "Current portfolio"; answer from that in text only, no tool call (and it would return empty here anyway since this tool doesn\'t support ARC).',
       parameters: {
         type: 'object',
         properties: {
@@ -481,7 +481,15 @@ Never claim the transaction is done or already in progress — the system will s
       execute_gateway_withdraw: WITHDRAW_VERBS,
       execute_launchpad_contribute: CONTRIBUTE_VERBS,
     }
+    // get_wallet_lookup is for looking up a THIRD-PARTY address the user
+    // pastes/names — never the user's own MironPay balance (CoinStats doesn't
+    // even cover ARC Testnet, so a self-lookup silently comes back empty).
+    // Gate it on an actual 0x address appearing in the raw message so a plain
+    // "check my balance" can never trigger it — same pattern as the money
+    // tools' verb gating above.
+    const hasHexAddress = /0x[a-fA-F0-9]{40}/.test(message)
     const activeTools = TOOLS.filter(t => {
+      if (t.function.name === 'get_wallet_lookup') return hasHexAddress
       const verbs = MONEY_TOOL_VERBS[t.function.name]
       return !verbs || hasAnyKeyword(message, verbs)
     })
