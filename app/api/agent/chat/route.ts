@@ -438,6 +438,7 @@ Each tool's own description below states exactly when to call it — follow thos
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
 - "nạp/deposit vào X402/Gateway" / "top up X402" → execute_gateway_deposit
 - "rút/withdraw từ X402/Gateway" → execute_gateway_withdraw
+- A short affirmative reply ("đúng rồi", "yes", "ok", "đúng") to your OWN prior message asking the user to restate a money command clearly is NOT itself a valid command — it has no verb/amount/recipient the server can check. Do not treat it as confirmation and do not say something generic/unrelated. Tell the user plainly to resend the FULL command in one message (verb + amount + tokens/recipient), e.g. "Vui lòng gõ lại đầy đủ: 'Swap 2 USDC thành EURC'" — every money command must be typed out completely each time, confirming only happens via the Confirm button after that.
 - "mua/buy/contribute/góp vào <project>" (project must be in Live Launchpad sales list) → execute_launchpad_contribute
 
 ## Wallets
