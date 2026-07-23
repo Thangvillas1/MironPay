@@ -1,4 +1,5 @@
 import { fetchBinancePrice } from '@/app/lib/binance'
+import { fetchCoinbasePrice } from '@/app/lib/coinbase'
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
@@ -62,7 +63,9 @@ export async function fetchSimplePrice(symbol: string): Promise<{ priceUsd: numb
     // fall through to Binance below
   }
   // CoinGecko's free tier rate-limits hard on shared IPs (e.g. Vercel) —
-  // Binance has no key and a much higher limit, so it's the fallback for
-  // any token that trades against USDT there.
-  return fetchBinancePrice(symbol)
+  // Binance has no key and a much higher limit, so it's the first fallback
+  // for any token that trades against USDT there. Binance's public API now
+  // returns 451 "restricted location" for Vercel's serving region, so
+  // Coinbase Exchange is the second fallback.
+  return (await fetchBinancePrice(symbol)) ?? (await fetchCoinbasePrice(symbol))
 }

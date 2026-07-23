@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { createX402GetHandler } from '@/app/lib/x402-seller'
 import { resolveCoinGeckoId, fetchWithRetry } from '@/app/lib/coingecko'
 import { fetchBinancePrice, fetchBinanceChart24h } from '@/app/lib/binance'
+import { fetchCoinbasePrice, fetchCoinbaseChart24h } from '@/app/lib/coinbase'
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3'
 
@@ -55,21 +56,28 @@ async function fetchFromCoinGecko(symbol: string) {
 
 /**
  * CoinGecko's free tier rate-limits hard on shared IPs (Vercel) and was
- * failing even for BTC. Binance has no key and a much higher limit, so it's
- * the fallback for price/change/chart — its data just doesn't include
- * CoinGecko's richer fields (market cap, FDV, description, socials), which
- * come back null. The x402 fee is only ever charged once a real price is
- * found from either source — both failing still throws before settlement.
+ * failing even for BTC. Binance has no key and a much higher limit, so it
+ * was the first fallback for price/change/chart — but Binance's public API
+ * now returns 451 "restricted location" for Vercel's serving region, so it
+ * fails too. Coinbase Exchange is the second fallback. None of the
+ * fallbacks include CoinGecko's richer fields (market cap, FDV,
+ * description, socials), which come back null. The x402 fee is only ever
+ * charged once a real price is found from any source — all three failing
+ * still throws before settlement.
  */
 async function fetchTokenPrice(symbol: string) {
   try {
     return await fetchFromCoinGecko(symbol)
   } catch (coinGeckoErr) {
-    const fallback = await fetchBinancePrice(symbol)
+    let fallback = await fetchBinancePrice(symbol)
+    let chart24h = fallback ? await fetchBinanceChart24h(symbol) : []
+    if (!fallback) {
+      fallback = await fetchCoinbasePrice(symbol)
+      chart24h = fallback ? await fetchCoinbaseChart24h(symbol) : []
+    }
     if (!fallback) {
       throw coinGeckoErr instanceof Error ? coinGeckoErr : new Error(String(coinGeckoErr))
     }
-    const chart24h = await fetchBinanceChart24h(symbol)
     return {
       symbol: symbol.toUpperCase(),
       name: symbol.toUpperCase(),
