@@ -560,8 +560,11 @@ Never claim the transaction is done or already in progress — the system will s
     // it exists because the model can otherwise hallucinate a tool call (and
     // an amount) from something as bare as a pasted contract address.
     function hasExplicitAmount(raw: string): boolean {
+      // No \b anchors — a number glued directly to a token symbol (e.g.
+      // "2usdc", "0.5eth") has no word boundary between the digits and the
+      // following letters, since both are \w, so \b\d+\b would miss it.
       const stripped = raw.replace(/0x[a-fA-F0-9]+/g, ' ').replace(/@\w+/g, ' ')
-      return /\b\d+(\.\d+)?\b/.test(stripped)
+      return /\d+(\.\d+)?/.test(stripped)
     }
 
     if (choice?.finish_reason === 'tool_calls' && assistantMsg?.tool_calls?.length > 0) {
