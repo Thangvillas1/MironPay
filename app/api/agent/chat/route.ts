@@ -358,25 +358,29 @@ export async function POST(request: NextRequest) {
     // Load real portfolio from Circle
     let portfolioContext = 'Portfolio: unavailable.'
     if (resolvedMainWallet) {
-      const [mainBal, agentBal] = await Promise.all([
-        circleClient.getWalletTokenBalance({ id: resolvedMainWallet.circleWalletId }),
-        profile?.agent_wallet_id
-          ? circleClient.getWalletTokenBalance({ id: profile.agent_wallet_id })
-          : Promise.resolve(null),
-      ])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mainTokens: any[] = mainBal.data?.tokenBalances ?? []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const agentTokens: any[] = agentBal?.data?.tokenBalances ?? []
+      try {
+        const [mainBal, agentBal] = await Promise.all([
+          circleClient.getWalletTokenBalance({ id: resolvedMainWallet.circleWalletId }),
+          profile?.agent_wallet_id
+            ? circleClient.getWalletTokenBalance({ id: profile.agent_wallet_id })
+            : Promise.resolve(null),
+        ])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mainTokens: any[] = mainBal.data?.tokenBalances ?? []
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const agentTokens: any[] = agentBal?.data?.tokenBalances ?? []
 
-      const mainSummary = mainTokens.map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || 'Empty'
-      const agentSummary = agentTokens.map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || '0 USDC'
+        const mainSummary = mainTokens.map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || 'Empty'
+        const agentSummary = agentTokens.map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || '0 USDC'
 
-      portfolioContext = `## Current portfolio
+        portfolioContext = `## Current portfolio
 Main Wallet address: ${resolvedMainWallet.walletAddress}
 Main Wallet: ${mainSummary}
 Agent Wallet: ${agentSummary}
 Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
+      } catch (e) {
+        console.error('[agent/chat] portfolio fetch from Circle failed:', e instanceof Error ? e.message : e)
+      }
     }
 
     // Live Launchpad sales — lets the model resolve a project name to its
