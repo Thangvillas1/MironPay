@@ -432,7 +432,8 @@ Each tool's own description below states exactly when to call it — follow thos
 - "all" / "hết" / "max" → ask user to confirm the exact amount from their balance
 - "$" / "đô" / "dollar" → USDC. "euro" / "eur" → EURC
 - "10k" / "10 ngàn" → 10000. "1m" / "1 triệu" → 1000000
-- Questions like "should I swap?" or "what's my balance?" → answer in text only, no tool call
+- Questions like "should I swap?" → answer in text only, no tool call
+- "what's my balance?" / "số dư của tôi" / "check số dư" (no wallet specified) → answer in text only, no tool call, and ALWAYS report BOTH wallets by name from "Current portfolio" above — Main Wallet (with every token held, not just USDC) AND Agent Wallet — never just one. If the user's wording clearly names only one wallet ("agent wallet balance", "số dư ví agent"), report only that one.
 - "withdraw to main wallet" / "rút về ví chính" → execute_send to Main Wallet address above
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
 - "nạp/deposit vào X402/Gateway" / "top up X402" → execute_gateway_deposit
