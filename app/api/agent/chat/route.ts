@@ -355,6 +355,12 @@ export async function POST(request: NextRequest) {
       ? `\n## Remembered preferences\n${memories.map(m => `- ${m.key}: ${m.value}`).join('\n')}`
       : ''
 
+    // Set whenever a data fetch fails — surfaced as a fixed banner on the
+    // reply, not left to the model's discretion to mention (it's inconsistent
+    // about admitting a fetch failed vs. quietly answering from training data
+    // or, worse, from a stale number left over in its own chat history).
+    let dataApiError: string | null = null
+
     // Load real portfolio from Circle
     let portfolioContext = 'Portfolio: unavailable.'
     if (resolvedMainWallet) {
@@ -388,6 +394,7 @@ Agent Wallet: ${agentSummary}
 Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
       } catch (e) {
         console.error('[agent/chat] portfolio fetch from Circle failed:', e instanceof Error ? e.message : e)
+        dataApiError = `Could not fetch live wallet balances (${e instanceof Error ? e.message : 'unknown error'}).`
       }
     }
 
@@ -442,6 +449,7 @@ Each tool's own description below states exactly when to call it — follow thos
 - "10k" / "10 ngàn" → 10000. "1m" / "1 triệu" → 1000000
 - Questions like "should I swap?" → answer in text only, no tool call
 - "what's my balance?" / "số dư của tôi" / "check số dư" (no wallet specified) → answer in text only, no tool call, and ALWAYS report BOTH wallets by name from "Current portfolio" above — Main Wallet (with every token held, not just USDC) AND Agent Wallet — never just one. If the user's wording clearly names only one wallet ("agent wallet balance", "số dư ví agent"), report only that one.
+- Balance/portfolio numbers MUST come only from the "Current portfolio" block above, generated fresh for this exact request. NEVER reuse, average, or "confirm" a balance figure you or the user mentioned earlier in this conversation's history — that number is stale by the time of a new request. If "Current portfolio" says "Portfolio: unavailable.", say plainly that the live balance couldn't be fetched right now and to try again — do not guess, do not fall back to a number from earlier in the chat.
 - "withdraw to main wallet" / "rút về ví chính" → execute_send to Main Wallet address above
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
 - "nạp/deposit vào X402/Gateway" / "top up X402" → execute_gateway_deposit
@@ -666,6 +674,7 @@ Never claim the transaction is done or already in progress — the system will s
             toolResultContent = 'Ask the user which token symbol they mean.'
           } else if (!profile?.agent_wallet_id || !profile?.agent_wallet_address) {
             toolResultContent = 'Price lookup unavailable: Agent Wallet not initialized. Answer using general knowledge instead.'
+            dataApiError = toolResultContent
           } else {
             try {
               const cacheKey = symbol.toUpperCase()
@@ -706,6 +715,7 @@ Never claim the transaction is done or already in progress — the system will s
               const errMsg = e instanceof Error ? e.message : String(e)
               console.error(`[agent/chat] get_token_price("${symbol}") failed:`, errMsg)
               toolResultContent = `Live price lookup for "${symbol}" failed (${errMsg}) — no fee was charged for this failed attempt. Tell the user plainly that the live data lookup failed right now and to try again in a moment. Do NOT guess a price from memory — crypto prices go stale in minutes and a wrong number is worse than admitting the lookup failed.`
+              dataApiError = toolResultContent
             }
           }
           const secondMessages = [
@@ -732,6 +742,7 @@ Never claim the transaction is done or already in progress — the system will s
             + `. A table with full details (price, 24h change, rank) is ALREADY shown to the user below — reply in ONE short sentence naming 2-3 highlights, do not repeat the full list or exact numbers, do not say you cannot show a table.`)
           if (fee) dataFee = fee
           if (rawData) trendingData = rawData
+          else dataApiError = content
 
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
@@ -760,6 +771,7 @@ Never claim the transaction is done or already in progress — the system will s
               + `IMPORTANT: this is a price-comparison quote only, NOT an executed swap — never say the swap happened or offer to confirm/execute it via this data.`)
             if (fee) dataFee = fee
             if (rawData) swapQuoteData = rawData
+            else dataApiError = content
 
             const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
@@ -786,6 +798,7 @@ Never claim the transaction is done or already in progress — the system will s
             })
             if (fee) dataFee = fee
             if (rawData) dexPairData = rawData
+            else dataApiError = content
 
             const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
@@ -823,6 +836,7 @@ Never claim the transaction is done or already in progress — the system will s
           })
           if (fee) dataFee = fee
           if (rawData) defiData = rawData
+          else dataApiError = content
 
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
@@ -839,6 +853,7 @@ Never claim the transaction is done or already in progress — the system will s
               + `A gauge with this value is ALREADY shown to the user below — reply in ONE short sentence, do not repeat the number redundantly or describe the gauge.`)
           if (fee) dataFee = fee
           if (rawData) sentimentData = rawData
+          else dataApiError = content
 
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
@@ -868,6 +883,7 @@ Never claim the transaction is done or already in progress — the system will s
             })
             if (fee) dataFee = fee
             if (rawData) walletLookupData = rawData
+            else dataApiError = content
 
             const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
@@ -897,6 +913,7 @@ Never claim the transaction is done or already in progress — the system will s
           })
           if (fee) dataFee = fee
           if (rawData) stablecoinData = rawData
+          else dataApiError = content
 
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
@@ -928,6 +945,12 @@ Never claim the transaction is done or already in progress — the system will s
       }
     } else {
       reply = assistantMsg?.content ?? "Sorry, I didn't understand. Please try again."
+    }
+
+    // Fixed, model-independent notice — a data tool call failing shouldn't
+    // depend on whether the model chose to mention it.
+    if (dataApiError) {
+      reply = `⚠️ Live data lookup failed — ${dataApiError}\n\n${reply}`
     }
 
     // Explicit timestamps, 1ms apart — inserting both rows in the same
