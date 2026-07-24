@@ -42,17 +42,29 @@ export async function POST(request: NextRequest) {
     const wallet = await resolveCircleWalletId(supabase, user.id)
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
 
+    // Cast: see the note in app/api/wallet/bridge/estimate/route.ts — mixing
+    // an adapter-circle-wallets adapter into a provider-cctp-v2 call is
+    // runtime-safe but doesn't type-check nominally across the two bundles.
+    const source = { adapter: getRelayerAdapter(), chain: externalChainObj, address: getRelayerAddress() } as any // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    // USDC has 6 decimals everywhere CCTP supports it. `approve()` (unlike
+    // `burn()`) takes the smallest-unit amount directly — it just encodes
+    // `increaseAllowance(spender, amount)`, so the source address used to
+    // "prepare" it doesn't matter for the resulting calldata either way.
+    const smallestUnitAmount = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString()
+    const approvePrepared = await cctpProvider.approve(source, smallestUnitAmount)
+    const approveCall = approvePrepared.type === 'evm' && approvePrepared.getCallData
+      ? approvePrepared.getCallData()
+      : null // 'noop' means the CCTP contract already has sufficient allowance
+
     // Calling cctpProvider.burn() directly (not through BridgeKit's
     // convenience layer) means its own zod schema applies: `chain` must
     // already be a full chain-definition object (not a plain string — that
     // only works through BridgeKit, which resolves it internally) and
     // `address`/`config` are required. See circle-bridge-kit.ts for why we
     // keep separate string vs. object chain identifiers.
-    // Cast: see the note in app/api/wallet/bridge/estimate/route.ts — mixing
-    // an adapter-circle-wallets adapter into a provider-cctp-v2 call is
-    // runtime-safe but doesn't type-check nominally across the two bundles.
-    const prepared = await cctpProvider.burn({
-      source: { adapter: getRelayerAdapter(), chain: externalChainObj, address: getRelayerAddress() },
+    const burnPrepared = await cctpProvider.burn({
+      source,
       destination: { adapter: circleBridgeAdapter, chain: ARC_CHAIN, address: wallet.walletAddress },
       amount,
       token: 'USDC',
@@ -60,13 +72,14 @@ export async function POST(request: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
 
-    if (prepared.type !== 'evm' || !prepared.getCallData) {
+    if (burnPrepared.type !== 'evm' || !burnPrepared.getCallData) {
       return NextResponse.json({ error: 'Could not prepare burn transaction for this chain' }, { status: 500 })
     }
-    const { to, data, value } = prepared.getCallData()
+    const burnCall = burnPrepared.getCallData()
 
     return NextResponse.json({
-      to, data, value: value ? value.toString() : '0',
+      approve: approveCall ? { to: approveCall.to, data: approveCall.data, value: approveCall.value ? approveCall.value.toString() : '0' } : null,
+      burn: { to: burnCall.to, data: burnCall.data, value: burnCall.value ? burnCall.value.toString() : '0' },
       externalChain: externalChainSlug,
       fromAddress,
     })

@@ -56,6 +56,32 @@ const WALLET_CHAINS: Record<string, {
 
 type Eip1193Provider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> }
 
+interface CallData { to: string; data: string; value: string }
+
+async function sendCall(eth: Eip1193Provider, fromAddress: string, call: CallData): Promise<string> {
+  return await eth.request({
+    method: 'eth_sendTransaction',
+    params: [{ from: fromAddress, to: call.to, data: call.data, value: call.value !== '0' ? `0x${BigInt(call.value).toString(16)}` : undefined }],
+  }) as string
+}
+
+// The wallet only gives us a tx hash; the burn's on-chain effects (and the
+// allowance the approve call raises) aren't guaranteed visible until it's
+// actually mined. Poll for the receipt before moving to the next step.
+async function waitForReceipt(eth: Eip1193Provider, txHash: string): Promise<void> {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const receipt = await eth.request({ method: 'eth_getTransactionReceipt', params: [txHash] })
+    if (receipt) {
+      if ((receipt as { status?: string }).status === '0x0') {
+        throw new Error(`Transaction ${txHash} reverted`)
+      }
+      return
+    }
+    await new Promise(r => setTimeout(r, 2000))
+  }
+  throw new Error(`Timed out waiting for transaction ${txHash} to be mined`)
+}
+
 async function ensureWalletOnChain(eth: Eip1193Provider, chainSlug: string) {
   const target = WALLET_CHAINS[chainSlug]
   if (!target) throw new Error(`Unknown chain for wallet switch: ${chainSlug}`)
@@ -249,9 +275,10 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       // same address and risking real funds.
       await ensureWalletOnChain(eth, chainSlug)
 
-      // Backend builds the unsigned burn calldata (source = user's own
-      // external wallet, destination = this MironPay wallet on Arc) —
-      // nothing is signed or executed server-side for this leg.
+      // Backend builds the unsigned approve (if needed) + burn calldata
+      // (source = user's own external wallet, destination = this MironPay
+      // wallet on Arc) — nothing is signed or executed server-side for
+      // this leg.
       const prepRes = await fetch('/api/wallet/bridge/deposit/prepare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -260,10 +287,17 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       const prep = await prepRes.json()
       if (!prepRes.ok) throw new Error(prep.error || 'Could not prepare deposit')
 
-      const burnTxHash = await eth.request({
-        method: 'eth_sendTransaction',
-        params: [{ from: fromAddress, to: prep.to, data: prep.data, value: prep.value !== '0' ? `0x${BigInt(prep.value).toString(16)}` : undefined }],
-      }) as string
+      // The CCTP contract needs an on-chain allowance before it can pull the
+      // user's USDC for the burn — without this, the burn tx would revert
+      // ("ERC20: transfer amount exceeds allowance"). Sign it as its own
+      // transaction and wait for it to actually be mined before signing the
+      // burn, since the burn's allowance check reads on-chain state.
+      if (prep.approve) {
+        const approveTxHash = await sendCall(eth, fromAddress, prep.approve)
+        await waitForReceipt(eth, approveTxHash)
+      }
+
+      const burnTxHash = await sendCall(eth, fromAddress, prep.burn)
 
       setStatus('completing')
       const completeRes = await fetch('/api/wallet/bridge/deposit/complete', {
