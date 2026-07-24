@@ -7,9 +7,11 @@ import { cctpProvider, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, reso
 // Builds the unsigned burn-transaction calldata for a deposit (external chain
 // -> Arc) so the browser can submit it directly through the user's own
 // connected wallet (eth_sendTransaction) — the user's funds, so only they can
-// sign the burn. Nothing is executed here; the relayer adapter is only used
-// to resolve chain/contract metadata (developer-controlled mode lets us pass
-// an arbitrary `address`, it never signs anything in this step).
+// sign the burn. Nothing is executed here — the relayer adapter is only used
+// to resolve chain/contract metadata; `fromAddress` is validated as a real
+// address but not passed into the wallet context (the depositForBurn
+// calldata doesn't embed a sender, so which address "prepares" it doesn't
+// matter — the real user's connected wallet ends up signing/broadcasting it).
 export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
     // an adapter-circle-wallets adapter into a provider-cctp-v2 call is
     // runtime-safe but doesn't type-check nominally across the two bundles.
     const prepared = await cctpProvider.burn({
-      source: { adapter: getRelayerAdapter(), chain: externalChain, address: fromAddress },
+      source: { adapter: getRelayerAdapter(), chain: externalChain },
       destination: { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress },
       amount,
       token: 'USDC',
@@ -59,6 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       to, data, value: value ? value.toString() : '0',
       externalChain: externalChainSlug,
+      fromAddress,
     })
   } catch (err) {
     const message = bridgeErrorMessage(err) || (err instanceof Error ? err.message : String(err))

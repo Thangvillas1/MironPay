@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
-import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, getRelayerAddress, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 
 export async function GET(request: NextRequest) {
@@ -34,12 +34,14 @@ export async function GET(request: NextRequest) {
     // Same adapters used for the real transfer are used here purely to build
     // an unsigned estimate — no gas is spent, nothing is submitted on-chain.
     const relayerAdapter = getRelayerAdapter()
-    const relayerAddress = getRelayerAddress()
+    // relayerAdapter is a private-key adapter, forced to "user-controlled" by
+    // the SDK — no explicit `address` field allowed, it always resolves its
+    // own address.
     const from = direction === 'withdraw'
       ? { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress }
-      : { adapter: relayerAdapter, chain: externalChain, address: relayerAddress }
+      : { adapter: relayerAdapter, chain: externalChain }
     const to = direction === 'withdraw'
-      ? { adapter: relayerAdapter, chain: externalChain, address: relayerAddress }
+      ? { adapter: relayerAdapter, chain: externalChain }
       : { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress }
 
     // Cast: bridge-kit, provider-cctp-v2 and adapter-circle-wallets each

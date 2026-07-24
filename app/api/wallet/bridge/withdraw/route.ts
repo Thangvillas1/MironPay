@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, getRelayerAddress, ARC_TESTNET, resolveExternalChain, isNoRouteError, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, isNoRouteError, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,14 +36,17 @@ export async function POST(request: NextRequest) {
 
     // Source leg: our own Circle wallet on Arc, backend-signed. Destination
     // leg: the relayer EOA submits the (permissionless) mint on the external
-    // chain and pays its gas — funds still land on `recipientAddress`.
+    // chain and pays its gas — funds still land on `recipientAddress`. No
+    // explicit `address` on the relayer side: it's a private-key adapter,
+    // forced to "user-controlled" by the SDK, so it always resolves its own
+    // address (which is exactly who should sign/pay for the mint here).
     // Cast: see the note in app/api/wallet/bridge/estimate/route.ts — mixing
     // an adapter-circle-wallets adapter into a bridge-kit call is runtime-safe
     // but the two packages bundle separate copies of the core Adapter/Chain
     // types, so it doesn't type-check nominally.
     const result = await bridgeKit.bridge({
       from: { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress },
-      to: { adapter: getRelayerAdapter(), chain: externalChain, address: getRelayerAddress(), recipientAddress },
+      to: { adapter: getRelayerAdapter(), chain: externalChain, recipientAddress },
       amount,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)

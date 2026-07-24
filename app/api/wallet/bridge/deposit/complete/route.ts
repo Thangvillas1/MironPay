@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { cctpProvider, circleBridgeAdapter, getRelayerAdapter, getRelayerAddress, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { cctpProvider, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
 
 // Called after the browser has submitted the burn tx itself (via the user's
 // connected wallet). Backend fetches Circle's attestation for that burn and
@@ -37,17 +37,16 @@ export async function POST(request: NextRequest) {
     // Adapter/Chain types, so neither lines up with provider-cctp-v2's
     // nominal `ChainDefinitionWithCCTPv2` type despite being runtime-correct.
     const relayerAdapter = getRelayerAdapter()
-    const relayerAddress = getRelayerAddress()
 
     const attestation = await cctpProvider.fetchAttestation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { adapter: relayerAdapter, chain: externalChain, address: relayerAddress } as any,
+      { adapter: relayerAdapter, chain: externalChain } as any,
       burnTxHash,
     )
 
     const preparedMint = await cctpProvider.mint(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { adapter: relayerAdapter, chain: externalChain, address: relayerAddress } as any,
+      { adapter: relayerAdapter, chain: externalChain } as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress } as any,
       attestation,

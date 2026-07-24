@@ -23,10 +23,19 @@ export const ARC_TESTNET = 'Arc_Testnet' as const
 // destination chain we support. It never touches user funds — CCTPv2's mint
 // step is permissionless, so any funded address can submit it and the minted
 // USDC still lands on the `mintRecipient`/`recipientAddress` we specify.
-// `developer-controlled` capabilities let us pass an explicit `address` per
-// call instead of always defaulting to the relayer's own address — needed
-// both to prepare a deposit burn on behalf of an arbitrary user address, and
-// to submit a withdrawal mint paid for by the relayer.
+//
+// Private-key adapters are hard-restricted by the SDK to `user-controlled`
+// mode (it throws "Private key adapters cannot use 'developer-controlled'
+// address context" — the QUICKSTART's own "Developer-Controlled Setup"
+// example for `createViemAdapterFromPrivateKey` doesn't actually work at
+// runtime). That means we can never pass an explicit `address` when using
+// this adapter — it always resolves to the relayer's own address, which is
+// exactly what we want anyway: for a withdrawal mint, the relayer IS the one
+// signing/paying gas. For a deposit burn preparation, the address used to
+// build the call is irrelevant to the resulting calldata (depositForBurn's
+// ABI-encoded bytes don't embed a sender — msg.sender is implicit at
+// broadcast time), so preparing "as" the relayer still yields calldata the
+// real user's own wallet can sign and submit.
 //
 // Lazily constructed (not a module-level const): Next.js's build-time "collect
 // page data" step imports every route module, so an eager
@@ -34,7 +43,7 @@ export const ARC_TESTNET = 'Arc_Testnet' as const
 // build` on any environment where the var isn't set yet (it did — this broke
 // the first deploy) instead of only failing at request time on the routes
 // that actually need it.
-type RelayerAdapter = ReturnType<typeof createViemAdapterFromPrivateKey<{ readonly addressContext: 'developer-controlled' }>>
+type RelayerAdapter = ReturnType<typeof createViemAdapterFromPrivateKey>
 let _relayerAdapter: RelayerAdapter | null = null
 export function getRelayerAdapter() {
   if (!_relayerAdapter) {
@@ -43,17 +52,13 @@ export function getRelayerAdapter() {
     }
     _relayerAdapter = createViemAdapterFromPrivateKey({
       privateKey: process.env.BRIDGE_RELAYER_PRIVATE_KEY as `0x${string}`,
-      capabilities: { addressContext: 'developer-controlled' },
     })
   }
   return _relayerAdapter
 }
 
-// Developer-controlled adapters require an explicit `address` on every
-// AdapterContext. The relayer's own address is only actually used for
-// signing when it submits a withdrawal mint; everywhere else (estimates,
-// deposit burn preparation, deposit attestation lookups) it's just a
-// required-by-type placeholder that doesn't affect the resulting calldata.
+// Informational only (e.g. for logging) — not passed into any WalletContext,
+// since user-controlled adapters forbid an explicit `address` field.
 let _relayerAddress: `0x${string}` | null = null
 export function getRelayerAddress() {
   if (!_relayerAddress) {
