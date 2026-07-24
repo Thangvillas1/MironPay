@@ -17,8 +17,69 @@ const CHAINS = [
   { slug: 'base_sepolia', label: 'Base Sepolia' },
 ]
 
+// Block explorer base URL per chain — used to build clickable tx links on
+// the result screen. 'arc' is the MironPay wallet's own chain, not one of
+// the user-selectable external chains above.
+const EXPLORERS: Record<string, string> = {
+  arc: 'https://testnet.arcscan.app/tx/',
+  ethereum_sepolia: 'https://sepolia.etherscan.io/tx/',
+  base_sepolia: 'https://sepolia.basescan.org/tx/',
+}
+
+function chainLabel(slug: string) {
+  if (slug === 'arc') return 'Arc'
+  return CHAINS.find(c => c.slug === slug)?.label ?? slug
+}
+
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <span style={{ fontSize: 12, color: 'var(--c-muted2)' }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)', fontFamily: mono ? 'var(--font-mono)' : 'inherit', textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+}
+
+function TxLink({ label, txHash, chain }: { label: string; txHash: string; chain: string }) {
+  const base = EXPLORERS[chain]
+  const href = base ? `${base}${txHash}` : null
+  const short = `${txHash.slice(0, 8)}…${txHash.slice(-6)}`
+  return (
+    <a
+      href={href ?? undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        padding: '10px 14px', borderRadius: 12, background: 'rgba(var(--c-fg-rgb),.05)',
+        border: '1px solid rgba(var(--c-fg-rgb),.07)', textDecoration: 'none',
+        pointerEvents: href ? 'auto' : 'none', cursor: href ? 'pointer' : 'default',
+      }}
+    >
+      <span style={{ fontSize: 12, color: 'var(--c-muted2)' }}>{label}</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontFamily: 'var(--font-mono)', color: '#818cf8', fontWeight: 600 }}>
+        {short}
+        {href && (
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14 21 3" /></svg>
+        )}
+      </span>
+    </a>
+  )
+}
+
 type Direction = 'withdraw' | 'deposit'
 type Status = 'idle' | 'estimating' | 'submitting' | 'awaiting_signature' | 'completing' | 'success' | 'error'
+
+interface ResultInfo {
+  direction: Direction
+  chainSlug: string
+  amount: string
+  recipientAddress: string | null
+  burnTxHash: string | null
+  burnChain: string
+  mintTxHash: string | null
+  mintChain: string
+}
 
 export interface BridgeModalProps {
   open: boolean
@@ -35,13 +96,13 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   const [recipientAddress, setRecipientAddress] = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [resultTxHash, setResultTxHash] = useState<string | null>(null)
+  const [result, setResult] = useState<ResultInfo | null>(null)
   const [estimate, setEstimate] = useState<{ gasFees: unknown; fees: unknown } | null>(null)
 
   if (!open) return null
 
   function reset() {
-    setStatus('idle'); setError(null); setResultTxHash(null); setEstimate(null)
+    setStatus('idle'); setError(null); setResult(null); setEstimate(null)
     setAmount(''); setRecipientAddress('')
   }
 
@@ -79,7 +140,11 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Withdraw failed')
-      setResultTxHash(json.mintTxHash || json.burnTxHash)
+      setResult({
+        direction: 'withdraw', chainSlug, amount, recipientAddress,
+        burnTxHash: json.burnTxHash ?? null, burnChain: 'arc',
+        mintTxHash: json.mintTxHash ?? null, mintChain: chainSlug,
+      })
       setStatus('success')
       onSuccess?.()
     } catch (e) {
@@ -130,7 +195,11 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       const complete = await completeRes.json()
       if (!completeRes.ok) throw new Error(complete.error || 'Could not complete deposit')
 
-      setResultTxHash(complete.mintTxHash)
+      setResult({
+        direction: 'deposit', chainSlug, amount, recipientAddress: walletAddress,
+        burnTxHash, burnChain: chainSlug,
+        mintTxHash: complete.mintTxHash ?? null, mintChain: 'arc',
+      })
       setStatus('success')
       onSuccess?.()
     } catch (e) {
@@ -160,17 +229,52 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '22px 20px' }}>
-          {status === 'success' ? (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text)', marginBottom: 8 }}>
-                {direction === 'withdraw' ? 'Withdrawal complete' : 'Deposit complete'}
+          {status === 'success' && result ? (
+            <div style={{ textAlign: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(34,197,94,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
               </div>
-              {resultTxHash && (
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--c-muted)', wordBreak: 'break-all', marginBottom: 16 }}>
-                  {resultTxHash}
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#22c55e', marginBottom: 18 }}>
+                {result.direction === 'withdraw' ? 'Withdrawal complete' : 'Deposit complete'}
+              </div>
+
+              <div style={{ textAlign: 'left', background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.07)', borderRadius: 14, padding: '14px 16px', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Row label="Direction" value={result.direction === 'withdraw' ? 'Withdraw' : 'Deposit'} />
+                <Row label="Amount" value={`${result.amount} USDC`} mono />
+                <Row label="Route" value={result.direction === 'withdraw' ? `Arc → ${chainLabel(result.chainSlug)}` : `${chainLabel(result.chainSlug)} → Arc`} />
+                {result.recipientAddress && (
+                  <Row label={result.direction === 'withdraw' ? 'Recipient' : 'To wallet'} value={`${result.recipientAddress.slice(0, 6)}…${result.recipientAddress.slice(-4)}`} mono />
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                {result.burnTxHash && (
+                  <TxLink label={`Burn tx (${chainLabel(result.burnChain)})`} txHash={result.burnTxHash} chain={result.burnChain} />
+                )}
+                {result.mintTxHash && (
+                  <TxLink label={`Mint tx (${chainLabel(result.mintChain)})`} txHash={result.mintTxHash} chain={result.mintChain} />
+                )}
+              </div>
+
+              <button onClick={handleClose} style={{ ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Done</button>
+            </div>
+          ) : status === 'error' && !busy ? (
+            <div style={{ textAlign: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#ef4444', marginBottom: 10 }}>
+                {direction === 'withdraw' ? 'Withdrawal failed' : 'Deposit failed'}
+              </div>
+              {error && (
+                <div style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, marginBottom: 20, background: 'rgba(239,68,68,.08)', borderRadius: 12, padding: '10px 14px' }}>
+                  {error}
                 </div>
               )}
-              <button onClick={handleClose} style={{ ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Done</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={handleClose} style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Close</button>
+                <button onClick={() => { setStatus('idle'); setError(null) }} style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Try again</button>
+              </div>
             </div>
           ) : (
             <>
@@ -236,12 +340,6 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
               {estimate && (
                 <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 14, background: 'rgba(var(--c-fg-rgb),.05)', borderRadius: 10, padding: '10px 12px' }}>
                   Estimate fetched — review fees before confirming.
-                </div>
-              )}
-
-              {error && (
-                <div style={{ fontSize: 12.5, color: '#ef4444', marginBottom: 14, background: 'rgba(239,68,68,.08)', borderRadius: 10, padding: '10px 12px' }}>
-                  {error}
                 </div>
               )}
 
