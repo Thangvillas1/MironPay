@@ -55,6 +55,8 @@ interface TxResult {
   txHash?: string
   txId?: string
   error?: string
+  code?: string
+  limitExceeded?: boolean
 }
 
 interface ChatMessage {
@@ -203,6 +205,14 @@ export default function DashboardPage() {
   // Agent + chat
   const [accessToken, setAccessToken] = useState('')
   const [agentWallet, setAgentWallet] = useState<AgentWalletData | null>(null)
+  // Ticks every second only while a session countdown needs to visibly move —
+  // avoids a app-wide 1s re-render when there's nothing counting down.
+  const [sessionNow, setSessionNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!agentWallet?.session_expires_at) return
+    const id = setInterval(() => setSessionNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [agentWallet?.session_expires_at])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   useEffect(() => {
@@ -548,6 +558,8 @@ export default function DashboardPage() {
       sym: action.sym,
       tokensEstimate: action.tokensEstimate,
       error: execData.error ?? 'Unknown error',
+      code: execData.code,
+      limitExceeded: execData.limitExceeded,
     } : {
       success: true,
       type: action.type,
@@ -1118,7 +1130,21 @@ export default function DashboardPage() {
                                 )}
                               </>
                             ) : (
-                              <p style={{ fontSize: 12, color: '#fb6f84' }}>{msg.txResult.error}</p>
+                              <>
+                                <p style={{ fontSize: 12, color: '#fb6f84' }}>{msg.txResult.error}</p>
+                                {msg.txResult.code === 'SESSION_EXPIRED' && (
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Bấm &quot;Enable agent&quot; dưới khung chat rồi thử lại.</p>
+                                )}
+                                {msg.txResult.code === 'insufficient_balance' && (
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Nạp thêm vào Agent Wallet rồi thử lại.</p>
+                                )}
+                                {msg.txResult.limitExceeded && (
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Tăng hạn mức ngày hoặc đợi reset vào ngày mai.</p>
+                                )}
+                                {(msg.txResult.code === 'PIN_REQUIRED' || msg.txResult.code === 'WRONG_PIN') && (
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Nhập đúng PIN Main Wallet rồi thử lại.</p>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -1234,17 +1260,19 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--c-muted2)', marginTop: 8, padding: '0 3px' }}>
                   {(() => {
                     const expiresAt = agentWallet?.session_expires_at ? new Date(agentWallet.session_expires_at) : null
-                    const active = !!expiresAt && expiresAt > new Date()
-                    const minsLeft = active ? Math.max(1, Math.ceil((expiresAt!.getTime() - Date.now()) / 60000)) : 0
+                    const active = !!expiresAt && expiresAt.getTime() > sessionNow
+                    const secsLeft = active ? Math.max(0, Math.ceil((expiresAt!.getTime() - sessionNow) / 1000)) : 0
+                    const mm = Math.floor(secsLeft / 60)
+                    const ss = secsLeft % 60
                     return active ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ color: '#4ade80' }}>● Agent session active</span>
-                        <span>({minsLeft}m left)</span>
-                        <button onClick={revokeAgentSession} style={{ background: 'none', border: 'none', color: 'var(--c-muted2)', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, padding: 0 }}>revoke</button>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>({mm}:{ss.toString().padStart(2, '0')} left)</span>
+                        <button onClick={revokeAgentSession} style={{ background: 'none', border: 'none', color: '#fb6f84', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, padding: 0 }}>revoke</button>
                       </span>
                     ) : (
-                      <button onClick={() => approveAgentSession(30)} style={{ background: 'none', border: 'none', color: '#818cf8', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, padding: 0 }}>
-                        Enable agent (30 min)
+                      <button onClick={() => approveAgentSession(30)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#fb6f84', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: 0 }}>
+                        ⚠️ Enable agent (30 min)
                       </button>
                     )
                   })()}
