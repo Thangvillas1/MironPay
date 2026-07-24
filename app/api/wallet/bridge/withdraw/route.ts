@@ -51,13 +51,21 @@ export async function POST(request: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
 
-    const burnTxHash = result.steps.find(s => s.name === 'depositForBurn')?.txHash ?? null
+    // The SDK's actual step name for the burn is 'burn', not 'depositForBurn'
+    // (confirmed from a live run: step names come back as
+    // ['approve', 'burn', 'fetchAttestation', 'mint']) — the wrong name here
+    // silently meant burnTxHash was always null and no withdrawal ever got
+    // tagged 'bridge_out', so none ever showed up as "Bridge" in activity.
+    const burnTxHash = result.steps.find(s => s.name === 'burn')?.txHash ?? null
     const mintTxHash = result.steps.find(s => s.name === 'mint')?.txHash ?? null
 
     if (burnTxHash) {
-      await supabase.from('transaction_kinds').insert({
+      const { error: kindErr } = await supabase.from('transaction_kinds').insert({
         tx_hash: burnTxHash, kind: 'bridge_out', wallet_address: wallet.walletAddress,
-      }).then(undefined, () => {})
+      })
+      if (kindErr) console.error('[bridge/withdraw] transaction_kinds insert failed', kindErr)
+    } else {
+      console.error('[bridge/withdraw] no burn step found — cannot tag as Bridge in activity', result.steps.map(s => s.name))
     }
 
     return NextResponse.json(jsonSafe({

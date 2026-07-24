@@ -249,7 +249,7 @@ function ActivityRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) 
   const statusColor = status.tone === 'success' ? '#2dd4bf' : status.tone === 'warning' ? 'var(--c-warning)' : '#fb6f84'
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(var(--c-fg-rgb),.05)' }}>
+    <div className="activity-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', margin: '0 -8px', borderRadius: 8, borderTop: '1px solid rgba(var(--c-fg-rgb),.05)' }}>
       <span onClick={onClick} style={{
         width: 30, height: 30, borderRadius: 9,
         background: hasMemo ? 'rgba(124,107,245,.18)' : iconBg,
@@ -602,24 +602,24 @@ export default function WalletPage() {
               Bridge/Earn stay disabled with a real tooltip (not live
               features), Withdraw/Manage AI still route to /agent. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8, flexWrap: 'wrap' as const }}>
-            <button onClick={() => refreshWallet()} disabled={refreshing} title="Refresh" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: refreshing ? '#6366f1' : 'var(--c-muted)', cursor: refreshing ? 'default' : 'pointer' }}>
+            <button onClick={() => refreshWallet()} disabled={refreshing} title="Refresh" className="mp-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: refreshing ? '#6366f1' : 'var(--c-muted)', cursor: refreshing ? 'default' : 'pointer' }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? 'srsSpin 0.8s linear infinite' : 'none' }}>
                 <path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
               </svg>
             </button>
-            <button onClick={() => setSrsMode('send')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setSrsMode('send')} className="mp-btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="m21 3-9.5 9.5" /><path d="M21 3 14 21l-3.5-7.5L3 10z" /></svg>
               Send
             </button>
-            <button onClick={() => setSrsMode('receive')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setSrsMode('receive')} className="mp-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v13" /><path d="m6 11 6 6 6-6" /></svg>
               Receive
             </button>
-            <button onClick={() => setSrsMode('swap')} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setSrsMode('swap')} className="mp-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12M6 21h12M7 3c0 4 3 5 5 7 2-2 5-3 5-7M7 21c0-4 3-5 5-7 2 2 5 3 5 7" /></svg>
               Swap
             </button>
-            <button onClick={() => setBridgeModalOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setBridgeModalOpen(true)} className="mp-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M2 21h20" /><path d="M4 21v-8M20 21v-8" /><path d="M2 13c4-5 16-5 20 0" /><path d="M8 21v-6M12 21v-7M16 21v-6" /></svg>
               Bridge
             </button>

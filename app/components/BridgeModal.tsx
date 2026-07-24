@@ -462,8 +462,8 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 {direction === 'deposit' && ' Check the Activity list or the block explorer later to confirm it completed.'}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setShowExitConfirm(false)} style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Keep waiting</button>
-                <button onClick={forceClose} style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Exit anyway</button>
+                <button onClick={() => setShowExitConfirm(false)} className="mp-btn-primary" style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Keep waiting</button>
+                <button onClick={forceClose} className="mp-btn-ghost" style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Exit anyway</button>
               </div>
             </div>
           </div>
@@ -472,7 +472,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px', borderBottom: '1px solid rgba(var(--c-fg-rgb),.07)', flexShrink: 0 }}>
           <div style={{ width: 34 }} />
           <span style={{ flex: 1, fontSize: 17, fontWeight: 700, color: 'var(--c-text)', textAlign: 'center', marginRight: 34 }}>Bridge</span>
-          <button onClick={handleClose} style={S.btn34}>
+          <button onClick={handleClose} className="mp-btn-ghost" style={S.btn34}>
             <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         </div>
@@ -515,6 +515,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                         setPinValue(next); setPinError(null)
                         if (next.length === 6) setTimeout(() => confirmPinAndWithdraw(next), 300)
                       }}
+                      className={k === '' ? undefined : 'mp-btn-ghost'}
                       style={{ height: 58, borderRadius: 14, border: '1px solid rgba(var(--c-fg-rgb),.07)', background: k === '' ? 'transparent' : 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 22, fontWeight: 600, cursor: k === '' ? 'default' : 'pointer', opacity: k === '' ? 0 : 1 }}
                     >
                       {k}
@@ -523,7 +524,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 </div>
               )}
 
-              <button onClick={() => setPinStep(false)} disabled={pinVerifying} style={{ marginTop: 18, background: 'none', border: 'none', color: 'var(--c-muted)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setPinStep(false)} disabled={pinVerifying} className="mp-btn-ghost" style={{ marginTop: 18, background: 'none', border: 'none', color: 'var(--c-muted)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
             </div>
           ) : status === 'submitting' || status === 'awaiting_signature' || status === 'completing' ? (
             <div style={{ animation: 'srsStep .25s ease', padding: '6px 2px' }}>
@@ -584,7 +585,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 )}
               </div>
 
-              <button onClick={handleClose} style={{ ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Done</button>
+              <button onClick={handleClose} className="mp-btn-primary" style={{ ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Done</button>
             </div>
           ) : status === 'error' && !busy ? (
             <div style={{ textAlign: 'center', padding: '12px 0 0' }}>
@@ -600,8 +601,8 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleClose} style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Close</button>
-                <button onClick={() => { setStatus('idle'); setError(null) }} style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Try again</button>
+                <button onClick={handleClose} className="mp-btn-ghost" style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Close</button>
+                <button onClick={() => { setStatus('idle'); setError(null) }} className="mp-btn-primary" style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Try again</button>
               </div>
             </div>
           ) : (
@@ -612,6 +613,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                     key={d}
                     onClick={() => { setDirection(d); reset() }}
                     disabled={busy}
+                    className="mp-btn-ghost"
                     style={{ flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: `1px solid ${direction === d ? '#6366f1' : 'rgba(var(--c-fg-rgb),.14)'}`, background: direction === d ? 'rgba(99,102,241,.12)' : 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)' }}
                   >
                     {d === 'withdraw' ? 'Withdraw' : 'Deposit'}
@@ -633,6 +635,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                   type="button"
                   onClick={() => setChainMenuOpen(o => !o)}
                   disabled={busy}
+                  className="mp-btn-ghost"
                   style={{ ...S.input, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}
                 >
                   <span>{chainLabel(chainSlug)}</span>
@@ -732,6 +735,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                   onClick={runEstimate}
                   disabled={!amount || parseFloat(amount) <= 0 || busy}
                   title="Preview the protocol and gas fees for this transfer before confirming — doesn't submit anything"
+                  className="mp-btn-ghost"
                   style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600, opacity: (!amount || busy) ? 0.5 : 1 }}
                 >
                   {status === 'estimating' ? 'Estimating…' : 'Estimate'}
@@ -739,6 +743,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 <button
                   onClick={direction === 'withdraw' ? startWithdraw : submitDeposit}
                   disabled={!canSubmit}
+                  className="mp-btn-primary"
                   style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed', opacity: canSubmit ? 1 : 0.5 }}
                 >
                   {direction === 'withdraw' ? 'Withdraw' : 'Connect & Deposit'}
