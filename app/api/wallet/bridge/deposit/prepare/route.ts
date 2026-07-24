@@ -47,10 +47,14 @@ export async function POST(request: NextRequest) {
     // runtime-safe but doesn't type-check nominally across the two bundles.
     const source = { adapter: getRelayerAdapter(), chain: externalChainObj, address: getRelayerAddress() } as any // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    // USDC has 6 decimals everywhere CCTP supports it. `approve()` (unlike
-    // `burn()`) takes the smallest-unit amount directly — it just encodes
-    // `increaseAllowance(spender, amount)`, so the source address used to
-    // "prepare" it doesn't matter for the resulting calldata either way.
+    // USDC has 6 decimals everywhere CCTP supports it. Both `approve()` and
+    // `burn()` take the smallest-unit amount directly (confirmed by the
+    // SDK's own doc example — "amount: '1000000', // 1 USDC (6 decimals)" —
+    // neither does the human-decimal conversion that BridgeKit's
+    // bridgeKit.bridge()/estimate() do internally). Passing the raw human
+    // string here (e.g. "2") was silently accepted and burned 0.000002 USDC
+    // instead of 2 — a 10^6 unit bug, not a revert, so it went undetected
+    // until someone checked the actual on-chain amount.
     const smallestUnitAmount = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString()
     const approvePrepared = await cctpProvider.approve(source, smallestUnitAmount)
     const approveCall = approvePrepared.type === 'evm' && approvePrepared.getCallData
@@ -66,7 +70,7 @@ export async function POST(request: NextRequest) {
     const burnPrepared = await cctpProvider.burn({
       source,
       destination: { adapter: circleBridgeAdapter, chain: ARC_CHAIN, address: wallet.walletAddress },
-      amount,
+      amount: smallestUnitAmount,
       token: 'USDC',
       config: {},
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
