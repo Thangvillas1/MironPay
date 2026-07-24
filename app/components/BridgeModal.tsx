@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Standalone bridge modal — deliberately NOT wired into SRSModal.tsx / its
 // ModalMode union, so the existing send/receive/swap flow stays untouched.
@@ -201,6 +201,24 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   const [result, setResult] = useState<ResultInfo | null>(null)
   const [estimate, setEstimate] = useState<EstimateInfo | null>(null)
   const [chainMenuOpen, setChainMenuOpen] = useState(false)
+  const estimateSeq = useRef(0)
+
+  // Auto-estimate whenever the inputs that affect fees change, instead of
+  // requiring a manual click. Debounced so we don't fire a request (and burn
+  // through CoinGecko's rate limit) on every keystroke while typing an
+  // amount. Only runs when idle/showing a previous estimate — never while a
+  // real submit is in flight or a result/error screen is showing.
+  useEffect(() => {
+    if (!open) return
+    if (status !== 'idle' && status !== 'estimating') return
+    if (!amount || parseFloat(amount) <= 0) return
+    const mySeq = ++estimateSeq.current
+    const handle = setTimeout(() => {
+      if (estimateSeq.current === mySeq) runEstimate()
+    }, 600)
+    return () => clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amount, chainSlug, direction, open])
 
   if (!open) return null
 
