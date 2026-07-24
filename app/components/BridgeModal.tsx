@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { formatEther } from 'viem'
 
 // Standalone bridge modal — deliberately NOT wired into SRSModal.tsx / its
 // ModalMode union, so the existing send/receive/swap flow stays untouched.
@@ -403,7 +402,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                         <Row
                           key={`gas-${i}`}
                           label={`Gas · ${g.name} (${chainLabel(g.blockchain === 'Arc_Testnet' ? 'arc' : g.blockchain)})`}
-                          value={g.fees ? `${formatEther(BigInt(g.fees.fee))} ${g.token}` : g.error ? 'Unavailable on testnet' : '—'}
+                          value={g.fees ? `${g.fees.fee} ${g.token}` : g.error ? 'Unavailable on testnet' : '—'}
                           mono
                         />
                       ))}
