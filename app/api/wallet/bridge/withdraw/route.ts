@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { bridgeKit, circleBridgeAdapter, relayerAdapter, relayerAddress, ARC_TESTNET, resolveExternalChain, isNoRouteError, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, getRelayerAddress, ARC_TESTNET, resolveExternalChain, isNoRouteError, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     // types, so it doesn't type-check nominally.
     const result = await bridgeKit.bridge({
       from: { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress },
-      to: { adapter: relayerAdapter, chain: externalChain, address: relayerAddress, recipientAddress },
+      to: { adapter: getRelayerAdapter(), chain: externalChain, address: getRelayerAddress(), recipientAddress },
       amount,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)

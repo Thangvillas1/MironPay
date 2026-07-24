@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
-import { bridgeKit, circleBridgeAdapter, relayerAdapter, relayerAddress, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, getRelayerAddress, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 
 export async function GET(request: NextRequest) {
@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
 
     // Same adapters used for the real transfer are used here purely to build
     // an unsigned estimate — no gas is spent, nothing is submitted on-chain.
+    const relayerAdapter = getRelayerAdapter()
+    const relayerAddress = getRelayerAddress()
     const from = direction === 'withdraw'
       ? { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress }
       : { adapter: relayerAdapter, chain: externalChain, address: relayerAddress }

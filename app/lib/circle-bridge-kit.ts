@@ -27,17 +27,43 @@ export const ARC_TESTNET = 'Arc_Testnet' as const
 // call instead of always defaulting to the relayer's own address — needed
 // both to prepare a deposit burn on behalf of an arbitrary user address, and
 // to submit a withdrawal mint paid for by the relayer.
-export const relayerAdapter = createViemAdapterFromPrivateKey({
-  privateKey: process.env.BRIDGE_RELAYER_PRIVATE_KEY! as `0x${string}`,
-  capabilities: { addressContext: 'developer-controlled' },
-})
+//
+// Lazily constructed (not a module-level const): Next.js's build-time "collect
+// page data" step imports every route module, so an eager
+// `process.env.BRIDGE_RELAYER_PRIVATE_KEY!` here would throw during `next
+// build` on any environment where the var isn't set yet (it did — this broke
+// the first deploy) instead of only failing at request time on the routes
+// that actually need it.
+type RelayerAdapter = ReturnType<typeof createViemAdapterFromPrivateKey<{ readonly addressContext: 'developer-controlled' }>>
+let _relayerAdapter: RelayerAdapter | null = null
+export function getRelayerAdapter() {
+  if (!_relayerAdapter) {
+    if (!process.env.BRIDGE_RELAYER_PRIVATE_KEY) {
+      throw new Error('BRIDGE_RELAYER_PRIVATE_KEY is not configured')
+    }
+    _relayerAdapter = createViemAdapterFromPrivateKey({
+      privateKey: process.env.BRIDGE_RELAYER_PRIVATE_KEY as `0x${string}`,
+      capabilities: { addressContext: 'developer-controlled' },
+    })
+  }
+  return _relayerAdapter
+}
 
 // Developer-controlled adapters require an explicit `address` on every
 // AdapterContext. The relayer's own address is only actually used for
 // signing when it submits a withdrawal mint; everywhere else (estimates,
 // deposit burn preparation, deposit attestation lookups) it's just a
 // required-by-type placeholder that doesn't affect the resulting calldata.
-export const relayerAddress = privateKeyToAccount(process.env.BRIDGE_RELAYER_PRIVATE_KEY! as `0x${string}`).address
+let _relayerAddress: `0x${string}` | null = null
+export function getRelayerAddress() {
+  if (!_relayerAddress) {
+    if (!process.env.BRIDGE_RELAYER_PRIVATE_KEY) {
+      throw new Error('BRIDGE_RELAYER_PRIVATE_KEY is not configured')
+    }
+    _relayerAddress = privateKeyToAccount(process.env.BRIDGE_RELAYER_PRIVATE_KEY as `0x${string}`).address
+  }
+  return _relayerAddress
+}
 
 export const bridgeKit = new BridgeKit()
 export const cctpProvider = new CCTPV2BridgingProvider()

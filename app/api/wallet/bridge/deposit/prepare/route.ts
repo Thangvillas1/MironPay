@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { cctpProvider, circleBridgeAdapter, relayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { cctpProvider, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
 
 // Builds the unsigned burn-transaction calldata for a deposit (external chain
 // -> Arc) so the browser can submit it directly through the user's own
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     // an adapter-circle-wallets adapter into a provider-cctp-v2 call is
     // runtime-safe but doesn't type-check nominally across the two bundles.
     const prepared = await cctpProvider.burn({
-      source: { adapter: relayerAdapter, chain: externalChain, address: fromAddress },
+      source: { adapter: getRelayerAdapter(), chain: externalChain, address: fromAddress },
       destination: { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress },
       amount,
       token: 'USDC',
