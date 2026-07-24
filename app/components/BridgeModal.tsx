@@ -31,6 +31,47 @@ function chainLabel(slug: string) {
   return CHAINS.find(c => c.slug === slug)?.label ?? slug
 }
 
+// EIP-3085/3326 network descriptors — required so the connected wallet
+// actually switches to the testnet before signing. Without this, the wallet
+// signs on whatever network it currently happens to be on (e.g. Ethereum
+// mainnet), which would target a completely different contract at the same
+// address and could spend real funds.
+const WALLET_CHAINS: Record<string, {
+  chainId: string; chainName: string; nativeCurrency: { name: string; symbol: string; decimals: number }
+  rpcUrls: string[]; blockExplorerUrls: string[]
+}> = {
+  ethereum_sepolia: {
+    chainId: '0xaa36a7', chainName: 'Ethereum Sepolia',
+    nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+    blockExplorerUrls: ['https://sepolia.etherscan.io'],
+  },
+  base_sepolia: {
+    chainId: '0x14a34', chainName: 'Base Sepolia',
+    nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['https://sepolia.base.org'],
+    blockExplorerUrls: ['https://sepolia.basescan.org'],
+  },
+}
+
+type Eip1193Provider = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> }
+
+async function ensureWalletOnChain(eth: Eip1193Provider, chainSlug: string) {
+  const target = WALLET_CHAINS[chainSlug]
+  if (!target) throw new Error(`Unknown chain for wallet switch: ${chainSlug}`)
+  try {
+    await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: target.chainId }] })
+  } catch (err) {
+    // 4902: chain not yet added to the wallet — add it, then switch.
+    const code = (err as { code?: number } | null)?.code
+    if (code === 4902) {
+      await eth.request({ method: 'wallet_addEthereumChain', params: [target] })
+    } else {
+      throw err
+    }
+  }
+}
+
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -182,15 +223,19 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       setStatus('error')
       return
     }
-    const eth = (window as unknown as { ethereum: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
-    } }).ethereum
+    const eth = (window as unknown as { ethereum: Eip1193Provider }).ethereum
 
     try {
       setStatus('awaiting_signature')
       const accounts = await eth.request({ method: 'eth_requestAccounts' }) as string[]
       const fromAddress = accounts[0]
       if (!fromAddress) throw new Error('No account returned by wallet')
+
+      // Force the wallet onto the correct testnet before signing anything —
+      // otherwise it signs on whatever network it currently happens to be
+      // on (e.g. Ethereum mainnet), targeting a different contract at the
+      // same address and risking real funds.
+      await ensureWalletOnChain(eth, chainSlug)
 
       // Backend builds the unsigned burn calldata (source = user's own
       // external wallet, destination = this MironPay wallet on Arc) —
