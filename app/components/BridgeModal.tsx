@@ -407,33 +407,51 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '22px 20px' }}>
           {pinStep ? (
-            <div style={{ textAlign: 'center', padding: '12px 0 0' }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text)', marginBottom: 6 }}>Confirm with PIN</div>
-              <p style={{ fontSize: 12.5, color: 'var(--c-muted)', marginBottom: 18 }}>
-                Authorize withdrawing {amount} USDC to {recipientAddress.slice(0, 6)}…{recipientAddress.slice(-4)} on {chainLabel(chainSlug)}.
-              </p>
-              <input
-                type="password" inputMode="numeric" pattern="[0-9]*" maxLength={6} autoFocus
-                value={pinValue}
-                onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setPinValue(v); setPinError(null) }}
-                onKeyDown={e => { if (e.key === 'Enter' && pinValue.length === 6 && !pinVerifying) confirmPinAndWithdraw(pinValue) }}
-                placeholder="••••••"
-                disabled={pinVerifying}
-                style={{ ...S.input, textAlign: 'center', letterSpacing: '0.5em', fontSize: 20, marginBottom: 14 }}
-              />
-              {pinError && (
-                <div style={{ fontSize: 12.5, color: '#ef4444', marginBottom: 14 }}>{pinError}</div>
-              )}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setPinStep(false)} disabled={pinVerifying} style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-                <button
-                  onClick={() => confirmPinAndWithdraw(pinValue)}
-                  disabled={pinValue.length !== 6 || pinVerifying}
-                  style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: pinValue.length === 6 ? 'pointer' : 'not-allowed', opacity: pinValue.length === 6 ? 1 : 0.5 }}
-                >
-                  {pinVerifying ? 'Verifying…' : 'Confirm'}
-                </button>
+            <div style={{ animation: 'srsStep .25s ease', textAlign: 'center' }}>
+              <div style={{ width: 54, height: 54, margin: '6px auto 0', borderRadius: 16, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
               </div>
+              <div style={{ fontSize: 19, fontWeight: 700, marginTop: 14, color: 'var(--c-text)' }}>Enter your PIN</div>
+              <div style={{ fontSize: 13, color: 'var(--c-muted)', marginTop: 4 }}>
+                6-digit PIN to authorize withdrawing {amount} USDC to {recipientAddress.slice(0, 6)}…{recipientAddress.slice(-4)}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, margin: '24px 0 8px' }}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <span key={i} style={{ width: 14, height: 14, borderRadius: '50%', ...(i < pinValue.length ? { background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', boxShadow: '0 0 8px rgba(99,102,241,.6)' } : { background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.14)' }), display: 'inline-block', transition: 'background .15s, box-shadow .15s' }} />
+                ))}
+              </div>
+
+              {pinError
+                ? <p style={{ fontSize: 12.5, color: '#fb6f84', marginBottom: 16, minHeight: 20 }}>{pinError}</p>
+                : <div style={{ marginBottom: 16, minHeight: 20 }} />}
+
+              {pinVerifying ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2.5px solid rgba(99,102,241,.3)', borderTopColor: '#818cf8', animation: 'srsSpin 0.8s linear infinite' }} />
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, maxWidth: 288, margin: '0 auto' }}>
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) => (
+                    <button
+                      key={i}
+                      disabled={k === ''}
+                      onClick={() => {
+                        if (k === '⌫') { setPinValue(v => v.slice(0, -1)); setPinError(null); return }
+                        if (k === '' || pinValue.length >= 6) return
+                        const next = pinValue + k
+                        setPinValue(next); setPinError(null)
+                        if (next.length === 6) setTimeout(() => confirmPinAndWithdraw(next), 300)
+                      }}
+                      style={{ height: 58, borderRadius: 14, border: '1px solid rgba(var(--c-fg-rgb),.07)', background: k === '' ? 'transparent' : 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 22, fontWeight: 600, cursor: k === '' ? 'default' : 'pointer', opacity: k === '' ? 0 : 1 }}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button onClick={() => setPinStep(false)} disabled={pinVerifying} style={{ marginTop: 18, background: 'none', border: 'none', color: 'var(--c-muted)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
             </div>
           ) : status === 'success' && result ? (
             <div style={{ textAlign: 'center', padding: '12px 0 0' }}>

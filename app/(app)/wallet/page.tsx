@@ -620,7 +620,7 @@ export default function WalletPage() {
               Swap
             </button>
             <button onClick={() => setBridgeModalOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M3 21V10l9-6 9 6v11M7 21v-7h10v7" /></svg>
+              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M2 21h20" /><path d="M4 21v-8M20 21v-8" /><path d="M2 13c4-5 16-5 20 0" /><path d="M8 21v-6M12 21v-7M16 21v-6" /></svg>
               Bridge
             </button>
             {[
