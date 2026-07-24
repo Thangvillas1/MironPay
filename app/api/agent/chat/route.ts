@@ -408,6 +408,7 @@ export async function POST(request: NextRequest) {
 Main Wallet address: ${resolvedMainWallet.walletAddress}
 Main Wallet (tokens already ordered verified-first, highest value first — reproduce this exact order, one per line):
 ${mainSummary}
+Agent Wallet address: ${profile?.agent_wallet_address ?? 'not initialized'}
 Agent Wallet (same ordering):
 ${agentSummary}
 Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
@@ -476,6 +477,7 @@ EURC: 20.5635
 USDC: 7.0415
 EURC: 19.7328
 - Balance/portfolio numbers MUST come only from the "Current portfolio" block above, generated fresh for this exact request. NEVER reuse, average, or "confirm" a balance figure you or the user mentioned earlier in this conversation's history — that number is stale by the time of a new request. If "Current portfolio" says "Portfolio: unavailable.", say plainly that the live balance couldn't be fetched right now and to try again — do not guess, do not fall back to a number from earlier in the chat.
+- "what's my agent wallet address?" / "địa chỉ ví agent của tôi là gì?" / similar for Main Wallet → answer directly with the address from "Current portfolio" above (both addresses are the user's own public on-chain address, not a secret — always fine to share with the account's own owner). Never refuse or deflect this question.
 - "withdraw to main wallet" / "rút về ví chính" → execute_send to Main Wallet address above
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
 - "nạp/deposit vào X402/Gateway" / "top up X402" → execute_gateway_deposit
