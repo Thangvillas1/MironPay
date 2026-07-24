@@ -72,6 +72,18 @@ async function ensureWalletOnChain(eth: Eip1193Provider, chainSlug: string) {
   }
 }
 
+// Wallet RPC rejections (wallet_switchEthereumChain, eth_sendTransaction,
+// etc.) are typically plain objects like `{ code: 4001, message: '...' }`,
+// not real Error instances — `String(e)` on those yields "[object Object]"
+// since they don't override toString(). Pull `.message` out generically.
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message
+  if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
+    return (e as { message: string }).message
+  }
+  return String(e)
+}
+
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -187,7 +199,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       setEstimate({ gasFees: json.gasFees ?? [], fees: json.fees ?? [] })
       setStatus('idle')
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorMessage(e))
       setStatus('error')
     }
   }
@@ -211,7 +223,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       setStatus('success')
       onSuccess?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorMessage(e))
       setStatus('error')
     }
   }
@@ -270,7 +282,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       setStatus('success')
       onSuccess?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorMessage(e))
       setStatus('error')
     }
   }
