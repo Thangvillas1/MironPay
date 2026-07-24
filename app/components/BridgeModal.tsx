@@ -149,6 +149,15 @@ function TxLink({ label, txHash, chain }: { label: string; txHash: string; chain
 type Direction = 'withdraw' | 'deposit'
 type Status = 'idle' | 'estimating' | 'submitting' | 'awaiting_signature' | 'completing' | 'success' | 'error'
 
+// Shown one at a time on the progress screen while a real transfer is in
+// flight (not during the quick "Estimate" fetch). Withdraw is one blocking
+// backend call, so we advance the first few on a timer and hold on the last
+// one until the real response comes back — same technique SRSModal.tsx uses
+// for Send/Swap. Deposit has real sequential steps (wallet signatures), so
+// its phase index is driven by the actual awaits instead of a timer.
+const WITHDRAW_PHASES = ['Signing withdrawal', 'Burning on Arc', 'Waiting for attestation & minting on destination']
+const DEPOSIT_PHASES = ['Connecting wallet', 'Approving USDC', 'Burning USDC', 'Waiting for attestation & minting into MironPay']
+
 interface EstimateGasFee {
   name: string
   token: string
@@ -211,6 +220,20 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   const [pinValue, setPinValue] = useState('')
   const [pinError, setPinError] = useState<string | null>(null)
   const [pinVerifying, setPinVerifying] = useState(false)
+  const [phase, setPhase] = useState(0)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const withdrawPhaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Warn on tab close/refresh while a real transfer is mid-flight — closing
+  // now would leave an approve/burn signed but MironPay never told about it
+  // (deposit), or a withdraw whose result the user never saw (withdraw).
+  useEffect(() => {
+    const busyNow = status === 'submitting' || status === 'awaiting_signature' || status === 'completing'
+    if (!busyNow) return
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [status])
 
   // Auto-estimate whenever the inputs that affect fees change, instead of
   // requiring a manual click. Debounced so we don't fire a request (and burn
@@ -232,12 +255,21 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   if (!open) return null
 
   function reset() {
+    if (withdrawPhaseTimer.current) clearTimeout(withdrawPhaseTimer.current)
     setStatus('idle'); setError(null); setResult(null); setEstimate(null)
     setAmount(''); setRecipientAddress(''); setChainMenuOpen(false)
     setPinStep(false); setPinValue(''); setPinError(null)
+    setPhase(0); setShowExitConfirm(false)
   }
 
   function handleClose() {
+    const busyNow = status === 'submitting' || status === 'awaiting_signature' || status === 'completing'
+    if (busyNow) { setShowExitConfirm(true); return }
+    reset()
+    onClose()
+  }
+
+  function forceClose() {
     reset()
     onClose()
   }
@@ -297,6 +329,21 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   async function submitWithdraw() {
     setError(null)
     setStatus('submitting')
+    setPhase(0)
+    // The withdraw endpoint is one blocking call — we don't get real
+    // progress ticks from it. Advance through the first phases on a timer
+    // and hold on the last one ("waiting for attestation & minting", the
+    // genuinely slow part) until the real response lands.
+    const advance = () => {
+      setPhase(p => {
+        const next = p + 1
+        if (next < WITHDRAW_PHASES.length - 1) {
+          withdrawPhaseTimer.current = setTimeout(advance, 1200)
+        }
+        return Math.min(next, WITHDRAW_PHASES.length - 1)
+      })
+    }
+    withdrawPhaseTimer.current = setTimeout(advance, 900)
     try {
       const res = await fetch('/api/wallet/bridge/withdraw', {
         method: 'POST',
@@ -315,6 +362,8 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
     } catch (e) {
       setError(errorMessage(e))
       setStatus('error')
+    } finally {
+      if (withdrawPhaseTimer.current) clearTimeout(withdrawPhaseTimer.current)
     }
   }
 
@@ -329,6 +378,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
 
     try {
       setStatus('awaiting_signature')
+      setPhase(0) // "Connecting wallet"
       const accounts = await eth.request({ method: 'eth_requestAccounts' }) as string[]
       const fromAddress = accounts[0]
       if (!fromAddress) throw new Error('No account returned by wallet')
@@ -357,13 +407,16 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       // transaction and wait for it to actually be mined before signing the
       // burn, since the burn's allowance check reads on-chain state.
       if (prep.approve) {
+        setPhase(1) // "Approving USDC"
         const approveTxHash = await sendCall(eth, fromAddress, prep.approve)
         await waitForReceipt(eth, approveTxHash)
       }
 
+      setPhase(2) // "Burning USDC"
       const burnTxHash = await sendCall(eth, fromAddress, prep.burn)
 
       setStatus('completing')
+      setPhase(3) // "Waiting for attestation & minting into MironPay"
       const completeRes = await fetch('/api/wallet/bridge/deposit/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -395,8 +448,27 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: 432, maxWidth: '94vw', maxHeight: '90vh', borderRadius: 22, ...S.panel, border: '1px solid rgba(var(--c-fg-rgb),.14)', boxShadow: '0 30px 80px rgba(3,8,20,.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ position: 'relative', width: 432, maxWidth: '94vw', maxHeight: '90vh', borderRadius: 22, ...S.panel, border: '1px solid rgba(var(--c-fg-rgb),.14)', boxShadow: '0 30px 80px rgba(3,8,20,.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
+        {showExitConfirm && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: 'rgba(6,4,16,.85)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <div style={{ textAlign: 'center', maxWidth: 300 }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(251,191,36,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" /></svg>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', marginBottom: 8 }}>Transfer still in progress</div>
+              <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, marginBottom: 20 }}>
+                Closing now won&apos;t stop it — it&apos;ll keep going in the background, but you won&apos;t see the result here.
+                {direction === 'deposit' && ' Check the Activity list or the block explorer later to confirm it completed.'}
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setShowExitConfirm(false)} style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Keep waiting</button>
+                <button onClick={forceClose} style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Exit anyway</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px', borderBottom: '1px solid rgba(var(--c-fg-rgb),.07)', flexShrink: 0 }}>
           <div style={{ width: 34 }} />
           <span style={{ flex: 1, fontSize: 17, fontWeight: 700, color: 'var(--c-text)', textAlign: 'center', marginRight: 34 }}>Bridge</span>
@@ -452,6 +524,38 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
               )}
 
               <button onClick={() => setPinStep(false)} disabled={pinVerifying} style={{ marginTop: 18, background: 'none', border: 'none', color: 'var(--c-muted)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+            </div>
+          ) : status === 'submitting' || status === 'awaiting_signature' || status === 'completing' ? (
+            <div style={{ animation: 'srsStep .25s ease', padding: '6px 2px' }}>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ position: 'relative', width: 72, height: 72, margin: '0 auto' }}>
+                  <svg width={72} height={72} viewBox="0 0 72 72" style={{ animation: 'srsSpin 1s linear infinite' }}>
+                    <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(var(--c-fg-rgb),.07)" strokeWidth={5} />
+                    <circle cx="36" cy="36" r="30" fill="none" stroke="#6366f1" strokeWidth={5} strokeLinecap="round" strokeDasharray="60 200" />
+                  </svg>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 16, color: 'var(--c-text)' }}>
+                  {direction === 'withdraw' ? 'Withdrawing…' : 'Depositing…'}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--c-muted)', marginTop: 4 }}>
+                  {status === 'awaiting_signature' ? 'Confirm in your wallet' : 'This can take a bit on testnet — please keep this window open'}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {(direction === 'withdraw' ? WITHDRAW_PHASES : DEPOSIT_PHASES).map((label, i) => {
+                  const done = phase > i
+                  const active = phase === i
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', borderRadius: 12, background: done ? 'rgba(34,197,94,.05)' : active ? 'rgba(99,102,241,.08)' : 'rgba(var(--c-fg-rgb),.03)', border: `1px solid ${done ? 'rgba(34,197,94,.2)' : active ? 'rgba(99,102,241,.3)' : 'rgba(var(--c-fg-rgb),.05)'}`, transition: 'all .3s' }}>
+                      <span style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', ...(done ? { background: 'rgba(34,197,94,.2)', color: '#22c55e' } : active ? { border: '2px solid #6366f1', animation: 'srsSpin 1s linear infinite' } : { background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.14)', color: 'var(--c-muted2)', fontSize: 11, fontWeight: 600 }) }}>
+                        {done ? <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg> : active ? null : <span>{i + 1}</span>}
+                      </span>
+                      <span style={{ fontSize: 13.5, fontWeight: done ? 500 : active ? 600 : 400, color: done ? '#22c55e' : active ? 'var(--c-text)' : 'var(--c-muted2)', transition: 'color .3s' }}>{label}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           ) : status === 'success' && result ? (
             <div style={{ textAlign: 'center', padding: '12px 0 0' }}>
@@ -637,10 +741,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                   disabled={!canSubmit}
                   style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed', opacity: canSubmit ? 1 : 0.5 }}
                 >
-                  {status === 'submitting' ? 'Submitting…'
-                    : status === 'awaiting_signature' ? 'Confirm in wallet…'
-                    : status === 'completing' ? 'Completing…'
-                    : direction === 'withdraw' ? 'Withdraw' : 'Connect & Deposit'}
+                  {direction === 'withdraw' ? 'Withdraw' : 'Connect & Deposit'}
                 </button>
               </div>
             </>
