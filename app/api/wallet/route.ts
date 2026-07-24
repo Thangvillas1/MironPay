@@ -80,54 +80,68 @@ export async function GET(request: NextRequest) {
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawTxs = ((txRes.data?.transactions as any[]) ?? [])
-    .filter((tx) => {
-      // Bỏ contract execution txs (swap overhead) — amount=0 OUTBOUND, không phải transfer thực
-      if (tx.transactionType !== 'INBOUND' && parseFloat(tx.amounts?.[0] ?? '0') === 0) return false
-      return true
-    })
+  const allTxs = (txRes.data?.transactions as any[]) ?? []
 
-  // Fetch memos for these txHashes (RLS ensures only sender/recipient can read)
-  const txHashes = rawTxs.map((tx) => tx.txHash).filter(Boolean)
+  // Fetch memos/kinds using the FULL unfiltered list — a bridge withdraw's
+  // burn is itself an amount=0 OUTBOUND CONTRACT_EXECUTION record (no
+  // separate inbound leg on this chain to fall back on, unlike swap/deposit),
+  // so we need to know which zero-amount rows are actually tagged before
+  // deciding what to drop.
+  const allTxHashes = allTxs.map((tx) => tx.txHash).filter(Boolean)
   const memoMap: Record<string, string> = {}
   const kindMap: Record<string, string> = {}
-  if (txHashes.length > 0) {
+  const kindAmountMap: Record<string, { amount: string; token: string } | undefined> = {}
+  if (allTxHashes.length > 0) {
     const [{ data: memos }, { data: kinds }] = await Promise.all([
-      supabase.from('transaction_memos').select('tx_hash, memo').in('tx_hash', txHashes),
-      supabase.from('transaction_kinds').select('tx_hash, kind').in('tx_hash', txHashes),
+      supabase.from('transaction_memos').select('tx_hash, memo').in('tx_hash', allTxHashes),
+      supabase.from('transaction_kinds').select('tx_hash, kind, amount, token').in('tx_hash', allTxHashes),
     ])
     for (const m of memos ?? []) {
       memoMap[m.tx_hash] = m.memo
     }
     for (const k of kinds ?? []) {
       kindMap[k.tx_hash] = k.kind
+      if (k.amount) kindAmountMap[k.tx_hash] = { amount: k.amount, token: k.token ?? 'USDC' }
     }
   }
 
-  const transactions = rawTxs.map((tx) => ({
-    id: tx.id,
-    type: (tx.transactionType === 'INBOUND' ? 'credit' : 'debit') as 'credit' | 'debit',
-    amount: parseFloat(tx.amounts?.[0] ?? '0'),
-    tokenSymbol: (tx.token?.symbol ?? txTokenMap[tx.tokenId ?? ''] ?? 'USDC') as string,
-    // Circle only ever reports a generic Sent/Received — swap the label to
-    // "Swap"/"Bridge" when this tx_hash was tagged at execution time (see
-    // app/api/wallet/swap/route.ts and app/api/wallet/bridge/**/route.ts),
-    // so the shared activity-icon logic (which keys off "swap"/"bridge" in
-    // the description) picks it up everywhere.
-    description: tx.txHash && kindMap[tx.txHash] === 'swap'
-      ? 'Swap'
-      : tx.txHash && (kindMap[tx.txHash] === 'bridge_out' || kindMap[tx.txHash] === 'bridge_in')
-      ? 'Bridge'
-      : tx.transactionType === 'INBOUND' ? 'Received' : 'Sent',
-    created_at: tx.createDate ?? new Date().toISOString(),
-    state: tx.state,
-    txHash: tx.txHash,
-    blockchain: tx.blockchain,
-    sourceAddress: tx.sourceAddress,
-    destinationAddress: tx.destinationAddress,
-    networkFee: tx.networkFee,
-    memo: tx.txHash ? memoMap[tx.txHash] : undefined,
-  }))
+  const rawTxs = allTxs.filter((tx) => {
+    // Bỏ contract execution txs (swap overhead) — amount=0 OUTBOUND, không phải transfer thực
+    // ...unless it's a tagged bridge withdrawal, whose only on-chain record
+    // IS a zero-amount contract execution (see kindAmountMap above).
+    if (tx.transactionType !== 'INBOUND' && parseFloat(tx.amounts?.[0] ?? '0') === 0) {
+      return !!(tx.txHash && kindMap[tx.txHash] === 'bridge_out')
+    }
+    return true
+  })
+
+  const transactions = rawTxs.map((tx) => {
+    const storedAmount = tx.txHash ? kindAmountMap[tx.txHash] : undefined
+    return {
+      id: tx.id,
+      type: (tx.transactionType === 'INBOUND' ? 'credit' : 'debit') as 'credit' | 'debit',
+      amount: storedAmount ? parseFloat(storedAmount.amount) : parseFloat(tx.amounts?.[0] ?? '0'),
+      tokenSymbol: (storedAmount?.token ?? tx.token?.symbol ?? txTokenMap[tx.tokenId ?? ''] ?? 'USDC') as string,
+      // Circle only ever reports a generic Sent/Received — swap the label to
+      // "Swap"/"Bridge" when this tx_hash was tagged at execution time (see
+      // app/api/wallet/swap/route.ts and app/api/wallet/bridge/**/route.ts),
+      // so the shared activity-icon logic (which keys off "swap"/"bridge" in
+      // the description) picks it up everywhere.
+      description: tx.txHash && kindMap[tx.txHash] === 'swap'
+        ? 'Swap'
+        : tx.txHash && (kindMap[tx.txHash] === 'bridge_out' || kindMap[tx.txHash] === 'bridge_in')
+        ? 'Bridge'
+        : tx.transactionType === 'INBOUND' ? 'Received' : 'Sent',
+      created_at: tx.createDate ?? new Date().toISOString(),
+      state: tx.state,
+      txHash: tx.txHash,
+      blockchain: tx.blockchain,
+      sourceAddress: tx.sourceAddress,
+      destinationAddress: tx.destinationAddress,
+      networkFee: tx.networkFee,
+      memo: tx.txHash ? memoMap[tx.txHash] : undefined,
+    }
+  })
 
   return NextResponse.json({
     balance: parseFloat(usdc?.amount ?? '0'),

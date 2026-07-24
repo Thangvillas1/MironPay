@@ -60,8 +60,13 @@ export async function POST(request: NextRequest) {
     const mintTxHash = result.steps.find(s => s.name === 'mint')?.txHash ?? null
 
     if (burnTxHash) {
+      // Circle's transaction list reports an empty amounts[] for this burn
+      // (a raw CONTRACT_EXECUTION call, no inbound leg on Arc to fall back
+      // on like swap/deposit have) — store the real amount/token ourselves
+      // so app/api/wallet/route.ts can display it instead of "0".
       const { error: kindErr } = await supabase.from('transaction_kinds').insert({
         tx_hash: burnTxHash, kind: 'bridge_out', wallet_address: wallet.walletAddress,
+        amount, token: 'USDC',
       })
       if (kindErr) console.error('[bridge/withdraw] transaction_kinds insert failed', kindErr)
     } else {
