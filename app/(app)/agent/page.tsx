@@ -8,7 +8,7 @@ import { useWalletStore } from '@/app/store/wallet'
 import { useUiStore } from '@/app/store/ui'
 import { addLocalTransaction } from '@/app/lib/local-tx'
 import { TokenPriceChart } from '@/app/components/TokenPriceChart'
-import { TypewriterText } from '@/app/components/TypewriterText'
+import { TypewriterText, formatInlineText } from '@/app/components/TypewriterText'
 import { SentimentMeter } from '@/app/components/SentimentMeter'
 import { TrendingTable } from '@/app/components/TrendingTable'
 import { DefiDataCard } from '@/app/components/DefiDataCard'
@@ -1087,7 +1087,7 @@ export default function AgentPage() {
                       ? 'bg-mp-primary text-white rounded-br-[4px]'
                       : 'bg-mp-card border border-white/8 text-mp-text rounded-bl-[4px]'
                   }`}>
-                    {msg.role === 'assistant' && msg.animate ? <TypewriterText text={msg.content} /> : msg.content}
+                    {msg.role === 'assistant' && msg.animate ? <TypewriterText text={msg.content} /> : (msg.role === 'assistant' ? formatInlineText(msg.content) : msg.content)}
                   </div>
                 )}
                 {msg.role === 'assistant' && msg.action && (

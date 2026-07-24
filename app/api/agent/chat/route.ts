@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { payX402 } from '@/app/lib/x402-buyer'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
+import { VERIFIED_SYMBOLS } from '@/app/lib/token-meta'
+import { TOKEN_USD_PRICE } from '@/app/lib/types'
 
 const X402_DATA_FEE = 0.01 // placeholder for testnet — revisit for mainnet
 
@@ -384,13 +386,30 @@ export async function POST(request: NextRequest) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const dropSpam = (tokens: any[]) => tokens.filter(t => parseFloat(t.amount ?? '0') <= SANE_MAX_BALANCE)
 
-        const mainSummary = dropSpam(mainTokens).map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || 'Empty'
-        const agentSummary = dropSpam(agentTokens).map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || '0 USDC'
+        // Verified tokens first, then by USD value (fixed peg price where known)
+        // descending — same ordering already used on the Wallet page's asset
+        // list, so the chat answer's line order matches what's on screen.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sortTokens = (tokens: any[]) => [...tokens].sort((a, b) => {
+          const aVerified = VERIFIED_SYMBOLS.has(a.token?.symbol)
+          const bVerified = VERIFIED_SYMBOLS.has(b.token?.symbol)
+          if (aVerified !== bVerified) return aVerified ? -1 : 1
+          const aValue = parseFloat(a.amount ?? '0') * (TOKEN_USD_PRICE[a.token?.symbol] ?? 0)
+          const bValue = parseFloat(b.amount ?? '0') * (TOKEN_USD_PRICE[b.token?.symbol] ?? 0)
+          return bValue - aValue
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formatLines = (tokens: any[]) => sortTokens(dropSpam(tokens)).map(t => `  - ${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join('\n')
+
+        const mainSummary = formatLines(mainTokens) || '  - Empty'
+        const agentSummary = formatLines(agentTokens) || '  - 0 USDC'
 
         portfolioContext = `## Current portfolio
 Main Wallet address: ${resolvedMainWallet.walletAddress}
-Main Wallet: ${mainSummary}
-Agent Wallet: ${agentSummary}
+Main Wallet (tokens already ordered verified-first, highest value first — reproduce this exact order, one per line):
+${mainSummary}
+Agent Wallet (same ordering):
+${agentSummary}
 Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
       } catch (e) {
         console.error('[agent/chat] portfolio fetch from Circle failed:', e instanceof Error ? e.message : e)
@@ -426,7 +445,7 @@ Daily limit used: ${wallet.daily_spent.toFixed(3)} / ${wallet.daily_limit} USDC`
       .from('miron_agent_identity').select('agent_id').single()
 
     const systemPrompt = `You are Miron Agent, an AI financial assistant for MironPay on ARC Testnet.${agentIdentity?.agent_id ? ` On-chain Agent ID #${agentIdentity.agent_id}.` : ''}
-Reply in the same language the user writes in — Vietnamese or English.
+Reply language: if the CURRENT message clearly is one identifiable language, reply in that language — this always wins, regardless of what earlier turns were in (e.g. don't switch to Vietnamese just because an earlier message in this chat was Vietnamese, if the current message is clearly in English). Only when the current message itself is ambiguous (too short, mixed languages, or language can't be determined) — as a tiebreaker, look at the last 5 messages in the conversation history: if 2 or more of them are in the same non-English language (Vietnamese or any other), reply in that language. Otherwise, default to English.
 
 ## Tone and length
 Be concise and professional — get to the point. Default to 1-3 short sentences. Never pad with filler ("As an AI...", "I'd be happy to help..."), never repeat the question back, never restate data that is already shown to the user visually (chart, table, gauge — those are called out explicitly in tool results when they apply).
@@ -449,6 +468,13 @@ Each tool's own description below states exactly when to call it — follow thos
 - "10k" / "10 ngàn" → 10000. "1m" / "1 triệu" → 1000000
 - Questions like "should I swap?" → answer in text only, no tool call
 - "what's my balance?" / "số dư của tôi" / "check số dư" (no wallet specified) → answer in text only, NEVER call get_token_price or any other tool for this, and ALWAYS report BOTH wallets by name from "Current portfolio" above — Main Wallet (with every token held, not just USDC) AND Agent Wallet — never just one. If the user's wording clearly names only one wallet ("agent wallet balance", "số dư ví agent"), report only that one. Wallet balances (how many USDC/EURC you hold) and token prices (what 1 USDC/EURC is worth) are different questions — a balance question never needs a price lookup.
+- Format balance/portfolio answers as: bold wallet name on its own line (**Main Wallet**), then each token on its own line below it, in the exact order given in "Current portfolio" (already sorted verified-first, highest value first) — never comma-joined on one line. Example:
+**Main Wallet**
+USDC: 47.3792
+EURC: 20.5635
+**Agent Wallet**
+USDC: 7.0415
+EURC: 19.7328
 - Balance/portfolio numbers MUST come only from the "Current portfolio" block above, generated fresh for this exact request. NEVER reuse, average, or "confirm" a balance figure you or the user mentioned earlier in this conversation's history — that number is stale by the time of a new request. If "Current portfolio" says "Portfolio: unavailable.", say plainly that the live balance couldn't be fetched right now and to try again — do not guess, do not fall back to a number from earlier in the chat.
 - "withdraw to main wallet" / "rút về ví chính" → execute_send to Main Wallet address above
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
@@ -476,7 +502,7 @@ Never claim the transaction is done or already in progress — the system will s
     // systemPrompt's tool-selection/disambiguation rules aren't needed once a
     // tool has already been picked and run; resending them just to get the
     // model to phrase a summary doubles input tokens for no benefit.
-    const secondPassSystemPrompt = `You are Miron Agent, an AI financial assistant for MironPay on ARC Testnet. Reply in the same language the user wrote in — Vietnamese or English. Be concise: 1-3 short sentences, no filler, no restating data already shown in the UI (chart/table/gauge). Use the tool result below to answer the user's message directly.`
+    const secondPassSystemPrompt = `You are Miron Agent, an AI financial assistant for MironPay on ARC Testnet. Reply in the language the user's message is clearly written in; if it's ambiguous or mixed, default to English. Be concise: 1-3 short sentences, no filler, no restating data already shown in the UI (chart/table/gauge). Use the tool result below to answer the user's message directly.`
     const secondPassMessages = [
       { role: 'system', content: secondPassSystemPrompt },
       { role: 'user', content: message },

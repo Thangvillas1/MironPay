@@ -22,7 +22,7 @@ import { WalletLookupCard } from '@/app/components/WalletLookupCard'
 import { DexPairCard } from '@/app/components/DexPairCard'
 import { SwapQuoteCard } from '@/app/components/SwapQuoteCard'
 import { getActivityIcon } from '@/app/lib/activity-icon'
-import { TypewriterText } from '@/app/components/TypewriterText'
+import { TypewriterText, formatInlineText } from '@/app/components/TypewriterText'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -1124,7 +1124,7 @@ export default function DashboardPage() {
                         </div>
                       ) : (
                         <div style={{ maxWidth: '75%', borderRadius: 14, padding: '12px 15px', fontSize: 14, lineHeight: 1.55, ...(msg.role === 'user' ? { background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 6px 20px rgba(99,102,241,.28)', color: '#fff', borderBottomRightRadius: 5 } : { background: 'var(--c-panel-2)', border: '1px solid rgba(var(--c-fg-rgb),.07)', color: 'var(--c-text)', borderBottomLeftRadius: 5 }) }}>
-                          {msg.role === 'assistant' && msg.animate ? <TypewriterText text={msg.content} /> : msg.content}
+                          {msg.role === 'assistant' && msg.animate ? <TypewriterText text={msg.content} /> : (msg.role === 'assistant' ? formatInlineText(msg.content) : msg.content)}
                         </div>
                       )}
                       {msg.role === 'assistant' && msg.chart && (
