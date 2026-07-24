@@ -879,6 +879,7 @@ export default function WalletPage() {
         onClose={() => setBridgeModalOpen(false)}
         accessToken={accessToken}
         walletAddress={walletAddress}
+        hasPIN={hasPIN}
         onSuccess={() => {
           fetch('/api/wallet', { headers: { Authorization: `Bearer ${accessToken}` } })
             .then(r => r.json())

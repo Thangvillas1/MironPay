@@ -188,10 +188,11 @@ export interface BridgeModalProps {
   onClose: () => void
   accessToken: string
   walletAddress: string | null
+  hasPIN?: boolean
   onSuccess?: () => void
 }
 
-export default function BridgeModal({ open, onClose, accessToken, walletAddress, onSuccess }: BridgeModalProps) {
+export default function BridgeModal({ open, onClose, accessToken, walletAddress, hasPIN = false, onSuccess }: BridgeModalProps) {
   const [direction, setDirection] = useState<Direction>('withdraw')
   const [chainSlug, setChainSlug] = useState(CHAINS[0].slug)
   const [amount, setAmount] = useState('')
@@ -202,6 +203,14 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   const [estimate, setEstimate] = useState<EstimateInfo | null>(null)
   const [chainMenuOpen, setChainMenuOpen] = useState(false)
   const estimateSeq = useRef(0)
+  // Withdraw spends from the user's custodial MironPay wallet — same as
+  // Send/Swap in SRSModal.tsx, it must be authorized with the account PIN
+  // first. Deposit doesn't touch the custodial wallet (the user's own
+  // connected browser wallet signs it), so it skips this.
+  const [pinStep, setPinStep] = useState(false)
+  const [pinValue, setPinValue] = useState('')
+  const [pinError, setPinError] = useState<string | null>(null)
+  const [pinVerifying, setPinVerifying] = useState(false)
 
   // Auto-estimate whenever the inputs that affect fees change, instead of
   // requiring a manual click. Debounced so we don't fire a request (and burn
@@ -225,11 +234,46 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   function reset() {
     setStatus('idle'); setError(null); setResult(null); setEstimate(null)
     setAmount(''); setRecipientAddress(''); setChainMenuOpen(false)
+    setPinStep(false); setPinValue(''); setPinError(null)
   }
 
   function handleClose() {
     reset()
     onClose()
+  }
+
+  function startWithdraw() {
+    if (!hasPIN) {
+      setError('Set up a PIN first (Send → Confirm with PIN) before withdrawing.')
+      setStatus('error')
+      return
+    }
+    setPinError(null); setPinValue(''); setPinStep(true)
+  }
+
+  async function confirmPinAndWithdraw(enteredPin: string) {
+    setPinVerifying(true); setPinError(null)
+    try {
+      const res = await fetch('/api/auth/pin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ pin: enteredPin }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setPinError(d.error === 'Incorrect PIN' ? 'Incorrect PIN — try again' : d.error ?? 'PIN verification failed')
+        setPinValue('')
+        setPinVerifying(false)
+        return
+      }
+      setPinStep(false)
+      setPinVerifying(false)
+      await submitWithdraw()
+    } catch {
+      setPinError('Connection error — try again')
+      setPinValue('')
+      setPinVerifying(false)
+    }
   }
 
   async function runEstimate() {
@@ -362,7 +406,36 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '22px 20px' }}>
-          {status === 'success' && result ? (
+          {pinStep ? (
+            <div style={{ textAlign: 'center', padding: '12px 0 0' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text)', marginBottom: 6 }}>Confirm with PIN</div>
+              <p style={{ fontSize: 12.5, color: 'var(--c-muted)', marginBottom: 18 }}>
+                Authorize withdrawing {amount} USDC to {recipientAddress.slice(0, 6)}…{recipientAddress.slice(-4)} on {chainLabel(chainSlug)}.
+              </p>
+              <input
+                type="password" inputMode="numeric" pattern="[0-9]*" maxLength={6} autoFocus
+                value={pinValue}
+                onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setPinValue(v); setPinError(null) }}
+                onKeyDown={e => { if (e.key === 'Enter' && pinValue.length === 6 && !pinVerifying) confirmPinAndWithdraw(pinValue) }}
+                placeholder="••••••"
+                disabled={pinVerifying}
+                style={{ ...S.input, textAlign: 'center', letterSpacing: '0.5em', fontSize: 20, marginBottom: 14 }}
+              />
+              {pinError && (
+                <div style={{ fontSize: 12.5, color: '#ef4444', marginBottom: 14 }}>{pinError}</div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setPinStep(false)} disabled={pinVerifying} style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                <button
+                  onClick={() => confirmPinAndWithdraw(pinValue)}
+                  disabled={pinValue.length !== 6 || pinVerifying}
+                  style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: pinValue.length === 6 ? 'pointer' : 'not-allowed', opacity: pinValue.length === 6 ? 1 : 0.5 }}
+                >
+                  {pinVerifying ? 'Verifying…' : 'Confirm'}
+                </button>
+              </div>
+            </div>
+          ) : status === 'success' && result ? (
             <div style={{ textAlign: 'center', padding: '12px 0 0' }}>
               <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(34,197,94,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                 <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
@@ -542,7 +615,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                   {status === 'estimating' ? 'Estimating…' : 'Estimate'}
                 </button>
                 <button
-                  onClick={direction === 'withdraw' ? submitWithdraw : submitDeposit}
+                  onClick={direction === 'withdraw' ? startWithdraw : submitDeposit}
                   disabled={!canSubmit}
                   style={{ flex: 1, ...S.input, background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', color: '#fff', border: 'none', fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed', opacity: canSubmit ? 1 : 0.5 }}
                 >
