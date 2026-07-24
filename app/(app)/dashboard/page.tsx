@@ -1133,16 +1133,16 @@ export default function DashboardPage() {
                               <>
                                 <p style={{ fontSize: 12, color: '#fb6f84' }}>{msg.txResult.error}</p>
                                 {msg.txResult.code === 'SESSION_EXPIRED' && (
-                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Bấm &quot;Enable agent&quot; dưới khung chat rồi thử lại.</p>
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Click &quot;Enable agent&quot; below the chat box, then try again.</p>
                                 )}
                                 {msg.txResult.code === 'insufficient_balance' && (
-                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Nạp thêm vào Agent Wallet rồi thử lại.</p>
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Deposit more into the Agent Wallet, then try again.</p>
                                 )}
                                 {msg.txResult.limitExceeded && (
-                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Tăng hạn mức ngày hoặc đợi reset vào ngày mai.</p>
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Raise your daily limit, or wait for tomorrow's reset.</p>
                                 )}
                                 {(msg.txResult.code === 'PIN_REQUIRED' || msg.txResult.code === 'WRONG_PIN') && (
-                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Nhập đúng PIN Main Wallet rồi thử lại.</p>
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Enter the correct Main Wallet PIN, then try again.</p>
                                 )}
                               </>
                             )}
