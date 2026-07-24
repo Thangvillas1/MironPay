@@ -120,12 +120,13 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ResultInfo | null>(null)
   const [estimate, setEstimate] = useState<EstimateInfo | null>(null)
+  const [chainMenuOpen, setChainMenuOpen] = useState(false)
 
   if (!open) return null
 
   function reset() {
     setStatus('idle'); setError(null); setResult(null); setEstimate(null)
-    setAmount(''); setRecipientAddress('')
+    setAmount(''); setRecipientAddress(''); setChainMenuOpen(false)
   }
 
   function handleClose() {
@@ -322,14 +323,39 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
               <label style={{ fontSize: 12, color: 'var(--c-muted2)', display: 'block', marginBottom: 6 }}>
                 {direction === 'withdraw' ? 'Destination chain' : 'Source chain'}
               </label>
-              <select
-                value={chainSlug}
-                onChange={e => { setChainSlug(e.target.value); setEstimate(null) }}
-                disabled={busy}
-                style={{ ...S.input, marginBottom: 14, colorScheme: 'dark' }}
-              >
-                {CHAINS.map(c => <option key={c.slug} value={c.slug} style={{ background: '#181a2e', color: '#fff' }}>{c.label}</option>)}
-              </select>
+              <div style={{ position: 'relative', marginBottom: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => setChainMenuOpen(o => !o)}
+                  disabled={busy}
+                  style={{ ...S.input, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                >
+                  <span>{chainLabel(chainSlug)}</span>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="var(--c-muted)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ transform: chainMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="m6 9 6 6 6-6" /></svg>
+                </button>
+                {chainMenuOpen && (
+                  <>
+                    <div onClick={() => setChainMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1001 }} />
+                    <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 1002, background: 'var(--c-panel)', border: '1px solid rgba(var(--c-fg-rgb),.14)', borderRadius: 12, boxShadow: '0 12px 32px rgba(3,8,20,.35)', overflow: 'hidden' }}>
+                      {CHAINS.map(c => {
+                        const selected = c.slug === chainSlug
+                        return (
+                          <button
+                            key={c.slug}
+                            type="button"
+                            onClick={() => { setChainSlug(c.slug); setEstimate(null); setChainMenuOpen(false) }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,.16)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = selected ? 'rgba(99,102,241,.10)' : 'transparent' }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '11px 14px', fontSize: 13.5, fontWeight: selected ? 600 : 500, background: selected ? 'rgba(99,102,241,.10)' : 'transparent', color: 'var(--c-text)', border: 'none', cursor: 'pointer' }}
+                          >
+                            {c.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
 
               <label style={{ fontSize: 12, color: 'var(--c-muted2)', display: 'block', marginBottom: 6 }}>Amount (USDC)</label>
               <input
