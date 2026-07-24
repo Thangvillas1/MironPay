@@ -36,6 +36,22 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
+    // Every Agent Wallet action (never Main Wallet, which is gated by PIN
+    // instead) requires a live, user-approved session — same model as
+    // Alchemy Agent Wallets: the AI never has standing permission to move
+    // funds, only a time-boxed window the user explicitly opened.
+    if (walletSource === 'agent') {
+      const { data: sessionRow } = await supabase
+        .from('agent_wallets').select('session_expires_at').eq('user_id', user.id).maybeSingle()
+      const expiresAt = sessionRow?.session_expires_at ? new Date(sessionRow.session_expires_at) : null
+      if (!expiresAt || expiresAt < new Date()) {
+        return NextResponse.json({
+          error: 'Agent session expired or not approved. Approve a session to let the agent act.',
+          code: 'SESSION_EXPIRED',
+        }, { status: 403 })
+      }
+    }
+
     // Gateway deposit/withdraw always operate on the Agent Wallet's own X402
     // reserve — never Main Wallet, so this bypasses the send/swap-specific PIN
     // check and daily spending limit below (moving funds between a wallet and
@@ -160,6 +176,23 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: `@${uname} not found on MironPay` }, { status: 404 })
         }
         destAddress = destProfile.wallet_address
+      }
+
+      // Dry-run: simulate the transfer first so a bad destination, unsupported
+      // token, or insufficient gas surfaces as a clean error instead of a
+      // broadcast (and gas-paying) transaction that then fails on-chain.
+      try {
+        await circleClient.estimateTransferFee({
+          walletId: agentWalletId,
+          tokenId: checkTokenBal?.token?.id,
+          destinationAddress: destAddress,
+          amount: [amount.toString()],
+        })
+      } catch (e) {
+        return NextResponse.json({
+          error: `Transaction would fail: ${e instanceof Error ? e.message : 'invalid transfer parameters'}`,
+          code: 'DRY_RUN_FAILED',
+        }, { status: 400 })
       }
 
       const tx = await circleClient.createTransaction({

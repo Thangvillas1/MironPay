@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     // Fetch balance and spending data in parallel
     const [balanceRes, agentWalletRow, profileRow, onChainLimitRaw, gatewayResult, txRes] = await Promise.all([
       circleClient.getWalletTokenBalance({ id: agentWalletId }),
-      supabase.from('agent_wallets').select('daily_limit, daily_spent, daily_reset_date').eq('user_id', user.id).single(),
+      supabase.from('agent_wallets').select('daily_limit, daily_spent, daily_reset_date, session_expires_at').eq('user_id', user.id).single(),
       supabase.from('profiles').select('miron_level').eq('id', user.id).single(),
       getOnChainLimit(agentWalletAddress),
       // Gateway API is occasionally flaky on testnet — the reserve figure is
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
     if (!agentWallet) {
       // First time — initialize with on-chain limit or level cap
       await supabase.from('agent_wallets').insert({ user_id: user.id, daily_limit: authoritative })
-      agentWallet = { daily_limit: authoritative, daily_spent: 0, daily_reset_date: today }
+      agentWallet = { daily_limit: authoritative, daily_spent: 0, daily_reset_date: today, session_expires_at: null }
     } else if (agentWallet.daily_reset_date !== today) {
       // New day — reset spent counter, sync limit from chain
       await supabase.from('agent_wallets').update({
@@ -209,6 +209,7 @@ export async function GET(request: NextRequest) {
       msg_cost: MSG_COST,
       gateway_reserved: gatewayReserved,
       gateway_online: gatewayResult.online,
+      session_expires_at: agentWallet.session_expires_at ?? null,
       tokenList,
       transactions,
     })

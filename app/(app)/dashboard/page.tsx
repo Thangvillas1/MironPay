@@ -38,6 +38,7 @@ interface AgentWalletData {
   wallet_address: string | null
   gateway_reserved?: number
   tokenList?: TokenBalance[]
+  session_expires_at?: string | null
 }
 
 interface TxResult {
@@ -363,6 +364,23 @@ export default function DashboardPage() {
   async function refreshAgentWallet(token: string) {
     const res = await fetch('/api/agent/wallet', { headers: { Authorization: `Bearer ${token}` } })
     if (res.ok) setAgentWallet(await res.json())
+  }
+
+  async function approveAgentSession(minutes = 30) {
+    const res = await fetch('/api/agent/wallet/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ minutes }),
+    })
+    if (res.ok) refreshAgentWallet(accessToken)
+  }
+
+  async function revokeAgentSession() {
+    const res = await fetch('/api/agent/wallet/session', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (res.ok) refreshAgentWallet(accessToken)
   }
 
   async function refreshAgentStats(token: string) {
@@ -1213,7 +1231,23 @@ export default function DashboardPage() {
                     <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m21 3-9.5 9.5" /><path d="M21 3 14 21l-3.5-7.5L3 10z" /></svg>
                   </button>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, color: 'var(--c-muted2)', marginTop: 8, padding: '0 3px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--c-muted2)', marginTop: 8, padding: '0 3px' }}>
+                  {(() => {
+                    const expiresAt = agentWallet?.session_expires_at ? new Date(agentWallet.session_expires_at) : null
+                    const active = !!expiresAt && expiresAt > new Date()
+                    const minsLeft = active ? Math.max(1, Math.ceil((expiresAt!.getTime() - Date.now()) / 60000)) : 0
+                    return active ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: '#4ade80' }}>● Agent session active</span>
+                        <span>({minsLeft}m left)</span>
+                        <button onClick={revokeAgentSession} style={{ background: 'none', border: 'none', color: 'var(--c-muted2)', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, padding: 0 }}>revoke</button>
+                      </span>
+                    ) : (
+                      <button onClick={() => approveAgentSession(30)} style={{ background: 'none', border: 'none', color: '#818cf8', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, padding: 0 }}>
+                        Enable agent (30 min)
+                      </button>
+                    )
+                  })()}
                   <span>Agent limit: ${agentWallet ? formatUSD(agentWallet.daily_limit) : '5.00'} USDC / day</span>
                 </div>
               </div>

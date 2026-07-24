@@ -370,8 +370,16 @@ export async function POST(request: NextRequest) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const agentTokens: any[] = agentBal?.data?.tokenBalances ?? []
 
-        const mainSummary = mainTokens.map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || 'Empty'
-        const agentSummary = agentTokens.map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || '0 USDC'
+        // Spoofed/spam tokens on-chain reuse a real symbol (e.g. "EURC") with an
+        // absurd fake balance to trick balance displays. No real MironPay wallet
+        // holds anything close to this on ARC Testnet — drop it before it ever
+        // reaches the model instead of relying on the model to catch it.
+        const SANE_MAX_BALANCE = 1_000_000
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const dropSpam = (tokens: any[]) => tokens.filter(t => parseFloat(t.amount ?? '0') <= SANE_MAX_BALANCE)
+
+        const mainSummary = dropSpam(mainTokens).map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || 'Empty'
+        const agentSummary = dropSpam(agentTokens).map(t => `${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join(', ') || '0 USDC'
 
         portfolioContext = `## Current portfolio
 Main Wallet address: ${resolvedMainWallet.walletAddress}
