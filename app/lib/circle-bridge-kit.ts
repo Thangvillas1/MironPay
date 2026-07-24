@@ -94,3 +94,11 @@ export function isNoRouteError(err: unknown): boolean {
 export function bridgeErrorMessage(err: unknown): string {
   return getErrorMessage(err)
 }
+
+// bridgeKit.bridge()/estimate() results carry BigInt fields (gas amounts,
+// smallest-unit values) that NextResponse.json's JSON.stringify can't
+// serialize on its own ("Do not know how to serialize a BigInt"). Deep-walk
+// and stringify any BigInt before handing a result to NextResponse.json.
+export function jsonSafe<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value, (_key, v) => typeof v === 'bigint' ? v.toString() : v))
+}

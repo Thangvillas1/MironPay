@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, isNoRouteError, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, isNoRouteError, bridgeErrorMessage, jsonSafe } from '@/app/lib/circle-bridge-kit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
       }).then(undefined, () => {})
     }
 
-    return NextResponse.json({
+    return NextResponse.json(jsonSafe({
       state: result.state,
       burnTxHash,
       mintTxHash,
       steps: result.steps,
-    })
+    }))
   } catch (err) {
     if (isNoRouteError(err)) {
       return NextResponse.json({ error: 'No bridge route available right now. Please try again in a few minutes.' }, { status: 400 })

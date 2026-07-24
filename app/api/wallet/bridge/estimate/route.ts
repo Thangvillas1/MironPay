@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
-import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage, jsonSafe } from '@/app/lib/circle-bridge-kit'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 
 export async function GET(request: NextRequest) {
@@ -53,13 +53,13 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const estimate = await bridgeKit.estimate({ from, to, amount } as any)
 
-    return NextResponse.json({
+    return NextResponse.json(jsonSafe({
       gasFees: estimate.gasFees ?? null,
       fees: estimate.fees ?? null,
       direction,
       externalChain: externalChainSlug,
       amount,
-    })
+    }))
   } catch (err) {
     const message = bridgeErrorMessage(err) || (err instanceof Error ? err.message : String(err))
     console.error('[bridge/estimate]', message)
