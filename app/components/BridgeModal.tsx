@@ -164,6 +164,8 @@ interface EstimateFee {
 interface EstimateInfo {
   gasFees: EstimateGasFee[]
   fees: EstimateFee[]
+  totalUsd: number | null
+  totalUsdComplete: boolean
 }
 
 function feeTypeLabel(type: string) {
@@ -222,7 +224,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Estimate failed')
-      setEstimate({ gasFees: json.gasFees ?? [], fees: json.fees ?? [] })
+      setEstimate({ gasFees: json.gasFees ?? [], fees: json.fees ?? [], totalUsd: json.totalUsd ?? null, totalUsdComplete: json.totalUsdComplete ?? true })
       setStatus('idle')
     } catch (e) {
       setError(errorMessage(e))
@@ -497,6 +499,16 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                           mono
                         />
                       ))}
+                      {estimate.totalUsd != null && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 8, marginTop: 2, borderTop: '1px solid rgba(var(--c-fg-rgb),.08)' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#818cf8' }}>
+                            Estimated total{!estimate.totalUsdComplete && ' (partial)'}
+                          </span>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#818cf8', fontFamily: 'var(--font-mono)' }}>
+                            {estimate.totalUsd < 0.01 ? '< $0.01' : `≈ $${estimate.totalUsd.toFixed(2)}`}
+                          </span>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

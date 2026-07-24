@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage, jsonSafe } from '@/app/lib/circle-bridge-kit'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
+import { fetchSimplePrice } from '@/app/lib/coingecko'
+
+// USD-pegged stablecoins: skip the price lookup (saves an API call and a
+// rate-limit risk) and just treat 1 unit as $1.
+const STABLE_USD = new Set(['USDC', 'USDT'])
+
+async function usdPrice(symbol: string): Promise<number | null> {
+  if (STABLE_USD.has(symbol.toUpperCase())) return 1
+  try {
+    const price = await fetchSimplePrice(symbol)
+    return price?.priceUsd ?? null
+  } catch {
+    return null
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,9 +69,42 @@ export async function GET(request: NextRequest) {
     const estimate = await bridgeKit.estimate({ from, to, amount } as any)
     console.log('[bridge/estimate] raw result', JSON.stringify(estimate, (_k, v) => typeof v === 'bigint' ? v.toString() : v))
 
+    const gasFees = estimate.gasFees ?? []
+    const fees = estimate.fees ?? []
+
+    // Convert every fee line (each potentially a different token — ETH gas
+    // on the external chain, USDC protocol fee, etc.) to USD so the UI can
+    // show one combined total. Missing prices (rate-limited lookups, unknown
+    // tokens) are dropped from the total rather than failing the whole
+    // estimate — `totalUsdComplete` tells the UI whether every line priced
+    // successfully, so it can caveat the number if not.
+    const uniqueTokens = [...new Set([
+      ...gasFees.filter((g: { fees: unknown }) => g.fees).map((g: { token: string }) => g.token),
+      ...fees.map((f: { token: string }) => f.token),
+    ])]
+    const prices = Object.fromEntries(
+      await Promise.all(uniqueTokens.map(async (t) => [t, await usdPrice(t)] as const))
+    ) as Record<string, number | null>
+
+    let totalUsd = 0
+    let totalUsdComplete = true
+    for (const g of gasFees as { token: string; fees: { fee: string } | null }[]) {
+      if (!g.fees) continue
+      const price = prices[g.token]
+      if (price == null) { totalUsdComplete = false; continue }
+      totalUsd += parseFloat(g.fees.fee) * price
+    }
+    for (const f of fees as { token: string; amount: string }[]) {
+      const price = prices[f.token]
+      if (price == null) { totalUsdComplete = false; continue }
+      totalUsd += parseFloat(f.amount) * price
+    }
+
     return NextResponse.json(jsonSafe({
-      gasFees: estimate.gasFees ?? null,
-      fees: estimate.fees ?? null,
+      gasFees,
+      fees,
+      totalUsd: (gasFees.length > 0 || fees.length > 0) ? totalUsd : null,
+      totalUsdComplete,
       direction,
       externalChain: externalChainSlug,
       amount,
