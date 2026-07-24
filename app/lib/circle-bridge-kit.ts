@@ -1,4 +1,5 @@
 import { BridgeKit, getErrorMessage, getErrorCode } from '@circle-fin/bridge-kit'
+import { ArcTestnet, EthereumSepolia, BaseSepolia } from '@circle-fin/bridge-kit/chains'
 import { CCTPV2BridgingProvider } from '@circle-fin/provider-cctp-v2'
 import { createViemAdapterFromPrivateKey } from '@circle-fin/adapter-viem-v2'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -17,7 +18,28 @@ export { circleSwapAdapter as circleBridgeAdapter }
 // package's `ChainDefinition` even though the runtime shape is identical.
 // String literals resolve structurally against each package's own
 // `` `${Blockchain}` `` union instead, sidestepping that mismatch.
+//
+// This is only true for BridgeKit's own convenience layer (`bridgeKit.bridge()`
+// / `.estimate()`), which resolves a plain string into a full chain object
+// internally. Calling `cctpProvider.burn()`/`fetchAttestation()`/`mint()`
+// directly (see deposit/prepare and deposit/complete routes) bypasses that
+// resolution — its own zod schema requires `chain` to already be an object
+// (`{ name, type, isTestnet }` at minimum) and rejects a plain string. Use
+// `ARC_TESTNET`/`resolveExternalChain()` (strings) for BridgeKit calls, and
+// `ARC_CHAIN`/`resolveExternalChainObject()` (real objects, below) for direct
+// provider calls.
 export const ARC_TESTNET = 'Arc_Testnet' as const
+
+// Real chain-definition objects, needed only for direct `cctpProvider` calls.
+export const ARC_CHAIN = ArcTestnet
+export const SUPPORTED_EXTERNAL_CHAIN_OBJECTS = {
+  ethereum_sepolia: EthereumSepolia,
+  base_sepolia: BaseSepolia,
+} as const
+
+export function resolveExternalChainObject(slug: string) {
+  return SUPPORTED_EXTERNAL_CHAIN_OBJECTS[slug.toLowerCase() as keyof typeof SUPPORTED_EXTERNAL_CHAIN_OBJECTS] ?? null
+}
 
 // One backend-held EOA, funded via testnet faucet, reused across every EVM
 // destination chain we support. It never touches user funds — CCTPv2's mint

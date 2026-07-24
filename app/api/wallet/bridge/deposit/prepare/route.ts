@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { cctpProvider, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
+import { cctpProvider, circleBridgeAdapter, getRelayerAdapter, getRelayerAddress, ARC_CHAIN, resolveExternalChainObject, bridgeErrorMessage } from '@/app/lib/circle-bridge-kit'
 
 // Builds the unsigned burn-transaction calldata for a deposit (external chain
 // -> Arc) so the browser can submit it directly through the user's own
@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
     if (!externalChainSlug || !amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0 || !rawFromAddress) {
       return NextResponse.json({ error: 'Missing or invalid params' }, { status: 400 })
     }
-    const externalChain = resolveExternalChain(externalChainSlug)
-    if (!externalChain) {
+    const externalChainObj = resolveExternalChainObject(externalChainSlug)
+    if (!externalChainObj) {
       return NextResponse.json({ error: `Unsupported chain: ${externalChainSlug}` }, { status: 400 })
     }
 
@@ -42,14 +42,21 @@ export async function POST(request: NextRequest) {
     const wallet = await resolveCircleWalletId(supabase, user.id)
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
 
+    // Calling cctpProvider.burn() directly (not through BridgeKit's
+    // convenience layer) means its own zod schema applies: `chain` must
+    // already be a full chain-definition object (not a plain string — that
+    // only works through BridgeKit, which resolves it internally) and
+    // `address`/`config` are required. See circle-bridge-kit.ts for why we
+    // keep separate string vs. object chain identifiers.
     // Cast: see the note in app/api/wallet/bridge/estimate/route.ts — mixing
     // an adapter-circle-wallets adapter into a provider-cctp-v2 call is
     // runtime-safe but doesn't type-check nominally across the two bundles.
     const prepared = await cctpProvider.burn({
-      source: { adapter: getRelayerAdapter(), chain: externalChain },
-      destination: { adapter: circleBridgeAdapter, chain: ARC_TESTNET, address: wallet.walletAddress },
+      source: { adapter: getRelayerAdapter(), chain: externalChainObj, address: getRelayerAddress() },
+      destination: { adapter: circleBridgeAdapter, chain: ARC_CHAIN, address: wallet.walletAddress },
       amount,
       token: 'USDC',
+      config: {},
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
 
