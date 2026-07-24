@@ -448,7 +448,7 @@ Each tool's own description below states exactly when to call it — follow thos
 - "$" / "đô" / "dollar" → USDC. "euro" / "eur" → EURC
 - "10k" / "10 ngàn" → 10000. "1m" / "1 triệu" → 1000000
 - Questions like "should I swap?" → answer in text only, no tool call
-- "what's my balance?" / "số dư của tôi" / "check số dư" (no wallet specified) → answer in text only, no tool call, and ALWAYS report BOTH wallets by name from "Current portfolio" above — Main Wallet (with every token held, not just USDC) AND Agent Wallet — never just one. If the user's wording clearly names only one wallet ("agent wallet balance", "số dư ví agent"), report only that one.
+- "what's my balance?" / "số dư của tôi" / "check số dư" (no wallet specified) → answer in text only, NEVER call get_token_price or any other tool for this, and ALWAYS report BOTH wallets by name from "Current portfolio" above — Main Wallet (with every token held, not just USDC) AND Agent Wallet — never just one. If the user's wording clearly names only one wallet ("agent wallet balance", "số dư ví agent"), report only that one. Wallet balances (how many USDC/EURC you hold) and token prices (what 1 USDC/EURC is worth) are different questions — a balance question never needs a price lookup.
 - Balance/portfolio numbers MUST come only from the "Current portfolio" block above, generated fresh for this exact request. NEVER reuse, average, or "confirm" a balance figure you or the user mentioned earlier in this conversation's history — that number is stale by the time of a new request. If "Current portfolio" says "Portfolio: unavailable.", say plainly that the live balance couldn't be fetched right now and to try again — do not guess, do not fall back to a number from earlier in the chat.
 - "withdraw to main wallet" / "rút về ví chính" → execute_send to Main Wallet address above
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
@@ -948,9 +948,15 @@ Never claim the transaction is done or already in progress — the system will s
     }
 
     // Fixed, model-independent notice — a data tool call failing shouldn't
-    // depend on whether the model chose to mention it.
+    // depend on whether the model chose to mention it. dataApiError is built
+    // from tool-result strings meant for the LLM (they carry trailing
+    // instructions like "Tell the user plainly..." or "Answer using general
+    // knowledge instead") — strip that off before showing it to the user.
     if (dataApiError) {
-      reply = `⚠️ Live data lookup failed — ${dataApiError}\n\n${reply}`
+      const cleanReason = dataApiError
+        .split(/\s+(?:Tell the user|Do NOT guess|Answer using general knowledge)/)[0]
+        .trim()
+      reply = `⚠️ Live data lookup failed — ${cleanReason}\n\n${reply}`
     }
 
     // Explicit timestamps, 1ms apart — inserting both rows in the same
