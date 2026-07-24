@@ -361,10 +361,15 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
 
               {estimate && (
                 <div style={{ marginBottom: 14, background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.07)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {estimate.fees.length === 0 && estimate.gasFees.every(g => !g.fees) ? (
-                    <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>No fee data returned for this route.</span>
+                  {estimate.fees.length === 0 && estimate.gasFees.length === 0 ? (
+                    <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>
+                      This testnet route didn&apos;t return a fee estimate — you can still proceed; actual gas is paid automatically by MironPay&apos;s relayer.
+                    </span>
                   ) : (
                     <>
+                      {estimate.fees.length === 0 && (
+                        <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>No protocol/kit fee for this transfer.</span>
+                      )}
                       {estimate.fees.map((f, i) => (
                         <Row key={`fee-${i}`} label={feeTypeLabel(f.type)} value={`${f.amount} ${f.token}`} mono />
                       ))}
@@ -372,7 +377,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                         <Row
                           key={`gas-${i}`}
                           label={`Gas · ${g.name} (${chainLabel(g.blockchain === 'Arc_Testnet' ? 'arc' : g.blockchain)})`}
-                          value={g.fees ? `${formatEther(BigInt(g.fees.fee))} ${g.token}` : '—'}
+                          value={g.fees ? `${formatEther(BigInt(g.fees.fee))} ${g.token}` : g.error ? 'Unavailable on testnet' : '—'}
                           mono
                         />
                       ))}

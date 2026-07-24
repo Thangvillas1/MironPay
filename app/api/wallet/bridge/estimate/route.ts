@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
     // type-check nominally across the two bundles.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const estimate = await bridgeKit.estimate({ from, to, amount } as any)
+    console.log('[bridge/estimate] raw result', JSON.stringify(estimate, (_k, v) => typeof v === 'bigint' ? v.toString() : v))
 
     return NextResponse.json(jsonSafe({
       gasFees: estimate.gasFees ?? null,
