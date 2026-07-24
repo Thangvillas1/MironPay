@@ -24,6 +24,7 @@ type NavItem = {
   href: string
   activeOn: string[]
   disabled?: boolean
+  hidden?: boolean
   icon: React.ReactNode
 }
 
@@ -52,6 +53,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Launchpad',
     href: '/launchpad',
     activeOn: ['/launchpad'],
+    hidden: true, // temporarily hidden — flip back to false to bring it back
     icon: (
       <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
         <path d="M5 16c-1.5 1.3-2 5-2 5s3.7-.5 5-2" /><path d="M9 14c5-8 9-9 12-9 0 3-1 7-9 12" />
@@ -159,7 +161,7 @@ export default function Sidebar() {
 
       {/* ── Navigation ── */}
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter(item => !item.hidden).map((item) => {
           const isActive = item.activeOn.some(p => pathname.startsWith(p))
 
           if (item.disabled) {
