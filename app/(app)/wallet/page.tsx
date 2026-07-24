@@ -14,6 +14,7 @@ import { getActivityIcon } from '@/app/lib/activity-icon'
 import { mergeWithLocalTransactions } from '@/app/lib/local-tx'
 import VerifiedBadge from '@/app/components/VerifiedBadge'
 import SRSModal, { type ModalMode } from '@/app/components/SRSModal'
+import BridgeModal from '@/app/components/BridgeModal'
 
 function formatUSD(n: number) {
   return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
@@ -353,6 +354,9 @@ export default function WalletPage() {
   // ── SRS Modal (Send / Receive / Swap) ─────────────────────────────────────────
   const [srsMode, setSrsMode] = useState<ModalMode>(null)
 
+  // ── Bridge Modal (standalone, does not touch SRSModal) ────────────────────────
+  const [bridgeModalOpen, setBridgeModalOpen] = useState(false)
+
   useEffect(() => {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
@@ -615,8 +619,11 @@ export default function WalletPage() {
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12M6 21h12M7 3c0 4 3 5 5 7 2-2 5-3 5-7M7 21c0-4 3-5 5-7 2 2 5 3 5 7" /></svg>
               Swap
             </button>
+            <button onClick={() => setBridgeModalOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M3 21V10l9-6 9 6v11M7 21v-7h10v7" /></svg>
+              Bridge
+            </button>
             {[
-              { label: 'Bridge', disabled: true, reason: 'Coming soon — cross-chain bridge isn’t live yet', icon: <path d="M3 21V10l9-6 9 6v11M7 21v-7h10v7" /> },
               { label: 'Earn', disabled: true, reason: 'Coming soon — yield features aren’t live yet', icon: <><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></> },
             ].map(a => (
               <button
@@ -854,6 +861,24 @@ export default function WalletPage() {
         username={username}
         hasPIN={hasPIN}
         onPINSet={() => setHasPIN(true)}
+        onSuccess={() => {
+          fetch('/api/wallet', { headers: { Authorization: `Bearer ${accessToken}` } })
+            .then(r => r.json())
+            .then(d => {
+              setWallet({ id: d.circleWalletId, balance: d.balance, currency: d.currency })
+              setTransactions(mergeWithLocalTransactions((d.transactions ?? []) as Transaction[]))
+              setTokenList(d.tokenList ?? [])
+              storeSetAddr(d.walletAddress)
+            })
+            .catch(() => {})
+        }}
+      />
+
+      <BridgeModal
+        open={bridgeModalOpen}
+        onClose={() => setBridgeModalOpen(false)}
+        accessToken={accessToken}
+        walletAddress={walletAddress}
         onSuccess={() => {
           fetch('/api/wallet', { headers: { Authorization: `Bearer ${accessToken}` } })
             .then(r => r.json())
