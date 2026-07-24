@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatEther } from 'viem'
 
 // Standalone bridge modal — deliberately NOT wired into SRSModal.tsx / its
 // ModalMode union, so the existing send/receive/swap flow stays untouched.
@@ -70,6 +71,27 @@ function TxLink({ label, txHash, chain }: { label: string; txHash: string; chain
 type Direction = 'withdraw' | 'deposit'
 type Status = 'idle' | 'estimating' | 'submitting' | 'awaiting_signature' | 'completing' | 'success' | 'error'
 
+interface EstimateGasFee {
+  name: string
+  token: string
+  blockchain: string
+  fees: { gas: string; gasPrice?: string; fee: string } | null
+  error?: unknown
+}
+interface EstimateFee {
+  type: 'kit' | 'provider' | 'forwarder'
+  token: string
+  amount: string
+}
+interface EstimateInfo {
+  gasFees: EstimateGasFee[]
+  fees: EstimateFee[]
+}
+
+function feeTypeLabel(type: string) {
+  return type === 'provider' ? 'Bridge protocol fee' : type === 'forwarder' ? 'Relayer fee' : 'Service fee'
+}
+
 interface ResultInfo {
   direction: Direction
   chainSlug: string
@@ -97,7 +119,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ResultInfo | null>(null)
-  const [estimate, setEstimate] = useState<{ gasFees: unknown; fees: unknown } | null>(null)
+  const [estimate, setEstimate] = useState<EstimateInfo | null>(null)
 
   if (!open) return null
 
@@ -121,7 +143,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Estimate failed')
-      setEstimate({ gasFees: json.gasFees, fees: json.fees })
+      setEstimate({ gasFees: json.gasFees ?? [], fees: json.fees ?? [] })
       setStatus('idle')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -304,9 +326,9 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 value={chainSlug}
                 onChange={e => { setChainSlug(e.target.value); setEstimate(null) }}
                 disabled={busy}
-                style={{ ...S.input, marginBottom: 14 }}
+                style={{ ...S.input, marginBottom: 14, colorScheme: 'dark' }}
               >
-                {CHAINS.map(c => <option key={c.slug} value={c.slug}>{c.label}</option>)}
+                {CHAINS.map(c => <option key={c.slug} value={c.slug} style={{ background: '#181a2e', color: '#fff' }}>{c.label}</option>)}
               </select>
 
               <label style={{ fontSize: 12, color: 'var(--c-muted2)', display: 'block', marginBottom: 6 }}>Amount (USDC)</label>
@@ -338,8 +360,24 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
               )}
 
               {estimate && (
-                <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 14, background: 'rgba(var(--c-fg-rgb),.05)', borderRadius: 10, padding: '10px 12px' }}>
-                  Estimate fetched — review fees before confirming.
+                <div style={{ marginBottom: 14, background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.07)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {estimate.fees.length === 0 && estimate.gasFees.every(g => !g.fees) ? (
+                    <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>No fee data returned for this route.</span>
+                  ) : (
+                    <>
+                      {estimate.fees.map((f, i) => (
+                        <Row key={`fee-${i}`} label={feeTypeLabel(f.type)} value={`${f.amount} ${f.token}`} mono />
+                      ))}
+                      {estimate.gasFees.map((g, i) => (
+                        <Row
+                          key={`gas-${i}`}
+                          label={`Gas · ${g.name} (${chainLabel(g.blockchain === 'Arc_Testnet' ? 'arc' : g.blockchain)})`}
+                          value={g.fees ? `${formatEther(BigInt(g.fees.fee))} ${g.token}` : '—'}
+                          mono
+                        />
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -347,6 +385,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 <button
                   onClick={runEstimate}
                   disabled={!amount || parseFloat(amount) <= 0 || busy}
+                  title="Preview the protocol and gas fees for this transfer before confirming — doesn't submit anything"
                   style={{ flex: 1, ...S.input, cursor: 'pointer', fontWeight: 600, opacity: (!amount || busy) ? 0.5 : 1 }}
                 >
                   {status === 'estimating' ? 'Estimating…' : 'Estimate'}
