@@ -110,11 +110,14 @@ export async function GET(request: NextRequest) {
     amount: parseFloat(tx.amounts?.[0] ?? '0'),
     tokenSymbol: (tx.token?.symbol ?? txTokenMap[tx.tokenId ?? ''] ?? 'USDC') as string,
     // Circle only ever reports a generic Sent/Received — swap the label to
-    // "Swap" when this tx_hash was tagged at execution time (see
-    // app/api/wallet/swap/route.ts), so the shared activity-icon logic
-    // (which keys off "swap" in the description) picks it up everywhere.
+    // "Swap"/"Bridge" when this tx_hash was tagged at execution time (see
+    // app/api/wallet/swap/route.ts and app/api/wallet/bridge/**/route.ts),
+    // so the shared activity-icon logic (which keys off "swap"/"bridge" in
+    // the description) picks it up everywhere.
     description: tx.txHash && kindMap[tx.txHash] === 'swap'
       ? 'Swap'
+      : tx.txHash && (kindMap[tx.txHash] === 'bridge_out' || kindMap[tx.txHash] === 'bridge_in')
+      ? 'Bridge'
       : tx.transactionType === 'INBOUND' ? 'Received' : 'Sent',
     created_at: tx.createDate ?? new Date().toISOString(),
     state: tx.state,
