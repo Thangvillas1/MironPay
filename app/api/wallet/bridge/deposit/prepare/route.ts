@@ -77,6 +77,11 @@ export async function POST(request: NextRequest) {
     }
     const burnCall = burnPrepared.getCallData()
 
+    console.log('[bridge/deposit/prepare] chain', externalChainSlug,
+      'usdcAddress', (externalChainObj as { usdcAddress?: string }).usdcAddress,
+      'approve.to', approveCall?.to ?? '(noop)', 'approve.data', approveCall?.data ?? null,
+      'burn.to', burnCall.to, 'burn.data', burnCall.data)
+
     return NextResponse.json({
       approve: approveCall ? { to: approveCall.to, data: approveCall.data, value: approveCall.value ? approveCall.value.toString() : '0' } : null,
       burn: { to: burnCall.to, data: burnCall.data, value: burnCall.value ? burnCall.value.toString() : '0' },
