@@ -1213,11 +1213,7 @@ export default function DashboardPage() {
                     <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m21 3-9.5 9.5" /><path d="M21 3 14 21l-3.5-7.5L3 10z" /></svg>
                   </button>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted2)', marginTop: 8, padding: '0 3px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <svg width={10} height={10} viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z" /></svg>
-                    Message fee: {msgCost} USDC / msg
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, color: 'var(--c-muted2)', marginTop: 8, padding: '0 3px' }}>
                   <span>Agent limit: ${agentWallet ? formatUSD(agentWallet.daily_limit) : '5.00'} USDC / day</span>
                 </div>
               </div>
