@@ -59,8 +59,8 @@ type CachedPrice = {
   expiresAt: number
 }
 const priceCache = new Map<string, CachedPrice>()
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+const GROQ_MODEL = 'gemini-3.6-flash'
 
 /**
  * Charge the real per-message input fee — a genuine on-chain USDC transfer,
@@ -546,7 +546,7 @@ Never claim the transaction is done or already in progress — the system will s
 
     const groqRes = await fetch(GROQ_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
       body: JSON.stringify({
         model: GROQ_MODEL,
         messages,
@@ -667,7 +667,7 @@ Never claim the transaction is done or already in progress — the system will s
           ]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           reply = secondRes.ok
@@ -753,7 +753,7 @@ Never claim the transaction is done or already in progress — the system will s
           ]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) {
@@ -775,7 +775,7 @@ Never claim the transaction is done or already in progress — the system will s
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
@@ -804,7 +804,7 @@ Never claim the transaction is done or already in progress — the system will s
             const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
               body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
             })
             if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
@@ -831,7 +831,7 @@ Never claim the transaction is done or already in progress — the system will s
             const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
               body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
             })
             if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
@@ -869,7 +869,7 @@ Never claim the transaction is done or already in progress — the system will s
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
@@ -886,7 +886,7 @@ Never claim the transaction is done or already in progress — the system will s
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
@@ -916,7 +916,7 @@ Never claim the transaction is done or already in progress — the system will s
             const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
             const secondRes = await fetch(GROQ_URL, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
               body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
             })
             if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
@@ -946,7 +946,7 @@ Never claim the transaction is done or already in progress — the system will s
           const secondMessages = [...secondPassMessages, assistantMsg, { role: 'tool', tool_call_id: toolCall.id, content }]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) reply = (await secondRes.json()).choices?.[0]?.message?.content ?? ''
@@ -962,7 +962,7 @@ Never claim the transaction is done or already in progress — the system will s
           ]
           const secondRes = await fetch(GROQ_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
             body: JSON.stringify({ model: GROQ_MODEL, messages: secondMessages, max_tokens: 512, temperature: 0.2 }),
           })
           if (secondRes.ok) {
