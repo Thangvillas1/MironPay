@@ -15,6 +15,10 @@ export function getActivityIcon(tx: Transaction) {
     bg: 'rgba(96,165,250,.16)', color: 'var(--c-blue-accent)',
     icon: <path d="M3 21V10l9-6 9 6v11M7 21v-7h10v7" />,
   }
+  if (desc.includes('payroll')) return {
+    bg: 'rgba(245,158,11,.16)', color: '#f59e0b',
+    icon: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18" /></>,
+  }
   if (desc.includes('yield')) return {
     bg: 'rgba(34,197,94,.14)', color: '#22c55e',
     icon: <><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,
