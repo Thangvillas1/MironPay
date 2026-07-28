@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const { tokenIn, tokenOut, amountIn, slippageBps: rawSlippage, overrideWalletId, overrideWalletAddress } = body
     const slippageBps: number = typeof rawSlippage === 'number'
       ? Math.min(10000, Math.max(10, rawSlippage))
-      : 1500 // 15% default — testnet liquidity is thin
+      : 3000 // 30% default — testnet liquidity is thin
 
     if (!tokenIn || !tokenOut || !amountIn || isNaN(parseFloat(amountIn)) || parseFloat(amountIn) <= 0) {
       return NextResponse.json({ error: 'Missing or invalid params' }, { status: 400 })
@@ -41,10 +41,12 @@ export async function POST(request: NextRequest) {
     // SwapKit handles the full flow: fresh quote, allowance (permit with
     // fallback to approve, bundled into the swap call — no separate approve
     // transaction needed on supported tokens), calldata, submission and
-    // waiting for the tx hash. Retry once on a transient "no route" quote.
+    // waiting for the tx hash. Retry on a transient "no route" quote with
+    // increasing backoff — testnet liquidity can reappear a few seconds later.
+    const RETRY_DELAYS_MS = [1500, 3000, 5000, 8000]
     let lastErr: unknown = null
-    for (let attempt = 0; attempt < 2; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 1500))
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]))
       try {
         const result = await swapKit.swap({
           from: { adapter: circleSwapAdapter, chain: ARC_TESTNET, address: walletAddress },
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
         })
       } catch (e) {
         lastErr = e
-        if (isNoRouteError(e) && attempt === 0) continue
+        if (isNoRouteError(e) && attempt < RETRY_DELAYS_MS.length) continue
         break
       }
     }
