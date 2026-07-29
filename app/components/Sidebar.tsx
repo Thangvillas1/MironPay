@@ -26,6 +26,7 @@ type NavItem = {
   disabled?: boolean
   hidden?: boolean
   icon: React.ReactNode
+  children?: NavItem[]
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -62,13 +63,52 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    label: 'Payroll',
+    label: 'Business Apps',
     href: '/payroll',
-    activeOn: ['/payroll'],
-    hidden: true, // temporarily hidden — flip back to false to bring it back
+    activeOn: ['/payroll', '/invoice', '/store', '/business'],
     icon: (
       <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M3 12h18" />
+      </svg>
+    ),
+    children: [
+      {
+        label: 'Payroll',
+        href: '/payroll',
+        activeOn: ['/payroll'],
+        icon: null,
+      },
+      {
+        label: 'Invoice',
+        href: '#',
+        activeOn: [],
+        disabled: true,
+        icon: null,
+      },
+      {
+        label: 'Store',
+        href: '#',
+        activeOn: [],
+        disabled: true,
+        icon: null,
+      },
+      {
+        label: 'Other',
+        href: '#',
+        activeOn: [],
+        disabled: true,
+        icon: null,
+      },
+    ],
+  },
+  {
+    label: 'Mobile App',
+    href: '#',
+    activeOn: [],
+    disabled: true,
+    icon: (
+      <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="6" y="2" width="12" height="20" rx="2" /><line x1="10" y1="19" x2="14" y2="19" />
       </svg>
     ),
   },
@@ -106,6 +146,7 @@ export default function Sidebar() {
   const [isDark, setIsDark] = useState(true)
   const [username, setUsername] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     setIsDark(localStorage.getItem('theme') !== 'light')
@@ -163,6 +204,70 @@ export default function Sidebar() {
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {NAV_ITEMS.filter(item => !item.hidden).map((item) => {
           const isActive = item.activeOn.some(p => pathname.startsWith(p))
+
+          if (item.children) {
+            const isOpen = expanded === item.label || isActive
+            return (
+              <div key={item.label}>
+                <button
+                  onClick={() => setExpanded(isOpen ? null : item.label)}
+                  className="mp-nav-item"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '11px 13px', borderRadius: 10, border: 'none', background: 'none',
+                    fontSize: 14.5, fontWeight: isActive ? 600 : 500, cursor: 'pointer', width: '100%', textAlign: 'left',
+                    color: isActive ? 'var(--c-text)' : undefined,
+                  }}
+                >
+                  {item.icon}
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {isOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 31, marginTop: 2, marginBottom: 2 }}>
+                    {item.children.map((child) => {
+                      const childActive = child.activeOn.some(p => pathname.startsWith(p))
+
+                      if (child.disabled) {
+                        return (
+                          <div
+                            key={child.label}
+                            style={{
+                              padding: '9px 13px', borderRadius: 8,
+                              fontSize: 13.5, fontWeight: 500,
+                              color: 'var(--c-muted)', opacity: 0.4, cursor: 'not-allowed',
+                            }}
+                          >
+                            {child.label}
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <Link
+                          key={child.label}
+                          href={child.href}
+                          className={childActive ? undefined : 'mp-nav-item'}
+                          style={{
+                            padding: '9px 13px', borderRadius: 8, textDecoration: 'none',
+                            fontSize: 13.5, fontWeight: childActive ? 600 : 500,
+                            color: childActive ? 'var(--c-on-primary)' : undefined,
+                            background: childActive ? 'var(--grad-primary)' : 'none',
+                          }}
+                        >
+                          {child.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          }
 
           if (item.disabled) {
             return (
