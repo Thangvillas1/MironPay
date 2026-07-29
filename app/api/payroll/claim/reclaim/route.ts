@@ -4,6 +4,10 @@ import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { circleClient } from '@/app/lib/circle'
 import { payrollClaimContract } from '@/app/lib/payroll-claim-chain'
 
+// See app/api/payroll/claim/claim/route.ts — same on-chain wait vs. Vercel's
+// default 10s Hobby function timeout.
+export const maxDuration = 60
+
 async function waitForCircleTx(txId: string): Promise<string> {
   const confirmed = await circleClient.getTransaction({ id: txId, waitForState: 'COMPLETE', pollingInterval: 1500 })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

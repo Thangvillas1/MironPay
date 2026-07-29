@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { verifyPin } from '@/app/lib/pin'
 import { circleClient } from '@/app/lib/circle'
+import { sendPayrollClaimEmail } from '@/app/lib/email'
 import {
   USDC,
   publicClient,
@@ -13,6 +14,10 @@ import {
 } from '@/app/lib/payroll-claim-chain'
 
 const MEMO_CONTRACT = '0x5294E9927c3306DcBaDb03fe70b92e01cCede505' // same Memo contract used by app/api/wallet/transfer/route.ts
+
+// approve() + payBatch() are two sequential on-chain waits — easily longer
+// than Vercel's default 10s Hobby function timeout. 60s is the Hobby plan max.
+export const maxDuration = 60
 
 interface InputItem {
   email: string
@@ -258,6 +263,18 @@ export async function POST(request: NextRequest) {
         fee: { type: 'level', config: { feeLevel: 'LOW' } },
         idempotencyKey: crypto.randomUUID(),
       }).catch((e) => console.error('[payroll memo] attachMemo failed:', e))
+    })
+
+    // Best-effort notification: recipients need to know money is waiting,
+    // but a failed send must never affect the payroll result the company
+    // already sees as paid — same fire-and-forget contract as the memo above.
+    items.forEach((item) => {
+      void sendPayrollClaimEmail({
+        to: item.email.trim().toLowerCase(),
+        amount: item.amount,
+        period,
+        note: item.note,
+      }).catch((e) => console.error('[payroll email] sendPayrollClaimEmail failed:', item.email, e))
     })
 
     const { data: finalRun } = await supabase.from('payroll_claim_runs').select('*').eq('id', run.id).single()

@@ -12,6 +12,12 @@ import {
 } from '@/app/lib/payroll-claim-chain'
 import type { Address, Hex } from 'viem'
 
+// Default Vercel Hobby function timeout (10s) is shorter than the on-chain
+// wait below (waitForTransactionReceipt has its own 60s timeout) — without
+// this the function gets killed mid-request and the client sees a bare
+// "Network error" instead of a real response.
+export const maxDuration = 60
+
 /**
  * Recipient-triggered claim. The logged-in user must own the exact Circle
  * wallet that's about to sign — and RLS ("Recipients can read items
