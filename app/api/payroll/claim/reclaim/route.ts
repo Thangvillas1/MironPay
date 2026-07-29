@@ -49,12 +49,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Item is not reclaimable (status: ${preview.status})` }, { status: 400 })
   }
 
-  const wallet = await resolveCircleWalletId(supabase, user.id)
-  if (!wallet) return NextResponse.json({ error: 'Company wallet not found' }, { status: 400 })
-
   const contract = payrollClaimContract()
 
+  // Everything below runs after the 'paid' -> 'reclaiming' lock above, so ANY
+  // failure — including resolveCircleWalletId throwing/returning null — must
+  // revert the lock, or the row gets stuck with no way to retry.
   try {
+    const wallet = await resolveCircleWalletId(supabase, user.id)
+    if (!wallet) throw new Error('Company wallet not found')
+
     const tx = await circleClient.createContractExecutionTransaction({
       walletId: wallet.circleWalletId,
       contractAddress: contract,

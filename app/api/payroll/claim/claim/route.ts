@@ -63,28 +63,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Item is not claimable (status: ${preview.status})` }, { status: 400 })
   }
 
-  const recipientWallet = await resolveCircleWalletId(supabase, user.id)
-  if (!recipientWallet) return NextResponse.json({ error: 'Your MironPay wallet was not found' }, { status: 400 })
-
-  const contract = payrollClaimContract()
-  const boxId = item.box_id as Hex
-  const recipient = recipientWallet.walletAddress as Address
-
-  // Double-check on-chain the box hasn't already been claimed/reclaimed —
-  // don't trust our own DB status alone before spending relayer gas.
-  const boxAddr = await withRpcRetry(() =>
-    publicClient.readContract({ address: contract, abi: PAYROLL_CLAIM_ABI, functionName: 'computeBoxAddress', args: [boxId] })
-  )
-  const code = await withRpcRetry(() => publicClient.getCode({ address: boxAddr }))
-  if (code && code !== '0x') {
-    await supabase.from('payroll_claim_items').update({ status: 'claimed', updated_at: new Date().toISOString() }).eq('id', itemId)
-    return NextResponse.json({ error: 'Already claimed or reclaimed on-chain' }, { status: 409 })
-  }
-
-  // Recipient's own Circle wallet signs proof of ownership — free, off-chain.
-  const message = claimMessageHash(boxId, recipient, contract)
-  let signature: Hex
+  // Everything below runs after the 'paid' -> 'claiming' lock above, so ANY
+  // failure here — including ones that aren't on-chain/signing errors, like
+  // a wallet lookup or an RPC read throwing — must revert the lock. Without
+  // this wrapping the item, an uncaught exception anywhere in this block
+  // leaves the row permanently stuck on 'claiming' with no way to retry
+  // (found via manual testing: a transient RPC error here 500'd the request
+  // and never ran the narrower try/catches that used to only wrap signing
+  // and the relayer tx).
   try {
+    const recipientWallet = await resolveCircleWalletId(supabase, user.id)
+    if (!recipientWallet) {
+      await supabase.from('payroll_claim_items').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('id', itemId)
+      return NextResponse.json({ error: 'Your MironPay wallet was not found' }, { status: 400 })
+    }
+
+    const contract = payrollClaimContract()
+    const boxId = item.box_id as Hex
+    const recipient = recipientWallet.walletAddress as Address
+
+    // Double-check on-chain the box hasn't already been claimed/reclaimed —
+    // don't trust our own DB status alone before spending relayer gas.
+    const boxAddr = await withRpcRetry(() =>
+      publicClient.readContract({ address: contract, abi: PAYROLL_CLAIM_ABI, functionName: 'computeBoxAddress', args: [boxId] })
+    )
+    const code = await withRpcRetry(() => publicClient.getCode({ address: boxAddr }))
+    if (code && code !== '0x') {
+      await supabase.from('payroll_claim_items').update({ status: 'claimed', updated_at: new Date().toISOString() }).eq('id', itemId)
+      return NextResponse.json({ error: 'Already claimed or reclaimed on-chain' }, { status: 409 })
+    }
+
+    // Recipient's own Circle wallet signs proof of ownership — free, off-chain.
+    const message = claimMessageHash(boxId, recipient, contract)
     const signRes = await circleClient.signMessage({
       walletId: recipientWallet.circleWalletId,
       message,
@@ -93,16 +103,11 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sig = (signRes.data as any)?.signature ?? (signRes.data as any)?.data?.signature
     if (!sig) throw new Error('Circle signMessage did not return a signature')
-    signature = sig as Hex
-  } catch (err) {
-    await supabase.from('payroll_claim_items').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('id', itemId)
-    return NextResponse.json({ error: `Failed to sign claim: ${err instanceof Error ? err.message : 'unknown error'}` }, { status: 500 })
-  }
+    const signature = sig as Hex
 
-  // Relayer submits the already-signed claim on-chain and pays gas — it
-  // cannot redirect funds, it can only relay a signature that already
-  // proves `recipient` authorized this exact claim.
-  try {
+    // Relayer submits the already-signed claim on-chain and pays gas — it
+    // cannot redirect funds, it can only relay a signature that already
+    // proves `recipient` authorized this exact claim.
     const relayer = relayerWalletClient()
     const hash = await withRpcRetry(() =>
       relayer.writeContract({
@@ -143,7 +148,7 @@ export async function POST(request: NextRequest) {
     // Revert the lock so a retry (or the user clicking again) isn't
     // permanently stuck on an item that never actually got claimed.
     await supabase.from('payroll_claim_items').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('id', itemId)
-    return NextResponse.json({ error: `Claim transaction failed: ${err instanceof Error ? err.message : 'unknown error'}` }, { status: 500 })
+    return NextResponse.json({ error: `Claim failed: ${err instanceof Error ? err.message : 'unknown error'}` }, { status: 500 })
   }
 }
 
