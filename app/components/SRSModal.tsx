@@ -110,7 +110,7 @@ export default function SRSModal({
   const [swapQuoteLoading, setSwapQuoteLoading] = useState(false)
   const [swapQuoteError, setSwapQuoteError] = useState('')
   const swapDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [slippagePct, setSlippagePct] = useState('1.0')
+  const [slippagePct, setSlippagePct] = useState('30')
   const [slipCustomFocused, setSlipCustomFocused] = useState(false)
   const slippageBps = Math.round((parseFloat(slippagePct) || 0) * 100)
 
@@ -154,7 +154,7 @@ export default function SRSModal({
     const inIdx = preselectedIn >= 0 ? preselectedIn : defaultIn
     setSwapInIdx(inIdx)
     setSwapOutIdx(inIdx === 0 ? 1 : 0)
-    setSlippagePct('1.0'); setSlipCustomFocused(false)
+    setSlippagePct('30'); setSlipCustomFocused(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
@@ -170,9 +170,9 @@ export default function SRSModal({
       if (err) { setResolution('invalid'); setResolvedAddress(''); setResolvedUsername(''); return }
       setResolution('resolving')
       debounceRef.current = setTimeout(async () => {
-        const { data } = await supabase.from('profiles').select('wallet_address').eq('username', uname).maybeSingle()
-        if (data?.wallet_address) {
-          setResolvedAddress(data.wallet_address); setResolvedUsername(uname); setResolution('found')
+        const { data } = await supabase.rpc('resolve_username', { p_username: uname })
+        if (data) {
+          setResolvedAddress(data); setResolvedUsername(uname); setResolution('found')
         } else {
           setResolvedAddress(''); setResolvedUsername(''); setResolution('not_found')
         }
@@ -183,8 +183,8 @@ export default function SRSModal({
       if (raw.length !== 42 || !EVM_RE.test(raw)) { setResolution('invalid'); setResolvedAddress(''); return }
       setResolvedAddress(raw); setResolution('resolving')
       debounceRef.current = setTimeout(async () => {
-        const { data } = await supabase.from('profiles').select('username').eq('wallet_address', raw).maybeSingle()
-        setResolvedUsername(data?.username ?? ''); setResolution('found')
+        const { data } = await supabase.rpc('resolve_wallet_address', { p_wallet_address: raw })
+        setResolvedUsername(data ?? ''); setResolution('found')
       }, 400)
       return
     }
@@ -917,10 +917,10 @@ export default function SRSModal({
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: slippageBps > 2000 ? '#fb6f84' : slippageBps < 500 ? '#f5b748' : 'var(--c-text)' }}>{slippagePct}%</span>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      {['0.1', '0.5', '1.0'].map(p => {
-                        const active = !slipCustomFocused && slippagePct === p
+                      {[{ label: 'Auto', value: '30' }, { label: '0.5%', value: '0.5' }, { label: '1.0%', value: '1.0' }].map(({ label, value }) => {
+                        const active = !slipCustomFocused && slippagePct === value
                         return (
-                          <button key={p} onClick={() => { setSlippagePct(p); setSlipCustomFocused(false) }} style={{ flex: 1, height: 36, borderRadius: 10, border: `1px solid ${active ? '#6366f1' : 'rgba(var(--c-fg-rgb),.14)'}`, background: active ? 'rgba(99,102,241,.12)' : 'rgba(var(--c-fg-rgb),.05)', color: active ? 'var(--c-indigo-light)' : 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{p}%</button>
+                          <button key={value} onClick={() => { setSlippagePct(value); setSlipCustomFocused(false) }} style={{ flex: 1, height: 36, borderRadius: 10, border: `1px solid ${active ? '#6366f1' : 'rgba(var(--c-fg-rgb),.14)'}`, background: active ? 'rgba(99,102,241,.12)' : 'rgba(var(--c-fg-rgb),.05)', color: active ? 'var(--c-indigo-light)' : 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
                         )
                       })}
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '0 10px', borderRadius: 10, border: `1px solid ${slipCustomFocused ? '#6366f1' : 'rgba(var(--c-fg-rgb),.14)'}`, background: 'rgba(var(--c-fg-rgb),.05)' }}>
@@ -943,7 +943,7 @@ export default function SRSModal({
                         ARC testnet liquidity is thin — slippage below 5% often causes swaps to fail.
                       </div>
                     )}
-                    {slippageBps > 2000 && (
+                    {slippageBps > 2000 && slippagePct !== '30' && (
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(251,111,132,.1)', color: '#fb6f84', fontSize: 12, lineHeight: 1.45 }}>
                         <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
                         High slippage — you may receive significantly less than estimated.

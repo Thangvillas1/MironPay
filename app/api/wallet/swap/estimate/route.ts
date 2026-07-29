@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const tokenIn = searchParams.get('tokenIn')
     const tokenOut = searchParams.get('tokenOut')
     const amountIn = searchParams.get('amountIn')
-    const slippageBps = Math.min(10000, Math.max(10, parseInt(searchParams.get('slippageBps') ?? '1500')))
+    const slippageBps = Math.min(10000, Math.max(10, parseInt(searchParams.get('slippageBps') ?? '3000')))
 
     if (!tokenIn || !tokenOut || !amountIn || isNaN(parseFloat(amountIn)) || parseFloat(amountIn) <= 0) {
       return NextResponse.json({ error: 'Missing or invalid params' }, { status: 400 })
@@ -30,10 +30,11 @@ export async function GET(request: NextRequest) {
     const wallet = await resolveCircleWalletId(supabase, user.id)
     if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
 
-    // Retry once — Circle testnet routing is intermittently flaky
+    // Retry with increasing backoff — Circle testnet routing is intermittently flaky
+    const RETRY_DELAYS_MS = [1500, 3000, 5000, 8000]
     let lastErr: unknown = null
-    for (let attempt = 0; attempt < 2; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 500))
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]))
       try {
         const estimate = await swapKit.estimate({
           from: { adapter: circleSwapAdapter, chain: ARC_TESTNET, address: wallet.walletAddress },
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
         })
       } catch (e) {
         lastErr = e
-        if (!isNoRouteError(e)) break // non-transient error, don't retry
+        if (!isNoRouteError(e) || attempt >= RETRY_DELAYS_MS.length) break
       }
     }
 
