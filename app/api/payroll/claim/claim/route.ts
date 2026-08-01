@@ -152,7 +152,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** List the current user's unclaimed payroll items (across any company). */
+/**
+ * List the current user's payroll items across any company — both what's
+ * still claimable ('paid') and recent history ('claimed'/'reclaimed'), so
+ * the inbox can show both the "ready to claim" cards and history rows.
+ * Enriched (best-effort, two extra lookups since these tables don't have
+ * a declared FK Supabase can auto-embed) with each item's pay period /
+ * claim deadline from its run, and the paying company's display name.
+ */
 export async function GET(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -165,9 +172,47 @@ export async function GET(request: NextRequest) {
     .from('payroll_claim_items')
     .select('*')
     .eq('email', user.email.toLowerCase())
-    .eq('status', 'paid')
+    .in('status', ['paid', 'claiming', 'claimed', 'reclaiming', 'reclaimed'])
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ items: items ?? [] })
+  if (!items || items.length === 0) return NextResponse.json({ items: [] })
+
+  const runIds = [...new Set(items.map((i) => i.run_id))]
+  const { data: runs } = await supabase
+    .from('payroll_claim_runs')
+    .select('id, period, expiry_seconds, paid_at, user_id')
+    .in('id', runIds)
+  const runById = new Map((runs ?? []).map((r) => [r.id, r]))
+
+  const companyIds = [...new Set((runs ?? []).map((r) => r.user_id))]
+  // company_profiles itself is RLS-locked to "read your own row" — as a
+  // recipient reading OTHER users' (the paying companies') verification
+  // status, we must go through the public view that's scoped to verified
+  // rows only, or this always comes back empty and the tick never shows.
+  const [{ data: companies }, { data: companyProfiles }] = await Promise.all([
+    supabase.from('profiles').select('id, username').in('id', companyIds),
+    supabase.from('company_verification_public').select('user_id, legal_name, verification_status').in('user_id', companyIds),
+  ])
+  const usernameById = new Map((companies ?? []).map((c) => [c.id, c]))
+  const profileById = new Map((companyProfiles ?? []).map((c) => [c.user_id, c]))
+
+  const enriched = items.map((item) => {
+    const run = runById.get(item.run_id)
+    const deadline = run?.paid_at ? new Date(run.paid_at).getTime() + run.expiry_seconds * 1000 : null
+    const companyProfile = run ? profileById.get(run.user_id) : undefined
+    const verified = companyProfile?.verification_status === 'verified'
+    const name = (verified && companyProfile?.legal_name) || (run && usernameById.get(run.user_id)?.username) || 'Employer'
+    return {
+      ...item,
+      period: run?.period ?? null,
+      // Raw ms timestamp, not a pre-rounded day count — the inbox renders a
+      // live ticking countdown from this, which a rounded number can't do.
+      deadlineAt: deadline,
+      company: name,
+      companyVerified: verified,
+    }
+  })
+
+  return NextResponse.json({ items: enriched })
 }

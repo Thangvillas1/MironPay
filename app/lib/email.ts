@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const FROM = 'MironPay <payroll@mironpay.xyz>'
+const FROM = 'Miron Payroll <payroll@mironpay.xyz>'
 
 // Change this one value to re-theme every email — header bar, price info-card
 // accent, and the CTA button all derive their color from it.
@@ -13,15 +13,37 @@ export async function sendPayrollClaimEmail(params: {
   amount: number
   period: string
   note?: string | null
+  companyName?: string | null
+  companyVerified?: boolean
+  referenceCode?: string | null
 }) {
-  const { to, amount, period, note } = params
-  const inboxUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://mironpay.xyz'}/payroll/claim/inbox`
+  const { to, amount, period, note, companyName, companyVerified, referenceCode } = params
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://mironpay.xyz'
+  const inboxUrl = `${appUrl}/payroll/claim/inbox`
+  // Absolute URL — email clients render this in a completely different
+  // context than the app itself, so a relative /logo/... path (which works
+  // fine everywhere in-app) would just be a broken image here.
+  const logoUrl = `${appUrl}/logo/miron-logo-lockup-horizontal-light.png`
   const noteSentence = note?.trim() ? ` Note: ${note.trim()}.` : ''
+  // Literal hex, not CSS custom properties — email clients can't resolve
+  // var(--c-*). Small and unobtrusive by design: a company that isn't
+  // verified gets the exact same email with no tick and no "unverified"
+  // label — never seed doubt in an employee opening this for the first time.
+  const verifiedTickHtml = companyVerified
+    ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${PRIMARY_COLOR};text-align:center;line-height:14px;margin-left:5px;" title="Verified business">
+         <span style="color:#ffffff;font-size:9px;font-weight:700;">&#10003;</span>
+       </span>`
+    : ''
+  const paidByHtml = companyName
+    ? `<p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;color:#475467;font-size:14px;">
+         You&rsquo;ve been paid by <strong style="color:#0d1526;">${companyName}</strong>${verifiedTickHtml}
+       </p>`
+    : ''
 
   await resend.emails.send({
     from: FROM,
     to,
-    subject: `Bạn có ${amount.toFixed(2)} USDC lương chờ nhận — kỳ ${period}`,
+    subject: `You have ${amount.toFixed(2)} USDC payroll payment for period ${period} on MironPay`,
     html: `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8">
@@ -37,7 +59,7 @@ export async function sendPayrollClaimEmail(params: {
 </head>
 <body style="margin:0;padding:0;background:#eef1f6;-webkit-text-size-adjust:100%;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#eef1f6;opacity:0;">
-    Your company sent a USDC payroll payment — sign in with this email to claim it.
+    Your employer sent a USDC payroll payment — sign in with this email to claim it.
   </div>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef1f6;">
@@ -48,13 +70,13 @@ export async function sendPayrollClaimEmail(params: {
 
           <!-- Header -->
           <tr>
-            <td bgcolor="${PRIMARY_COLOR}" style="background:${PRIMARY_COLOR};padding:28px 32px;" mso-line-height-rule="exactly">
+            <td bgcolor="#ffffff" style="background:#ffffff;padding:22px 32px;border-bottom:1px solid #e3e7ef;" mso-line-height-rule="exactly">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="font-family:Arial,Helvetica,sans-serif;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.2px;">
-                    MironPay
+                  <td valign="middle">
+                    <img src="${logoUrl}" alt="MironPay" height="40" style="display:block;height:40px;width:auto;border:0;outline:none;text-decoration:none;" />
                   </td>
-                  <td align="right" style="font-family:Arial,Helvetica,sans-serif;color:#dbe6ff;font-size:12px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;">
+                  <td valign="middle" align="right" style="font-family:Arial,Helvetica,sans-serif;color:#667085;font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;background:#f5f7fb;border-radius:999px;padding:4px 10px;white-space:nowrap;">
                     Payroll
                   </td>
                 </tr>
@@ -65,15 +87,19 @@ export async function sendPayrollClaimEmail(params: {
           <!-- Body -->
           <tr>
             <td style="padding:36px 32px 8px;">
+              ${paidByHtml}
               <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;color:#667085;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;">
                 Pay period: ${period}
               </p>
               <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;color:#0d1526;font-size:34px;font-weight:700;letter-spacing:-0.6px;">
                 ${amount.toFixed(2)} USDC
               </p>
-              <p style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;color:#344054;font-size:14px;line-height:1.7;">
-                Your employer has sent this payment through MironPay.${noteSentence}
+              <p style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;color:#344054;font-size:14px;line-height:1.7;">
+                Your employer has funded this payment on-chain and it's being held safely for you — only your signature can release it, and no one else can move it once it's sent.${noteSentence}
               </p>
+              ${referenceCode ? `<p style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;color:#98a2b3;font-size:12px;">
+                Payment reference: <span style="font-family:'Courier New',monospace;color:#667085;font-weight:700;letter-spacing:0.3px;">${referenceCode}</span>
+              </p>` : ''}
             </td>
           </tr>
 
@@ -94,7 +120,7 @@ export async function sendPayrollClaimEmail(params: {
 
           <!-- CTA button -->
           <tr>
-            <td style="padding:0 32px 32px;">
+            <td style="padding:0 32px 14px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" bgcolor="${PRIMARY_COLOR}" style="background:${PRIMARY_COLOR};border-radius:12px;">
@@ -104,6 +130,15 @@ export async function sendPayrollClaimEmail(params: {
                   </td>
                 </tr>
               </table>
+            </td>
+          </tr>
+
+          <!-- Plain-text fallback link, in case the button above doesn't render in a given client -->
+          <tr>
+            <td style="padding:0 32px 32px;text-align:center;">
+              <a href="${inboxUrl}" target="_blank" style="font-family:Arial,Helvetica,sans-serif;color:${PRIMARY_COLOR};font-size:12.5px;text-decoration:underline;word-break:break-all;">
+                ${inboxUrl}
+              </a>
             </td>
           </tr>
 
@@ -120,7 +155,7 @@ export async function sendPayrollClaimEmail(params: {
           <tr>
             <td style="padding:20px 32px 28px;">
               <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#98a2b3;font-size:12px;line-height:1.7;">
-                This email contains no secret code and no direct claim link — you must always sign in with Google using ${to} to access these funds. If you weren't expecting this email, it's safe to ignore.
+                This email contains no secret code and no direct claim link — always sign in with Google using ${to} to access these funds. If you weren't expecting this, it's safe to ignore.
               </p>
             </td>
           </tr>
@@ -129,11 +164,11 @@ export async function sendPayrollClaimEmail(params: {
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
           <tr>
             <td align="center" style="padding:20px 8px 0;">
-              <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;color:#98a2b3;font-size:12px;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#98a2b3;font-size:12px;">
                 © MironPay · Sent to ${to}
               </p>
-              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#b0b7c3;font-size:11px;">
-                MironPay · This is a transactional payroll notification, not marketing.
+              <p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;color:#b0b7c3;font-size:11px;">
+                Automated payroll notification — not marketing, no unsubscribe needed.
               </p>
             </td>
           </tr>

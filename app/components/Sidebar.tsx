@@ -74,8 +74,8 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       {
         label: 'Payroll',
-        href: '/payroll',
-        activeOn: ['/payroll'],
+        href: '/payroll/claim/new',
+        activeOn: ['/payroll/claim'],
         icon: null,
       },
       {

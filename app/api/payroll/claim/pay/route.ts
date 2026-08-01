@@ -201,6 +201,14 @@ export async function POST(request: NextRequest) {
     )
   )
 
+  // Human-searchable reference for a future "find my payment" search bar —
+  // generated server-side (never trust a client-supplied code for something
+  // that will be used to look up real money), kept short enough to read out
+  // loud or paste into a support ticket, and unique per item (DB has a
+  // unique index on the column as the actual guarantee; the random 7-char
+  // suffix just makes a real collision practically impossible).
+  const referenceCodes = items.map(() => `PAYROLL${crypto.randomUUID().replace(/-/g, '').slice(0, 7).toUpperCase()}`)
+
   const { error: itemsErr } = await supabase.from('payroll_claim_items').insert(
     items.map((item, i) => ({
       run_id: run.id,
@@ -211,6 +219,7 @@ export async function POST(request: NextRequest) {
       box_id: boxIds[i],
       box_address: boxAddresses[i],
       status: 'pending',
+      reference_code: referenceCodes[i],
     }))
   )
 
@@ -268,12 +277,31 @@ export async function POST(request: NextRequest) {
     // Best-effort notification: recipients need to know money is waiting,
     // but a failed send must never affect the payroll result the company
     // already sees as paid — same fire-and-forget contract as the memo above.
-    items.forEach((item) => {
+    // Company identity for the email's "Paid by {name}" line: legal_name once
+    // verified (that's the name that was actually reviewed), otherwise the
+    // account username — falling back to a generic label rather than failing
+    // the whole payroll if this lookup errors.
+    const { data: companyProfile } = await supabase
+      .from('company_profiles')
+      .select('legal_name, verification_status')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    const companyVerified = companyProfile?.verification_status === 'verified'
+    let companyName = companyVerified ? companyProfile?.legal_name : null
+    if (!companyName) {
+      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()
+      companyName = profile?.username ?? null
+    }
+
+    items.forEach((item, i) => {
       void sendPayrollClaimEmail({
         to: item.email.trim().toLowerCase(),
         amount: item.amount,
         period,
         note: item.note,
+        companyName,
+        companyVerified,
+        referenceCode: referenceCodes[i],
       }).catch((e) => console.error('[payroll email] sendPayrollClaimEmail failed:', item.email, e))
     })
 
