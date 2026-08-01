@@ -53,7 +53,7 @@ Domain thật: **mironpay.xyz** (đã gắn Vercel + GoDaddy DNS, 14/07/2026).
 - Chỉ hỗ trợ USDC⇄EURC trên testnet (whitelist cứng) — kế hoạch mainnet: bỏ whitelist, thêm search token theo tên/địa chỉ (chưa code).
 
 ### 2.6 Launchpad (IDO)
-- Contract `IDOLaunchpad.sol` deploy tại `0xc049f40439bc3e919defe042600bfe56dda50954` trên ARC testnet — 1 contract xử lý tất cả sale, FCFS enforced on-chain thật (không phải backend queue).
+- Contract `IDOLaunchpad.sol` deploy tại `0x4ae161ba3c1de2012432fa7f5a747c0441ee35e5` trên ARC testnet (v2, có softcap/minRaise + refund — địa chỉ v1 `0xc049f40439bc3e919defe042600bfe56dda50954` đã deprecated, không còn dùng) — 1 contract xử lý tất cả sale, FCFS enforced on-chain thật (không phải backend queue).
 - 3 quyết định đã LOCK: (1) mua chỉ qua Agent (không có nút mua trực tiếp), (2) curation hybrid (project nộp form + trả $50 phí + admin duyệt tay), (3) FCFS on-chain qua revert khi đầy cap.
 - Toàn bộ UI/API/DB đã build xong, dùng dữ liệu thật 100% (không fabricate).
 - **Claim/Vesting extension (LOCKED spec, viết contract xong nhưng CHƯA deploy, CHƯA build phần còn lại):**
@@ -196,13 +196,16 @@ Landing page đã trải qua rất nhiều vòng lặp thiết kế trong 1 phi�
 
 ## 10. Địa chỉ contract quan trọng (ARC Testnet)
 
+Đã verify source code trên testnet.arcscan.app (25/07/2026): Memo, MironSpendingLimit, IDOLaunchpad v2.
+
 | Contract | Address |
 |---|---|
 | USDC (native+ERC20) | `0x3600000000000000000000000000000000000000` |
 | EURC | `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a` |
 | Memo Contract | `0x5294E9927c3306DcBaDb03fe70b92e01cCede505` |
 | MironSpendingLimit | `0xcb5249bb7489ad1931dd2ab446a14d628b02d9b8` |
-| IDOLaunchpad | `0xc049f40439bc3e919defe042600bfe56dda50954` |
+| IDOLaunchpad (v2, softcap+refund — active) | `0x4ae161ba3c1de2012432fa7f5a747c0441ee35e5` |
+| IDOLaunchpad (v1, deprecated — unreachable, kept for history) | `0xc049f40439bc3e919defe042600bfe56dda50954` |
 | ERC-8004 ReputationRegistry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
 | Gateway Wallet (testnet) | `0x0077777d7EBA4688BDeF3E311b846F25870A19B9` |
 | Project/Agent Owner Wallet | `0x7a3bc75bbc8d7022897a11632f7a7b90567a004e` |

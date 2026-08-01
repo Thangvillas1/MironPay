@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 
+type LeaderboardRow = { id: string; username: string | null; miron_score: number | null; miron_level: string | null }
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -12,12 +14,7 @@ export async function GET(request: NextRequest) {
 
     // Top 10 theo miron_score
     const { data: top } = await supabase
-      .from('profiles')
-      .select('id, username, miron_score, miron_level')
-      .not('miron_score', 'is', null)
-      .gt('miron_score', 0)
-      .order('miron_score', { ascending: false })
-      .limit(10)
+      .rpc('leaderboard_top', { p_limit: 10 }) as { data: LeaderboardRow[] | null }
 
     // Score của user hiện tại
     const { data: me } = await supabase
@@ -27,12 +24,10 @@ export async function GET(request: NextRequest) {
       .single()
 
     // Rank của user
-    const { count } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .gt('miron_score', me?.miron_score ?? 0)
+    const { data: count } = await supabase
+      .rpc('count_users_with_score_above', { p_score: me?.miron_score ?? 0 })
 
-    const myRank = (count ?? 0) + 1
+    const myRank = Number(count ?? 0) + 1
 
     const leaderboard = (top ?? []).map((p, i) => ({
       rank: i + 1,

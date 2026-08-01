@@ -32,8 +32,8 @@ function AddressRow({ label, address }: { label: string; address?: string }) {
 
   useEffect(() => {
     if (!address) return
-    supabase.from('profiles').select('username').eq('wallet_address', address).maybeSingle()
-      .then(({ data }) => setUsername(data?.username ?? null))
+    supabase.rpc('resolve_wallet_address', { p_wallet_address: address })
+      .then(({ data }) => setUsername(data ?? null))
   }, [address])
 
   if (!address) return null

@@ -170,12 +170,12 @@ export async function POST(request: NextRequest) {
       let destAddress: string = action.to ?? ''
       if (destAddress.startsWith('@')) {
         const uname = destAddress.slice(1).toLowerCase()
-        const { data: destProfile } = await supabase
-          .from('profiles').select('wallet_address').eq('username', uname).maybeSingle()
-        if (!destProfile?.wallet_address) {
+        const { data: destWalletAddress } = await supabase
+          .rpc('resolve_username', { p_username: uname })
+        if (!destWalletAddress) {
           return NextResponse.json({ error: `@${uname} not found on MironPay` }, { status: 404 })
         }
-        destAddress = destProfile.wallet_address
+        destAddress = destWalletAddress
       }
 
       // Dry-run: simulate the transfer first so a bad destination, unsupported

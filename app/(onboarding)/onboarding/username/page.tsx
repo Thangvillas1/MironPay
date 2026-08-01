@@ -58,8 +58,8 @@ function UsernameContent() {
     const timer = setTimeout(async () => {
       // Exclude the current user's own row — restarting onboarding after a
       // failed wallet-creation attempt should let them re-pick the same handle.
-      const { data } = await supabase.from('profiles').select('id').eq('username', username).maybeSingle()
-      setStatus(!data || data.id === userId ? 'available' : 'taken')
+      const { data: taken } = await supabase.rpc('is_username_taken', { p_username: username, p_exclude_id: userId })
+      setStatus(!taken ? 'available' : 'taken')
     }, 500)
 
     return () => clearTimeout(timer)
