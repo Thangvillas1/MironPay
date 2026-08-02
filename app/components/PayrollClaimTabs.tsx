@@ -3,9 +3,9 @@
 export type PayrollClaimRole = 'company' | 'employee' | 'settings'
 
 const TABS: { role: PayrollClaimRole; label: string }[] = [
-  { role: 'company', label: 'Company · Run payroll' },
-  { role: 'employee', label: 'Employee · Claim inbox' },
-  { role: 'settings', label: 'Settings · Verification' },
+  { role: 'company', label: 'Run Payroll' },
+  { role: 'employee', label: 'Claim Box' },
+  { role: 'settings', label: 'Company' },
 ]
 
 export default function PayrollClaimTabs({ role, onChange }: { role: PayrollClaimRole; onChange: (role: PayrollClaimRole) => void }) {
