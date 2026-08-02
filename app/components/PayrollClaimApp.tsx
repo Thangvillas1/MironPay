@@ -47,13 +47,22 @@ function formatCountdown(msRemaining: number): string {
 // Same tinted-glass panel language as Wallet/Dashboard's cards — replaces
 // the flat var(--c-panel) boxes this page used to have.
 const PANEL_GLASS = {
-  background: 'linear-gradient(165deg,rgba(99,102,241,.08),transparent 56%),color-mix(in srgb, var(--c-panel) 55%, transparent)',
+  position: 'relative' as const,
+  overflow: 'hidden' as const,
+  background: 'linear-gradient(165deg,rgba(99,102,241,.14),transparent 56%),color-mix(in srgb, var(--c-panel) 55%, transparent)',
   backdropFilter: 'blur(20px)',
   WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(var(--c-fg-rgb),.10)',
-  boxShadow: '0 8px 26px rgba(99,102,241,.16),inset 0 1px 0 rgba(var(--c-fg-rgb),.06)',
+  border: '1px solid rgba(99,102,241,.18)',
+  boxShadow: '0 8px 30px rgba(99,102,241,.34),inset 0 1px 0 rgba(var(--c-fg-rgb),.07)',
 } as const
 const PANEL_GLASS_HEADER = { background: 'color-mix(in srgb, var(--c-panel) 65%, transparent)' } as const
+// Blurred accent blob in the top-right corner — the same visual signature
+// Wallet's WalletCard and Dashboard's wallet-row cards use to read as
+// "glowing glass" instead of a plain dark box. Drop this as the first
+// child of any element using PANEL_GLASS.
+function PanelGlow() {
+  return <div style={{ position: 'absolute', top: -36, right: -36, width: 120, height: 120, borderRadius: '50%', background: '#6366f1', opacity: 0.18, filter: 'blur(30px)', pointerEvents: 'none' }} />
+}
 
 // ════════════════════════════════════════════════════════════════
 // Company · Run payroll
@@ -568,6 +577,7 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
           </p>
 
           <div style={{ borderRadius: 16, ...PANEL_GLASS, padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <PanelGlow />
             <div>
               <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--c-muted2)', marginBottom: 6 }}>Pay period</label>
               <input
@@ -596,6 +606,7 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
           </div>
 
           <div style={{ borderRadius: 16, ...PANEL_GLASS, padding: 16, marginBottom: 16 }}>
+            <PanelGlow />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>{rows.length} recipient{rows.length === 1 ? '' : 's'}</span>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -750,15 +761,16 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
           <div style={{ position: 'sticky', top: 20 }}>
             <div
               style={{
-                borderRadius: 20,
-                background: 'var(--glass-bg, rgba(28,24,58,.55))',
-                border: '1px solid var(--glass-border, rgba(255,255,255,.1))',
+                position: 'relative', overflow: 'hidden', borderRadius: 20,
+                background: 'linear-gradient(165deg,rgba(99,102,241,.16),transparent 56%),var(--glass-bg, rgba(28,24,58,.55))',
+                border: '1px solid rgba(99,102,241,.22)',
                 backdropFilter: 'blur(18px)',
-                boxShadow: '0 8px 30px rgba(99,102,241,.2)',
+                boxShadow: '0 8px 30px rgba(99,102,241,.4),inset 0 1px 0 rgba(var(--c-fg-rgb),.07)',
                 padding: 20,
                 marginBottom: 14,
               }}
             >
+              <PanelGlow />
               <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--c-muted2)', marginBottom: 6 }}>Total to fund</div>
               <div style={{ fontSize: 32, fontWeight: 700, fontFamily: 'monospace', letterSpacing: '-0.02em', marginBottom: 14 }}>{grandTotal.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--c-muted)' }}>USDC</span></div>
               <SummaryRow label="Recipients" value={String(rows.length)} />
@@ -795,6 +807,7 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
             </div>
 
             <div style={{ borderRadius: 16, ...PANEL_GLASS, padding: 18 }}>
+              <PanelGlow />
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>How Claim Box works</div>
               {[
                 'Each recipient gets a dedicated on-chain box, computed from their email — no address to type.',
