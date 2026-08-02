@@ -44,6 +44,17 @@ function formatCountdown(msRemaining: number): string {
   return days > 0 ? `${days}d ${pad(hours)}:${pad(mins)}:${pad(secs)}` : `${pad(hours)}:${pad(mins)}:${pad(secs)}`
 }
 
+// Same tinted-glass panel language as Wallet/Dashboard's cards — replaces
+// the flat var(--c-panel) boxes this page used to have.
+const PANEL_GLASS = {
+  background: 'linear-gradient(165deg,rgba(99,102,241,.08),transparent 56%),color-mix(in srgb, var(--c-panel) 55%, transparent)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  border: '1px solid rgba(var(--c-fg-rgb),.10)',
+  boxShadow: '0 8px 26px rgba(99,102,241,.16),inset 0 1px 0 rgba(var(--c-fg-rgb),.06)',
+} as const
+const PANEL_GLASS_HEADER = { background: 'color-mix(in srgb, var(--c-panel) 65%, transparent)' } as const
+
 // ════════════════════════════════════════════════════════════════
 // Company · Run payroll
 // ════════════════════════════════════════════════════════════════
@@ -496,9 +507,9 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
           <StatCard label="Expired" value={String(expiredItems.length)} sub={`${reclaimedCount} reclaimed`} color="#f5b748" />
         </div>
 
-        <div style={{ borderRadius: 14, border: '1px solid rgba(255,255,255,.07)', overflow: 'auto' }}>
+        <div style={{ borderRadius: 14, ...PANEL_GLASS, overflow: 'auto' }}>
           <div style={{ minWidth: 1000 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1.1fr 1fr 1.1fr 1.3fr 0.8fr', gap: 8, padding: '9px 14px', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--c-muted2)', background: 'var(--c-panel)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 1.1fr 1fr 1.1fr 1.3fr 0.8fr', gap: 8, padding: '9px 14px', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--c-muted2)', ...PANEL_GLASS_HEADER }}>
               <span>Recipient</span><span>Amount</span><span>Memo</span><span>Status</span><span>Reference</span><span>Transaction</span><span>Action</span>
             </div>
             {items.map((item) => {
@@ -556,7 +567,7 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
             Pay your team by email. Each person gets their own Claim Box — funds move only when they claim with their own signature.
           </p>
 
-          <div style={{ borderRadius: 16, background: 'var(--c-panel)', padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div style={{ borderRadius: 16, ...PANEL_GLASS, padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
               <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--c-muted2)', marginBottom: 6 }}>Pay period</label>
               <input
@@ -584,7 +595,7 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
             </p>
           </div>
 
-          <div style={{ borderRadius: 16, background: 'var(--c-panel)', padding: 16, marginBottom: 16 }}>
+          <div style={{ borderRadius: 16, ...PANEL_GLASS, padding: 16, marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>{rows.length} recipient{rows.length === 1 ? '' : 's'}</span>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -783,7 +794,7 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
               )}
             </div>
 
-            <div style={{ borderRadius: 16, background: 'var(--c-panel)', padding: 18 }}>
+            <div style={{ borderRadius: 16, ...PANEL_GLASS, padding: 18 }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>How Claim Box works</div>
               {[
                 'Each recipient gets a dedicated on-chain box, computed from their email — no address to type.',
@@ -811,9 +822,9 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
           <p style={{ fontSize: 13, color: 'var(--c-muted)' }}>No payroll runs yet.</p>
         )}
         {!historyLoading && history.length > 0 && (
-          <div style={{ borderRadius: 14, border: '1px solid rgba(255,255,255,.07)', overflow: 'auto' }}>
+          <div style={{ borderRadius: 14, ...PANEL_GLASS, overflow: 'auto' }}>
             <div style={{ minWidth: 760 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8, padding: '9px 14px', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--c-muted2)', background: 'var(--c-panel)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8, padding: '9px 14px', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--c-muted2)', ...PANEL_GLASS_HEADER }}>
                 <span>Period</span><span>Sent</span><span>Recipients</span><span>Status</span><span>Claimed</span>
               </div>
               {history.map((h) => {
