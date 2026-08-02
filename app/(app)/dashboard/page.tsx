@@ -973,8 +973,10 @@ export default function DashboardPage() {
             {/* Wallet row: 3 cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
 
-              {/* MAIN WALLET */}
-              <div style={{ position: 'relative', overflow: 'hidden', padding: '18px 20px', borderRadius: 14, background: 'var(--wc-blue-grad)', border: '1px solid var(--wc-blue-border)', boxShadow: '0 8px 32px rgba(99,102,241,.28)', display: 'flex', flexDirection: 'column' }}>
+              {/* MAIN WALLET — same glass-card treatment as the Wallet page's cards
+                  (uniform indigo-tinted glass background; only the accent blob
+                  and glow color hint at which wallet this is). */}
+              <div style={{ position: 'relative', overflow: 'hidden', padding: '18px 20px', borderRadius: 14, background: 'linear-gradient(165deg,rgba(99,102,241,.10),transparent 56%),color-mix(in srgb, var(--c-panel) 55%, transparent)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(var(--c-fg-rgb),.10)', boxShadow: '0 8px 30px rgba(99,102,241,.42),inset 0 1px 0 rgba(var(--c-fg-rgb),.07)', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ position: 'absolute', top: -36, right: -36, width: 110, height: 110, borderRadius: '50%', background: '#6366f1', opacity: .14, filter: 'blur(30px)', pointerEvents: 'none' }} />
                 <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.005em', color: 'var(--c-muted)' }}>Main Wallet</div>
                 <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--c-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em', marginTop: 8 }}>${formatUSD(totalUsd)}</div>
@@ -998,8 +1000,9 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* AGENT WALLET */}
-              <div style={{ position: 'relative', overflow: 'hidden', padding: '18px 20px', borderRadius: 14, background: 'var(--wc-purple-grad)', border: '1px solid var(--wc-purple-border)', boxShadow: '0 8px 32px rgba(139,124,255,.28)', display: 'flex', flexDirection: 'column' }}>
+              {/* AGENT WALLET — same glass-card treatment as Main Wallet above,
+                  purple accent to match the Wallet page's "Agent AI" card. */}
+              <div style={{ position: 'relative', overflow: 'hidden', padding: '18px 20px', borderRadius: 14, background: 'linear-gradient(165deg,rgba(139,124,255,.10),transparent 56%),color-mix(in srgb, var(--c-panel) 55%, transparent)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(var(--c-fg-rgb),.10)', boxShadow: '0 8px 30px rgba(139,124,255,.42),inset 0 1px 0 rgba(var(--c-fg-rgb),.07)', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ position: 'absolute', top: -36, right: -36, width: 110, height: 110, borderRadius: '50%', background: '#8b7cff', opacity: .14, filter: 'blur(30px)', pointerEvents: 'none' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.005em', color: 'var(--c-muted)' }}>Agent Wallet</div>
