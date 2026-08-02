@@ -103,9 +103,8 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     label: 'Mobile App',
-    href: '#',
-    activeOn: [],
-    disabled: true,
+    href: '/mobile-app',
+    activeOn: ['/mobile-app'],
     icon: (
       <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
         <rect x="6" y="2" width="12" height="20" rx="2" /><line x1="10" y1="19" x2="14" y2="19" />
