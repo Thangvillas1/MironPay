@@ -849,6 +849,7 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
                 return (
                   <button
                     key={h.id}
+                    className="activity-row"
                     onClick={async () => { await loadRun(h.id) }}
                     style={{
                       display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8, width: '100%',
