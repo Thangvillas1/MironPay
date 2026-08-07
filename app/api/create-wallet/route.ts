@@ -89,26 +89,3 @@ export async function POST(request: NextRequest) {
     agentWalletId: agentWallet.id,
   })
 }
-
-// Single EOA wallet for legacy lazy-creation of main wallets
-export async function PUT(_request: NextRequest) {
-  const walletSetId = process.env.CIRCLE_WALLET_SET_ID
-  if (!walletSetId) {
-    return NextResponse.json({ error: 'CIRCLE_WALLET_SET_ID not configured' }, { status: 500 })
-  }
-
-  const response = await circleClient.createWallets({
-    walletSetId,
-    blockchains: ['ARC-TESTNET'],
-    count: 1,
-    accountType: 'EOA',
-    idempotencyKey: crypto.randomUUID(),
-  })
-
-  const wallet = response.data?.wallets?.[0]
-  if (!wallet?.address) {
-    return NextResponse.json({ error: 'Circle did not return a wallet' }, { status: 500 })
-  }
-
-  return NextResponse.json({ address: wallet.address, walletId: wallet.id })
-}
