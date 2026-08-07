@@ -135,11 +135,15 @@ export default function TransactionDetailModal({ tx, onClose }: Props) {
 
           <div className="border-t border-white/8 pt-4 flex flex-col gap-2.5">
             <Row label="Amount" value={`${formatAmount(tx.amount)} ${tx.tokenSymbol}`} />
-            <Row label="Network fee" value={fee > 0 ? `${formatAmount(fee)} ${tx.tokenSymbol}` : 'Free'} />
-            <div className="flex justify-between border-t border-white/8 pt-2.5 mt-0.5">
-              <span className="text-sm font-semibold text-mp-text">Total</span>
-              <span className="text-sm font-semibold text-mp-text">{formatAmount(total)} {tx.tokenSymbol}</span>
-            </div>
+            {isOutbound && (
+              <>
+                <Row label="Network fee" value={fee > 0 ? `${formatAmount(fee)} ${tx.tokenSymbol}` : 'Free'} />
+                <div className="flex justify-between border-t border-white/8 pt-2.5 mt-0.5">
+                  <span className="text-sm font-semibold text-mp-text">Total</span>
+                  <span className="text-sm font-semibold text-mp-text">{formatAmount(total)} {tx.tokenSymbol}</span>
+                </div>
+              </>
+            )}
           </div>
 
           {tx.txHash && (

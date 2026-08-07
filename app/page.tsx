@@ -130,7 +130,7 @@ function LoginScreen({ googleState, onSignIn, error }: { googleState: GoogleStat
             <span style={{ color: 'var(--lp-success)', display: 'flex' }}><IcCheckSmall /></span>No seed phrase
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--lp-muted)' }}>
-            <span style={{ color: 'var(--lp-success)', display: 'flex' }}><IcShield /></span>Non-custodial
+            <span style={{ color: 'var(--lp-success)', display: 'flex' }}><IcShield /></span>Custodial (Circle)
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--lp-muted)' }}>
             <span style={{ color: 'var(--lp-success)', display: 'flex' }}><IcLock /></span>PIN-protected
