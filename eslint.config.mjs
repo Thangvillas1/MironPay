@@ -12,6 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Static design handoffs and generated prototype bundles are reference
+    // artifacts, not source shipped by the Next.js application.
+    "**/design_handoff*/**",
+    "**/*_unzip/**",
+    "wallet design/**",
+    "ẢNH/**",
+    ".claude/**",
+    "scratch/**",
   ]),
 ]);
 

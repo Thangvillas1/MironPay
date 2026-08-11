@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHash } from 'crypto'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
-
-function hashPin(userId: string, pin: string): string {
-  return createHash('sha256').update(`${userId}:${pin}:miron`).digest('hex')
-}
+import { hashPin } from '@/app/lib/pin'
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -20,7 +16,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'PIN must be exactly 6 digits' }, { status: 400 })
   }
 
-  const pin_hash = hashPin(user.id, pin)
+  const { data: existing } = await supabase.from('profiles').select('pin_hash').eq('id', user.id).maybeSingle()
+  if (existing?.pin_hash) {
+    return NextResponse.json({ error: 'PIN is already set' }, { status: 409 })
+  }
+
+  const pin_hash = await hashPin(user.id, pin)
   // upsert (not update) so onboarding can create the profile row (with
   // username) in the same call a returning user uses to just change their PIN.
   const row: { id: string; pin_hash: string; username?: string } = { id: user.id, pin_hash }

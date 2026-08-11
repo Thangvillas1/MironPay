@@ -932,7 +932,10 @@ function EmployeeClaimInbox({ tabs }: { tabs: React.ReactNode }) {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => { void load() })
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   const ready = items.filter((i) => i.status === 'paid')
   const history = items.filter((i) => i.status === 'claimed' || i.status === 'reclaimed')
@@ -1290,7 +1293,10 @@ function SettingsVerification({ tabs }: { tabs: React.ReactNode }) {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => { void load() })
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   async function submit() {
     setError(null)

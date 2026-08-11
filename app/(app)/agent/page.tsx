@@ -172,11 +172,6 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
             </div>
             <svg className="w-3.5 h-3.5 text-mp-primary ml-2 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
           </a>
-        ) : txResult?.transactionId ? (
-          <div className="mt-1 bg-white/5 border border-white/8 rounded-[8px] px-3 py-2">
-            <p className="text-[10px] text-mp-muted">Transaction ID</p>
-            <p className="text-[10px] font-mono text-mp-text break-all mt-0.5">{txResult.transactionId}</p>
-          </div>
         ) : null}
       </div>
     </div>
@@ -700,7 +695,8 @@ export default function AgentPage() {
   useLayoutEffect(() => {
     const isDesktop = window.matchMedia('(min-width: 1024px)').matches
     if (isDesktop) router.replace('/dashboard')
-    setIsMobileViewport(!isDesktop)
+    const frame = requestAnimationFrame(() => setIsMobileViewport(!isDesktop))
+    return () => cancelAnimationFrame(frame)
   }, [router])
 
   useEffect(() => {
@@ -711,7 +707,7 @@ export default function AgentPage() {
       setUserId(data.session.user.id)
       // Independent of each other — no reason to make history wait on the
       // Circle balance round-trip (or vice versa).
-      await Promise.all([loadWallet(data.session.access_token), loadHistory(data.session.access_token)])
+      await Promise.all([loadWallet(data.session.access_token), loadHistory()])
 
       // Prefilled from another page's "Open Agent chat" button — send it
       // straight away instead of making the user retype/paste the command.
@@ -798,7 +794,7 @@ export default function AgentPage() {
     }
   }
 
-  async function loadHistory(token: string) {
+  async function loadHistory() {
     const { data } = await supabase
       .from('agent_messages')
       .select('id, role, content, cost, input_fee_tx_hash, created_at, data_fee_amount, data_fee_tx_hash, chart_symbol, chart_points, trending_data, defi_data, sentiment_data, stablecoin_data, wallet_lookup_data, dex_pair_data, swap_quote_data')

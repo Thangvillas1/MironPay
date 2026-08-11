@@ -98,7 +98,6 @@ interface ChatMessage {
 function formatUSD(n: number) {
   return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 }
-function truncateAddr(a: string) { return `${a.slice(0, 6)}...${a.slice(-4)}` }
 
 // ── Wallet sparkline (with gradient fill, used for wallet cards) ──────────────
 function SparklineChart({ values, color, id }: { values: number[]; color: string; id: string }) {
@@ -131,24 +130,6 @@ function SparklineChart({ values, color, id }: { values: number[]; color: string
 }
 
 // ── Mini line chart ───────────────────────────────────────────────────────────
-function MiniLineChart({ values, color = '#22c55e' }: { values: number[]; color?: string }) {
-  if (values.length < 2) return null
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = max - min || 1
-  const w = 120, h = 40
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * w
-    const y = h - ((v - min) / range) * h
-    return `${x},${y}`
-  }).join(' ')
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-10" preserveAspectRatio="none">
-      <polyline fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pts} />
-    </svg>
-  )
-}
-
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
@@ -178,7 +159,10 @@ export default function DashboardPage() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'tx' | 'agent'>('all')
   const [mobileIsDark, setMobileIsDark] = useState(true)
-  useEffect(() => { setMobileIsDark(localStorage.getItem('theme') !== 'light') }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMobileIsDark(localStorage.getItem('theme') !== 'light'))
+    return () => cancelAnimationFrame(frame)
+  }, [])
   function toggleMobileTheme() {
     const newDark = !mobileIsDark
     setMobileIsDark(newDark)
@@ -219,7 +203,8 @@ export default function DashboardPage() {
     const prefill = sessionStorage.getItem('mp_agent_prefill')
     if (prefill) {
       sessionStorage.removeItem('mp_agent_prefill')
-      setInput(prefill)
+      const frame = requestAnimationFrame(() => setInput(prefill))
+      return () => cancelAnimationFrame(frame)
     }
   }, [])
   const [sending, setSending] = useState(false)
@@ -243,13 +228,11 @@ export default function DashboardPage() {
   const [agentStats, setAgentStats] = useState<{ replyCount: number; txSuccessCount: number } | null>(null)
   const [modalAmount, setModalAmount] = useState('')
   const [modalLimit, setModalLimit] = useState('')
-  const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')
   const [limitPhase, setLimitPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
   const [limitResult, setLimitResult] = useState<{ daily_limit: number; onChain: boolean; txHash?: string | null; error?: string } | null>(null)
   const [fundPhase, setFundPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
   const [fundResult, setFundResult] = useState<{ amount: number; transactionId?: string; error?: string } | null>(null)
-  const [agentFunded24h, setAgentFunded24h] = useState(0)
   const [withdrawPhase, setWithdrawPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
   const [withdrawResult, setWithdrawResult] = useState<{ amount: number; transactionId?: string; error?: string } | null>(null)
   const [withdrawToken, setWithdrawToken] = useState('USDC')
@@ -280,7 +263,6 @@ export default function DashboardPage() {
       }
       const deposited = d.deposited ?? amt
       setFundResult({ amount: deposited, transactionId: d.transactionId })
-      setAgentFunded24h(prev => prev + deposited)
       setFundPhase('success')
       setTimeout(() => refreshAgentWallet(accessToken), 3000)
     } catch (e) {
@@ -685,11 +667,6 @@ export default function DashboardPage() {
   const lastSwap = [...messages].reverse().find(m => m.txResult?.success && m.txResult.type === 'swap')?.txResult
   const lastSend = [...messages].reverse().find(m => m.txResult?.success && m.txResult.type === 'send')?.txResult
 
-  const todayStr = new Date().toDateString()
-  const todayTxs = transactions.filter(t => new Date(t.created_at).toDateString() === todayStr)
-  const todayMsgs = messages.filter(m => new Date(m.created_at).toDateString() === todayStr)
-  const todayVol = todayTxs.reduce((s, t) => s + t.amount, 0)
-
   // tx.amount is the raw token quantity (e.g. 0.01 ETH), not USD — convert using
   // each token's current price (from tokenList) before summing; USDC/USDT are treated as pegged 1:1.
   const priceBySymbol: Record<string, number> = {}
@@ -708,10 +685,6 @@ export default function DashboardPage() {
     .reduce((s, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0)
   const mainBalanceBefore24h = totalUsd - mainDelta24h
   const mainDeltaPct = mainBalanceBefore24h !== 0 ? (mainDelta24h / Math.abs(mainBalanceBefore24h)) * 100 : 0
-
-  const agentDelta24h = agentFunded24h - (agentWallet?.daily_spent ?? 0)
-  const agentBalanceBefore24h = agentTotalUsd - agentDelta24h
-  const agentDeltaPct = agentBalanceBefore24h !== 0 ? (agentDelta24h / Math.abs(agentBalanceBefore24h)) * 100 : 0
 
 
   // Main wallet: 7-day balance history (computed backwards from the current balance — uses
@@ -1142,7 +1115,7 @@ export default function DashboardPage() {
                                   <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Deposit more into the Agent Wallet, then try again.</p>
                                 )}
                                 {msg.txResult.limitExceeded && (
-                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Raise your daily limit, or wait for tomorrow's reset.</p>
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Raise your daily limit, or wait for tomorrow&apos;s reset.</p>
                                 )}
                                 {(msg.txResult.code === 'PIN_REQUIRED' || msg.txResult.code === 'WRONG_PIN') && (
                                   <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Enter the correct Main Wallet PIN, then try again.</p>
@@ -1440,7 +1413,7 @@ export default function DashboardPage() {
         />
       )}
 
-      <SRSModal
+      {srsMode && <SRSModal
         mode={srsMode}
         onClose={() => setSrsMode(null)}
         accessToken={accessToken}
@@ -1450,7 +1423,7 @@ export default function DashboardPage() {
         hasPIN={hasPIN}
         onPINSet={() => setHasPIN(true)}
         onSuccess={() => refreshMainWallet(accessToken)}
-      />
+      />}
 
       {/* ── FUND MODAL ── */}
       {showFund && (
@@ -1613,6 +1586,7 @@ export default function DashboardPage() {
                         <button key={t.symbol} onClick={() => { setWithdrawToken(t.symbol); setModalAmount(''); setWithdrawTokenStep('form') }}
                           style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 14, background: isSelected ? 'rgba(99,102,241,.07)' : 'rgba(var(--c-fg-rgb),.05)', border: `1px solid ${isSelected ? '#6366f1' : 'rgba(var(--c-fg-rgb),.07)'}`, cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'border-color .15s' }}>
                           {t.logoUrl
+                            // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={t.logoUrl} alt={t.symbol} style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
                             : <div style={{ width: 36, height: 36, borderRadius: '50%', background: t.symbol === 'USDC' ? '#2775ca' : 'rgba(99,102,241,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{t.symbol.slice(0, 2)}</div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1648,6 +1622,7 @@ export default function DashboardPage() {
                         <button onClick={() => setWithdrawTokenStep('token')}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9999, background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.14)', fontSize: 14, fontWeight: 700, color: 'var(--c-text)', cursor: 'pointer', transition: 'border-color .15s' }}>
                           {selToken?.logoUrl
+                            // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={selToken.logoUrl} alt={withdrawToken} style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0 }} />
                             : <span style={{ width: 22, height: 22, borderRadius: '50%', background: withdrawToken === 'USDC' ? '#2775ca' : 'rgba(99,102,241,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{withdrawToken.slice(0, 2)}</span>}
                           {withdrawToken}

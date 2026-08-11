@@ -108,22 +108,38 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
   }
 
   useEffect(() => {
-    setLoadingMeta(true)
-    fetch(`/api/token/${upperSymbol}`)
+    const controller = new AbortController()
+    const frame = requestAnimationFrame(() => setLoadingMeta(true))
+    fetch(`/api/token/${upperSymbol}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => setMeta(d))
-      .catch(() => setMeta({ found: false, symbol: upperSymbol }))
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) setMeta({ found: false, symbol: upperSymbol })
+      })
       .finally(() => setLoadingMeta(false))
+    return () => {
+      cancelAnimationFrame(frame)
+      controller.abort()
+    }
   }, [upperSymbol])
 
   useEffect(() => {
-    setLoadingChart(true)
-    setChartData(null)
-    fetch(`/api/token/${upperSymbol}/chart?period=${period}`)
+    const controller = new AbortController()
+    const frame = requestAnimationFrame(() => {
+      setLoadingChart(true)
+      setChartData(null)
+    })
+    fetch(`/api/token/${upperSymbol}/chart?period=${period}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => setChartData(d.chartData ?? null))
-      .catch(() => setChartData(null))
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) setChartData(null)
+      })
       .finally(() => setLoadingChart(false))
+    return () => {
+      cancelAnimationFrame(frame)
+      controller.abort()
+    }
   }, [upperSymbol, period])
 
   const isPositive = (meta?.change24h ?? 0) >= 0
@@ -321,7 +337,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
         <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
       )}
 
-      <SRSModal
+      {srsMode && <SRSModal
         mode={srsMode}
         onClose={() => setSrsMode(null)}
         accessToken={accessToken}
@@ -332,7 +348,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
         onPINSet={() => setHasPIN(true)}
         onSuccess={refreshWallet}
         initialSwapSymbol={upperSymbol}
-      />
+      />}
     </div>
   )
 }

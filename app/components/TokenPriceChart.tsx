@@ -19,7 +19,8 @@ export function TokenPriceChart({ chart }: { chart: { symbol: string; points: Ar
   const svgRef = useRef<SVGSVGElement>(null)
 
   const rangeMs = CHART_RANGES.find(r => r.label === range)!.ms
-  const latestT = chart.points[chart.points.length - 1]?.[0] ?? Date.now()
+  const latestT = chart.points[chart.points.length - 1]?.[0]
+  if (latestT === undefined) return null
   const filtered = chart.points.filter(([t]) => t >= latestT - rangeMs)
   const pts = filtered.length >= 2 ? filtered : chart.points.slice(-2)
   if (pts.length < 2) return null

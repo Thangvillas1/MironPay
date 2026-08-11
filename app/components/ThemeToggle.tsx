@@ -8,7 +8,8 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
   useEffect(() => {
     const stored = localStorage.getItem('theme')
     const dark = stored !== 'light'
-    setIsDark(dark)
+    const frame = requestAnimationFrame(() => setIsDark(dark))
+    return () => cancelAnimationFrame(frame)
   }, [])
 
   function toggle() {

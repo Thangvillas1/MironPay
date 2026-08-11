@@ -149,19 +149,22 @@ export default function HomePage() {
   const router = useRouter()
   const [googleState, setGoogleState] = useState<GoogleState>('idle')
   const [googleError, setGoogleError] = useState('')
-  const [checkingSession, setCheckingSession] = useState(true)
+  const [checkingSession, setCheckingSession] = useState(isSupabaseConfigured)
   const [hasSession, setHasSession] = useState(false)
 
   // Detect standalone (installed PWA) launch — matchMedia covers Android/
   // desktop installs, navigator.standalone covers iOS Safari's older API.
   useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as { standalone?: boolean }).standalone === true
+    if (!isSupabaseConfigured) return
 
-    if (!isSupabaseConfigured) { setCheckingSession(false); return }
+    let cancelled = false
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    async function checkSession() {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches
+        || (window.navigator as { standalone?: boolean }).standalone === true
+      const { data } = await supabase.auth.getSession()
       const complete = data.session ? await isOnboardingComplete(data.session.user.id) : false
+      if (cancelled) return
       // Standalone PWA keeps its old behavior: skip straight to the dashboard
       // for a returning, already-onboarded user — no extra tap needed.
       if (standalone && complete) {
@@ -170,7 +173,10 @@ export default function HomePage() {
       }
       setHasSession(!!data.session && complete)
       setCheckingSession(false)
-    })
+    }
+
+    void checkSession()
+    return () => { cancelled = true }
   }, [router])
 
   const handleSignIn = async () => {

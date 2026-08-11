@@ -308,7 +308,6 @@ function TokenLogo({ symbol, logoUrl }: { symbol: string; logoUrl: string | null
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-type TxFilter = 'all' | 'send' | 'receive' | 'swap'
 type RangeKey = '24H' | '7D' | '1M' | 'All'
 const RANGES: RangeKey[] = ['24H', '7D', '1M', 'All']
 // Reconstructed from transaction history (no real balance-snapshot history
@@ -325,7 +324,7 @@ const RANGE_BUCKETS: Record<Exclude<RangeKey, 'All'>, { count: number; stepMs: n
 export default function WalletPage() {
   const router = useRouter()
   const { user, setUser } = useAuthStore()
-  const { wallet, transactions, tokenList, walletAddress,
+  const { wallet, transactions, tokenList, walletAddress, lastFetched,
     setWallet, setTransactions, setTokenList,
     setWalletAddress: storeSetAddr, setLastFetched } = useWalletStore()
 
@@ -407,7 +406,6 @@ export default function WalletPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) applyAgentData(d) })
       .catch(() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken])
 
   // ── Real-time refresh every 30s (both wallets) ────────────────────────────────
@@ -472,7 +470,8 @@ export default function WalletPage() {
   // testing Part 8's status detection — failed txs were previously counted
   // as if they'd succeeded).
   const allTransactions = [...transactions, ...(agentWallet?.transactions ?? [])].filter(t => !isFailedTx(t))
-  const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const chartNow = lastFetched || allTransactions.reduce((latest, tx) => Math.max(latest, new Date(tx.created_at).getTime()), 0)
+  const cutoff24h = new Date(chartNow - 24 * 60 * 60 * 1000)
   const mainDelta24h = allTransactions
     .filter(t => new Date(t.created_at) > cutoff24h)
     .reduce((s, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0)
@@ -480,7 +479,7 @@ export default function WalletPage() {
   const mainDeltaPct = mainBalanceBefore24h !== 0 ? (mainDelta24h / Math.abs(mainBalanceBefore24h)) * 100 : 0
   const rangeBucket = range === 'All' ? RANGE_BUCKETS['7D'] : RANGE_BUCKETS[range]
   const chartPoints: ChartPoint[] = Array.from({ length: rangeBucket.count }, (_, i) => {
-    const cutoff = new Date(Date.now() - (rangeBucket.count - 1 - i) * rangeBucket.stepMs)
+    const cutoff = new Date(chartNow - (rangeBucket.count - 1 - i) * rangeBucket.stepMs)
     const futureNet = allTransactions
       .filter(t => new Date(t.created_at) > cutoff)
       .reduce((s, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0)
@@ -852,7 +851,7 @@ export default function WalletPage() {
       {selectedTx && <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />}
       {showTxHistory && <TransactionHistoryModal transactions={transactions} onClose={() => setShowTxHistory(false)} />}
 
-      <SRSModal
+      {srsMode && <SRSModal
         mode={srsMode}
         onClose={() => setSrsMode(null)}
         accessToken={accessToken}
@@ -872,7 +871,7 @@ export default function WalletPage() {
             })
             .catch(() => {})
         }}
-      />
+      />}
 
       <BridgeModal
         open={bridgeModalOpen}

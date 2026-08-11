@@ -29,9 +29,8 @@ export async function POST(request: NextRequest) {
     }
 
     const agentBalRes = await circleClient.getWalletTokenBalance({ id: profile.agent_wallet_id })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const agentTokens: any[] = agentBalRes.data?.tokenBalances ?? []
-    const agentUsdc = agentTokens.find((b: any) => b.token?.symbol === 'USDC')
+    const agentTokens = (agentBalRes.data?.tokenBalances ?? []) as Array<{ amount?: string; token?: { id?: string; symbol?: string } }>
+    const agentUsdc = agentTokens.find((balance) => balance.token?.symbol === 'USDC')
     const agentBalance = parseFloat(agentUsdc?.amount ?? '0')
     const tokenId: string | undefined = agentUsdc?.token?.id
 
@@ -59,8 +58,7 @@ export async function POST(request: NextRequest) {
       idempotencyKey: crypto.randomUUID(),
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const txId = (tx.data as any)?.id
+    const txId = (tx.data as { id?: string } | undefined)?.id
     if (!txId) {
       return NextResponse.json({ error: 'Circle did not return a transaction ID' }, { status: 500 })
     }

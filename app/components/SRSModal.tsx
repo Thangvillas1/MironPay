@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/app/lib/supabase'
 import { validateUsernameFormat } from '@/app/lib/username'
-import { addScore } from '@/app/lib/score'
 import type { TokenBalance } from '@/app/lib/types'
 
 export type ModalMode = 'send' | 'receive' | 'swap' | null
@@ -69,12 +68,57 @@ export interface SRSModalProps {
   initialSwapSymbol?: string | null
 }
 
+interface PinPadProps {
+  step: Step
+  pin: string
+  pinError: string
+  pinLoading: boolean
+  title: string
+  heading: string
+  onKey: (key: string) => void
+  onDelete: () => void
+}
+
+function PinPad({ step, pin, pinError, pinLoading, title, heading, onKey, onDelete }: PinPadProps) {
+  const isSetup = step === 'setup_pin' || step === 'confirm_pin'
+  return (
+    <div style={{ animation: 'srsStep .25s ease', textAlign: 'center' }}>
+      <div style={{ width: 54, height: 54, margin: '6px auto 0', borderRadius: 16, background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+        {isSetup
+          ? <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M2 20c0-4 4.5-7 10-7s10 3 10 7" /></svg>
+          : <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>}
+      </div>
+      <div style={{ fontSize: 19, fontWeight: 700, marginTop: 14, color: 'var(--c-text)' }}>{heading}</div>
+      <div style={{ fontSize: 13, color: 'var(--c-muted)', marginTop: 4 }}>{title}</div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, margin: '24px 0 8px' }}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} style={{ width: 14, height: 14, borderRadius: '50%', ...(i < pin.length ? { background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', boxShadow: '0 0 8px rgba(99,102,241,.6)' } : { background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.14)' }), display: 'inline-block', transition: 'background .15s, box-shadow .15s' }} />
+        ))}
+      </div>
+      {pinError ? <p style={{ fontSize: 12.5, color: '#fb6f84', marginBottom: 16, minHeight: 20 }}>{pinError}</p> : <div style={{ marginBottom: 16, minHeight: 20 }} />}
+      {pinLoading ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2.5px solid rgba(99,102,241,.3)', borderTopColor: '#818cf8', animation: 'srsSpin 0.8s linear infinite' }} />
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, maxWidth: 288, margin: '0 auto' }}>
+          {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((key, i) => (
+            <button key={i} onClick={key === '⌫' ? onDelete : key === '' ? undefined : () => onKey(key)} disabled={key === ''} style={{ height: 58, borderRadius: 14, border: '1px solid rgba(var(--c-fg-rgb),.07)', background: key === '' ? 'transparent' : 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 22, fontWeight: 600, cursor: key === '' ? 'default' : 'pointer', transition: 'background .1s', opacity: key === '' ? 0 : 1 }}>
+              {key}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SRSModal({
   mode, onClose, accessToken, tokenList, walletAddress, username,
   hasPIN = false, onPINSet, onSuccess, initialSwapSymbol,
 }: SRSModalProps) {
   // ── Step ───────────────────────────────────────────────────────────────────
-  const [step, setStep] = useState<Step>('amount')
+  const [step, setStep] = useState<Step>(mode === 'receive' ? 'receive' : mode === 'swap' ? 'form' : 'amount')
   const [tokenSelectFor, setTokenSelectFor] = useState<'send' | 'swapIn' | 'swapOut'>('send')
 
   // ── Send state ─────────────────────────────────────────────────────────────
@@ -104,8 +148,13 @@ export default function SRSModal({
   ))
   const hasSwapBalance = swapTokens.some(t => parseFloat(t.amount) > 0)
   const [swapAmount, setSwapAmount] = useState('')
-  const [swapInIdx, setSwapInIdx] = useState(0)
-  const [swapOutIdx, setSwapOutIdx] = useState(1)
+  const initialSwapInIdx = (() => {
+    const preselected = initialSwapSymbol ? swapTokens.findIndex(t => t.symbol === initialSwapSymbol) : -1
+    if (preselected >= 0) return preselected
+    return parseFloat(swapTokens[0]?.amount ?? '0') > 0 ? 0 : 1
+  })()
+  const [swapInIdx, setSwapInIdx] = useState(initialSwapInIdx)
+  const [swapOutIdx, setSwapOutIdx] = useState(initialSwapInIdx === 0 ? 1 : 0)
   const [swapQuote, setSwapQuote] = useState<SwapQuote | null>(null)
   const [swapQuoteLoading, setSwapQuoteLoading] = useState(false)
   const [swapQuoteError, setSwapQuoteError] = useState('')
@@ -136,39 +185,14 @@ export default function SRSModal({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Reset on mode open ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!mode) return
-    abortedRef.current = false
-    txStatusRef.current = null
-    setStep(mode === 'receive' ? 'receive' : mode === 'swap' ? 'form' : 'amount')
-    setPin(''); setSetupPin(''); setPinError(''); setPinLoading(false)
-    setPhase(0); setTxHash(''); setTxError(''); setSwapAmountOut('')
-    setSendAmount(''); setMemo(''); setRecipient('')
-    setResolution('idle'); setResolvedAddress(''); setResolvedUsername('')
-    setSendTokenIdx(0)
-    setSwapAmount(''); setSwapQuote(null); setSwapQuoteError('')
-    const preselectedIn = initialSwapSymbol ? swapTokens.findIndex(t => t.symbol === initialSwapSymbol) : -1
-    // Default "you pay" to whichever side actually has a balance, so a wallet
-    // holding only EURC doesn't land on a 0-balance USDC pay side by default.
-    const defaultIn = parseFloat(swapTokens[0]?.amount ?? '0') > 0 ? 0 : 1
-    const inIdx = preselectedIn >= 0 ? preselectedIn : defaultIn
-    setSwapInIdx(inIdx)
-    setSwapOutIdx(inIdx === 0 ? 1 : 0)
-    setSlippagePct('30'); setSlipCustomFocused(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode])
-
   // ── Username resolution ─────────────────────────────────────────────────────
   useEffect(() => {
     if (step !== 'amount') return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     const raw = recipient.trim()
-    if (!raw) { setResolution('idle'); setResolvedAddress(''); setResolvedUsername(''); return }
+    if (!raw || resolution !== 'resolving') return
     if (raw.startsWith('@')) {
       const uname = raw.slice(1).toLowerCase()
-      const err = validateUsernameFormat(uname)
-      if (err) { setResolution('invalid'); setResolvedAddress(''); setResolvedUsername(''); return }
-      setResolution('resolving')
       debounceRef.current = setTimeout(async () => {
         const { data } = await supabase.rpc('resolve_username', { p_username: uname })
         if (data) {
@@ -180,28 +204,26 @@ export default function SRSModal({
       return
     }
     if (raw.startsWith('0x')) {
-      if (raw.length !== 42 || !EVM_RE.test(raw)) { setResolution('invalid'); setResolvedAddress(''); return }
-      setResolvedAddress(raw); setResolution('resolving')
       debounceRef.current = setTimeout(async () => {
         const { data } = await supabase.rpc('resolve_wallet_address', { p_wallet_address: raw })
         setResolvedUsername(data ?? ''); setResolution('found')
       }, 400)
       return
     }
-    setResolution('invalid'); setResolvedAddress(''); setResolvedUsername('')
-  }, [recipient, step])
+  }, [recipient, resolution, step])
 
   // ── Swap quote ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (step !== 'form') return
     if (swapDebounce.current) clearTimeout(swapDebounce.current)
-    setSwapQuote(null); setSwapQuoteError('')
     const amt = parseFloat(swapAmount)
     if (!swapAmount || isNaN(amt) || amt <= 0 || !accessToken) return
     const tokIn = swapTokens[swapInIdx]; const tokOut = swapTokens[swapOutIdx]
     if (!tokIn || !tokOut || tokIn.symbol === tokOut.symbol) return
-    setSwapQuoteLoading(true)
     swapDebounce.current = setTimeout(async () => {
+      setSwapQuote(null)
+      setSwapQuoteError('')
+      setSwapQuoteLoading(true)
       try {
         const params = new URLSearchParams({ tokenIn: tokIn.symbol, tokenOut: tokOut.symbol, amountIn: swapAmount, slippageBps: String(slippageBps) })
         const res = await fetch(`/api/wallet/swap/estimate?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } })
@@ -214,6 +236,24 @@ export default function SRSModal({
     }, 700)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [swapAmount, swapInIdx, swapOutIdx, step, slippageBps])
+
+  function handleRecipientChange(value: string) {
+    const raw = value.trim()
+    setRecipient(value)
+    setResolvedAddress('')
+    setResolvedUsername('')
+
+    if (!raw) {
+      setResolution('idle')
+    } else if (raw.startsWith('@')) {
+      setResolution(validateUsernameFormat(raw.slice(1).toLowerCase()) ? 'invalid' : 'resolving')
+    } else if (raw.startsWith('0x') && EVM_RE.test(raw)) {
+      setResolvedAddress(raw)
+      setResolution('resolving')
+    } else {
+      setResolution('invalid')
+    }
+  }
 
   // ── Cleanup timers ──────────────────────────────────────────────────────────
   function clearTimers() {
@@ -349,7 +389,6 @@ export default function SRSModal({
       if (res.ok) {
         setTxHash(d.txHash ?? '')
         txStatusRef.current = { ok: true }
-        addScore('send', accessToken)
       } else {
         txStatusRef.current = { ok: false, error: d.error ?? 'Send failed' }
       }
@@ -370,7 +409,6 @@ export default function SRSModal({
       if (res.ok) {
         setTxHash(d.txHash ?? ''); setSwapAmountOut(d.amountOut ?? '')
         txStatusRef.current = { ok: true }
-        addScore('swap', accessToken)
       } else {
         txStatusRef.current = { ok: false, error: d.error ?? 'Swap failed' }
       }
@@ -467,46 +505,6 @@ export default function SRSModal({
   const pinTitle = step === 'setup_pin' ? 'Create a 6-digit PIN' : step === 'confirm_pin' ? 'Re-enter your PIN' : mode === 'swap' ? '6-digit PIN to authorize swap' : '6-digit PIN to authorize transfer'
   const pinHeading = step === 'setup_pin' ? 'Set your PIN' : step === 'confirm_pin' ? 'Confirm your PIN' : 'Enter your PIN'
 
-  function PinPad() {
-    return (
-      <div style={{ animation: 'srsStep .25s ease', textAlign: 'center' }}>
-        <div style={{ width: 54, height: 54, margin: '6px auto 0', borderRadius: 16, ...S.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-          {step === 'setup_pin' || step === 'confirm_pin'
-            ? <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M2 20c0-4 4.5-7 10-7s10 3 10 7" /></svg>
-            : <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-          }
-        </div>
-        <div style={{ fontSize: 19, fontWeight: 700, marginTop: 14, color: 'var(--c-text)' }}>{pinHeading}</div>
-        <div style={{ fontSize: 13, color: 'var(--c-muted)', marginTop: 4 }}>{pinTitle}</div>
-
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, margin: '24px 0 8px' }}>
-          {Array.from({ length: 6 }, (_, i) => (
-            <span key={i} style={{ width: 14, height: 14, borderRadius: '50%', ...(i < pin.length ? { background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', boxShadow: '0 0 8px rgba(99,102,241,.6)' } : { background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.14)' }), display: 'inline-block', transition: 'background .15s, box-shadow .15s' }} />
-          ))}
-        </div>
-
-        {pinError && (
-          <p style={{ fontSize: 12.5, color: '#fb6f84', marginBottom: 16, minHeight: 20 }}>{pinError}</p>
-        )}
-        {!pinError && <div style={{ marginBottom: 16, minHeight: 20 }} />}
-
-        {pinLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2.5px solid rgba(99,102,241,.3)', borderTopColor: '#818cf8', animation: 'srsSpin 0.8s linear infinite' }} />
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, maxWidth: 288, margin: '0 auto' }}>
-            {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k, i) => (
-              <button key={i} onClick={k === '⌫' ? handlePinDel : k === '' ? undefined : () => handlePinKey(k)} disabled={k === ''} style={{ height: 58, borderRadius: 14, border: '1px solid rgba(var(--c-fg-rgb),.07)', background: k === '' ? 'transparent' : 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 22, fontWeight: 600, cursor: k === '' ? 'default' : 'pointer', transition: 'background .1s', opacity: k === '' ? 0 : 1 }}>
-                {k}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div
       onClick={handleClose}
@@ -585,7 +583,7 @@ export default function SRSModal({
                   <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                     {recipient ? recipient[0].toUpperCase() : '?'}
                   </span>
-                  <input value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="@username or 0x address" spellCheck={false} autoComplete="off" style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--c-text)', fontSize: 14, fontFamily: 'var(--font-mono)' }} />
+                  <input value={recipient} onChange={e => handleRecipientChange(e.target.value)} placeholder="@username or 0x address" spellCheck={false} autoComplete="off" style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--c-text)', fontSize: 14, fontFamily: 'var(--font-mono)' }} />
                   {resolution === 'found' && (
                     <svg width={18} height={18} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(45,212,191,.2)" /><path d="M7.5 12.2l3 3 6-6.4" fill="none" stroke="#2dd4bf" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" /></svg>
                   )}
@@ -704,7 +702,9 @@ export default function SRSModal({
           )}
 
           {/* ────────── PIN STEPS (shared pad) ────────── */}
-          {(step === 'pin' || step === 'setup_pin' || step === 'confirm_pin') && <PinPad />}
+          {(step === 'pin' || step === 'setup_pin' || step === 'confirm_pin') && (
+            <PinPad step={step} pin={pin} pinError={pinError} pinLoading={pinLoading} title={pinTitle} heading={pinHeading} onKey={handlePinKey} onDelete={handlePinDel} />
+          )}
 
           {/* ────────── PROGRESS ────────── */}
           {step === 'progress' && (

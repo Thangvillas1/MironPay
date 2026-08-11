@@ -140,7 +140,7 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, setUser } = useAuthStore()
-  const { tokenList, setWallet, setTransactions, setTokenList, setWalletAddress, setLastFetched } = useWalletStore()
+  const { setWallet, setTransactions, setTokenList, setWalletAddress, setLastFetched } = useWalletStore()
 
   const [isDark, setIsDark] = useState(true)
   const [username, setUsername] = useState<string | null>(null)
@@ -148,7 +148,8 @@ export default function Sidebar() {
   const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsDark(localStorage.getItem('theme') !== 'light')
+    const frame = requestAnimationFrame(() => setIsDark(localStorage.getItem('theme') !== 'light'))
+    return () => cancelAnimationFrame(frame)
   }, [])
 
   useEffect(() => {

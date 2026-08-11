@@ -14,16 +14,11 @@ const arcTestnet = {
 
 // ── Contract addresses ────────────────────────────────────────────────────────
 const IDENTITY_REGISTRY = '0x8004A818BFB912233c491871b3d84c89A494BD9e'
-const REPUTATION_REGISTRY = '0x8004B663056A597Dffe9eCcC1965A193B7388713'
 
 const IDENTITY_ABI = parseAbi([
   'function register(string metadataURI) returns (uint256)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
   'function ownerOf(uint256 tokenId) view returns (address)',
-])
-
-const REPUTATION_ABI = parseAbi([
-  'function giveFeedback(uint256 agentId, uint8 score) returns (bool)',
 ])
 
 // Metadata mô tả Miron Agent — dùng URI test của ARC
@@ -41,8 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Kiểm tra env
     const ownerKey = process.env.AGENT_OWNER_PRIVATE_KEY
-    const validatorKey = process.env.AGENT_VALIDATOR_PRIVATE_KEY
-    if (!ownerKey || !validatorKey) {
+  if (!ownerKey) {
       return NextResponse.json({ error: 'Project wallet not configured' }, { status: 500 })
     }
 
@@ -62,7 +56,6 @@ export async function POST(request: NextRequest) {
 
     // ── Setup clients ─────────────────────────────────────────────────────────
     const ownerAccount = privateKeyToAccount(ownerKey as `0x${string}`)
-    const validatorAccount = privateKeyToAccount(validatorKey as `0x${string}`)
 
     const publicClient = createPublicClient({
       chain: arcTestnet,
@@ -71,12 +64,6 @@ export async function POST(request: NextRequest) {
 
     const ownerClient = createWalletClient({
       account: ownerAccount,
-      chain: arcTestnet,
-      transport: http(),
-    })
-
-    const validatorClient = createWalletClient({
-      account: validatorAccount,
       chain: arcTestnet,
       transport: http(),
     })

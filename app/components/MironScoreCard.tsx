@@ -46,7 +46,13 @@ export default function MironScoreCard() {
   }, [])
 
   useEffect(() => {
-    if (data?.score) { setBump(true); setTimeout(() => setBump(false), 800) }
+    if (!data?.score) return
+    const frame = requestAnimationFrame(() => setBump(true))
+    const timer = setTimeout(() => setBump(false), 800)
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(timer)
+    }
   }, [data?.score])
 
   if (loading) return (

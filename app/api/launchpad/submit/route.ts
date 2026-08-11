@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHash } from 'crypto'
 import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
+import { verifyPin } from '@/app/lib/pin'
 
 const LISTING_FEE_USDC = 50
 const TREASURY_ADDRESS = process.env.AGENT_OWNER_ADDRESS!
-
-function hashPin(userId: string, pin: string): string {
-  return createHash('sha256').update(`${userId}:${pin}:miron`).digest('hex')
-}
 
 function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -54,14 +50,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify PIN (same canonical hash used across the whole app)
-    const { data: profile } = await supabase.from('profiles').select('pin_hash').eq('id', user.id).single()
-    if (!profile?.pin_hash) {
-      return NextResponse.json({ error: 'Set a PIN first (from the Wallet page) before submitting a project.' }, { status: 400 })
-    }
-    const computedHash = hashPin(user.id, pin)
-    if (computedHash !== profile.pin_hash) {
-      return NextResponse.json({ error: 'Incorrect PIN' }, { status: 403 })
-    }
+    const pinResult = await verifyPin(supabase, user.id, pin)
+    if (!pinResult.ok) return NextResponse.json({ error: pinResult.error }, { status: 403 })
 
     // Resolve unique project slug
     const baseSlug = slugify(name)

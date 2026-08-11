@@ -28,8 +28,10 @@ export default function SettingsPage() {
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || (window.navigator as { standalone?: boolean }).standalone === true
-    setIsStandalone(standalone)
-    setIsIOS(/iphone|ipad|ipod/i.test(window.navigator.userAgent))
+    const frame = requestAnimationFrame(() => {
+      setIsStandalone(standalone)
+      setIsIOS(/iphone|ipad|ipod/i.test(window.navigator.userAgent))
+    })
 
     // Android/desktop Chrome fires this when the app is installable —
     // capturing it lets a real "Add" button trigger the native install
@@ -39,7 +41,10 @@ export default function SettingsPage() {
       setInstallPrompt(e as BeforeInstallPromptEvent)
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+    }
   }, [])
 
   async function handleInstallClick() {
@@ -55,7 +60,10 @@ export default function SettingsPage() {
     setShowManualHint(true)
   }
 
-  useEffect(() => { setMobileIsDark(localStorage.getItem('theme') !== 'light') }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMobileIsDark(localStorage.getItem('theme') !== 'light'))
+    return () => cancelAnimationFrame(frame)
+  }, [])
   function toggleMobileTheme() {
     const newDark = !mobileIsDark
     setMobileIsDark(newDark)

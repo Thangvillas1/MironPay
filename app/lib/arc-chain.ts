@@ -14,6 +14,14 @@ export const arcTestnet = {
 export const IDENTITY_REGISTRY = '0x8004A818BFB912233c491871b3d84c89A494BD9e' as const
 export const REPUTATION_REGISTRY = '0x8004B663056A597Dffe9eCcC1965A193B7388713' as const
 
+// Native USDC on Arc Testnet — same address used by scripts/test-payroll-claim.mjs
+// and scripts/measure-paybatch-gas.mjs.
+export const USDC_TOKEN = '0x3600000000000000000000000000000000000000' as const
+
+export const USDC_TRANSFER_EVENT = parseAbiItem(
+  'event Transfer(address indexed from, address indexed to, uint256 value)'
+)
+
 // Block deploy của 2 contract — verify bằng eth_getCode binary search ngày 2026-07-02.
 // Không bao giờ quét trước các block này — tránh lãng phí ~29.2M block rỗng.
 export const IDENTITY_REGISTRY_DEPLOY_BLOCK = 29_241_340n

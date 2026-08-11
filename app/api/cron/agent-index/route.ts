@@ -12,8 +12,9 @@ import { arcPublicClient, REPUTATION_REGISTRY, REPUTATION_REGISTRY_DEPLOY_BLOCK,
 // Chưa nối Vercel Cron thật (project chưa deploy) — trigger thủ công:
 //   curl -H "Authorization: Bearer $AGENT_INDEXER_CRON_SECRET" https://<host>/api/cron/agent-index
 export async function GET(request: NextRequest) {
+  const secret = process.env.AGENT_INDEXER_CRON_SECRET
   const auth = request.headers.get('Authorization')
-  if (auth !== `Bearer ${process.env.AGENT_INDEXER_CRON_SECRET}`) {
+  if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

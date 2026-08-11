@@ -38,6 +38,9 @@ export async function POST(request: NextRequest) {
     if (!action || !(action in POINTS)) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
+    if (action !== 'daily_login') {
+      return NextResponse.json({ error: 'Transaction scores are awarded by verified server events' }, { status: 403 })
+    }
 
     // Lấy profile hiện tại
     const { data: profile } = await supabase
@@ -49,6 +52,16 @@ export async function POST(request: NextRequest) {
     const currentScore = profile?.miron_score ?? 0
     const today = new Date().toISOString().slice(0, 10)
     const lastActive = profile?.last_active_date ?? ''
+
+    if (lastActive === today) {
+      return NextResponse.json({
+        score: currentScore,
+        level: getLevel(currentScore),
+        earned: 0,
+        streak: profile?.streak_days ?? 0,
+        multiplier: getStreakMultiplier(profile?.streak_days ?? 0),
+      })
+    }
 
     // Tính streak
     let streakDays = profile?.streak_days ?? 0

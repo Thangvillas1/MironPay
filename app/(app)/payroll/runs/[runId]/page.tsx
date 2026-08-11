@@ -67,7 +67,10 @@ export default function PayrollRunDetailPage() {
     setLoading(false)
   }, [runId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => { void load() })
+    return () => cancelAnimationFrame(frame)
+  }, [load])
 
   async function execute() {
     setExecuting(true)

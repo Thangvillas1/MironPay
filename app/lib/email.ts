@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import QRCode from 'qrcode'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -169,6 +170,163 @@ export async function sendPayrollClaimEmail(params: {
               </p>
               <p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;color:#b0b7c3;font-size:11px;">
                 Automated payroll notification — not marketing, no unsubscribe needed.
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body></html>`,
+  })
+}
+
+export async function sendInvoiceEmail(params: {
+  to: string
+  amount: number
+  invoiceCode: string
+  issuerName?: string | null
+  dueDate: string // ISO
+  variant?: 'new' | 'reminder' | 'completed' // default 'new'
+  receiveAddress?: string | null // required to render the payment QR (not needed for 'completed')
+}) {
+  const { to, amount, invoiceCode, issuerName, dueDate, variant = 'new', receiveAddress } = params
+  const reminder = variant === 'reminder'
+  const completed = variant === 'completed'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://mironpay.xyz'
+  const payUrl = `${appUrl}/invoice/${invoiceCode}`
+  const logoUrl = `${appUrl}/logo/miron-logo-lockup-horizontal-light.png`
+  const dueDateLabel = new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const fromLine = issuerName
+    ? `<p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;color:#475467;font-size:14px;">
+         Invoice from <strong style="color:#0d1526;">${issuerName}</strong>
+       </p>`
+    : ''
+  const badgeColor = completed ? '#12b76a' : reminder ? '#b42318' : '#667085'
+  const badgeBg = completed ? '#ecfdf3' : reminder ? '#fef3f2' : '#f5f7fb'
+  const badgeLabel = completed ? 'Paid' : reminder ? 'Overdue' : 'Invoice'
+
+  // Inlined as a data URI (not linked to an external QR API) so the payment
+  // address/amount/memo never leaves our own server, and the image still
+  // renders in email clients that block remote image loading by default.
+  const qrDataUrl = !completed && receiveAddress
+    ? await QRCode.toDataURL(JSON.stringify({ address: receiveAddress, amount, memo: invoiceCode }), { width: 240, margin: 1 })
+    : null
+  const qrBlockHtml = qrDataUrl
+    ? `<tr>
+        <td style="padding:0 32px 28px;text-align:center;">
+          <img src="${qrDataUrl}" alt="Payment QR code" width="180" height="180" style="display:inline-block;border:1px solid #e3e7ef;border-radius:12px;padding:10px;background:#ffffff;" />
+          <p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;color:#98a2b3;font-size:11px;">Scan with any wallet that supports MironPay QR payments</p>
+        </td>
+      </tr>`
+    : ''
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: completed
+      ? `Payment confirmed: invoice ${invoiceCode} (${amount.toFixed(2)} USDC) on MironPay`
+      : reminder
+        ? `Overdue: ${amount.toFixed(2)} USDC invoice ${invoiceCode} on MironPay`
+        : `You have a ${amount.toFixed(2)} USDC invoice on MironPay`,
+    html: `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>${completed ? 'Payment confirmed' : reminder ? 'Overdue invoice' : 'New invoice'}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef1f6;-webkit-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#eef1f6;opacity:0;">
+    ${completed ? 'Your payment has been confirmed on-chain' : reminder ? 'Your invoice is now overdue' : 'You have a new invoice waiting to be paid'} — invoice ${invoiceCode} on MironPay.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef1f6;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e3e7ef;">
+
+          <tr>
+            <td bgcolor="#ffffff" style="background:#ffffff;padding:22px 32px;border-bottom:1px solid #e3e7ef;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td valign="middle">
+                    <img src="${logoUrl}" alt="MironPay" height="40" style="display:block;height:40px;width:auto;border:0;outline:none;text-decoration:none;" />
+                  </td>
+                  <td valign="middle" align="right" style="font-family:Arial,Helvetica,sans-serif;color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;background:${badgeBg};border-radius:999px;padding:4px 10px;white-space:nowrap;">
+                    ${badgeLabel}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:36px 32px 8px;">
+              ${fromLine}
+              <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;color:#667085;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;">
+                ${completed ? 'Payment confirmed on-chain' : reminder ? `Was due ${dueDateLabel}` : `Due ${dueDateLabel}`}
+              </p>
+              <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;color:#0d1526;font-size:34px;font-weight:700;letter-spacing:-0.6px;">
+                ${amount.toFixed(2)} USDC
+              </p>
+              <p style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;color:#344054;font-size:14px;line-height:1.7;">
+                ${completed
+                  ? 'This invoice has been paid and verified on-chain. No further action is needed — this is just a confirmation for your records.'
+                  : reminder
+                    ? 'This invoice is now past its due date and still unpaid. Pay it any time — it stays open until settled.'
+                    : 'Pay it directly with any wallet by scanning the QR code, or sign in to MironPay to pay in one tap.'}
+              </p>
+            </td>
+          </tr>
+
+          ${qrBlockHtml}
+
+          <tr>
+            <td style="padding:0 32px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td bgcolor="#f5f7fb" style="background:#f5f7fb;border:1px solid #e3e7ef;border-radius:12px;padding:16px 18px;">
+                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#475467;font-size:13px;line-height:1.7;">
+                      Invoice reference: <span style="font-family:'Courier New',monospace;color:#0d1526;font-weight:700;letter-spacing:0.3px;">${invoiceCode}</span>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 32px 14px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="${PRIMARY_COLOR}" style="background:${PRIMARY_COLOR};border-radius:12px;">
+                    <a href="${payUrl}" target="_blank" style="display:block;padding:14px 0;font-family:Arial,Helvetica,sans-serif;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">
+                      ${completed ? 'View receipt' : 'View & pay invoice'}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 32px 32px;text-align:center;">
+              <a href="${payUrl}" target="_blank" style="font-family:Arial,Helvetica,sans-serif;color:${PRIMARY_COLOR};font-size:12.5px;text-decoration:underline;word-break:break-all;">
+                ${payUrl}
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+          <tr>
+            <td align="center" style="padding:20px 8px 0;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#98a2b3;font-size:12px;">
+                © MironPay · Sent to ${to}
               </p>
             </td>
           </tr>

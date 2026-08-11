@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
 // Route map (auth enforced client-side — see SPEC.md):
 //   /login                          public
@@ -21,7 +20,7 @@ import type { NextRequest } from 'next/server'
 // mobile experience (dashboard, wallet flows, agent, launchpad, settings all
 // have mobile layouts; see the PWA build-out commits), so there's no longer
 // a reason to turn phones away at the edge.
-export function proxy(_req: NextRequest) {
+export function proxy() {
   return NextResponse.next()
 }
 

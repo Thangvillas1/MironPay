@@ -42,7 +42,7 @@ export function TypewriterText({ text }: { text: string }) {
   const [shown, setShown] = useState('')
 
   useEffect(() => {
-    setShown('')
+    const frame = requestAnimationFrame(() => setShown(''))
     if (!text) return
     let i = 0
     const id = setInterval(() => {
@@ -50,7 +50,10 @@ export function TypewriterText({ text }: { text: string }) {
       setShown(text.slice(0, i))
       if (i >= text.length) clearInterval(id)
     }, 18)
-    return () => clearInterval(id)
+    return () => {
+      cancelAnimationFrame(frame)
+      clearInterval(id)
+    }
   }, [text])
 
   return <>{formatInlineText(shown)}</>

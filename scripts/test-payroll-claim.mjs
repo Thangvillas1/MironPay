@@ -6,20 +6,16 @@
  * verify + sweep), double-claim rejection, and reclaim after expiry.
  */
 
-import { createRequire } from 'module'
 import {
   createWalletClient,
   createPublicClient,
   http,
   keccak256,
   toBytes,
-  toHex,
   formatUnits,
   encodePacked,
 } from 'viem'
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
-
-const require = createRequire(import.meta.url)
 
 const arcTestnet = {
   id: 5042002,

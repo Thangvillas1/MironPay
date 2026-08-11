@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
 }
 
 /**
@@ -149,8 +150,13 @@ contract IDOLaunchpad {
         uint256 newTotal = contributions[saleId][msg.sender] + amount;
         require(newTotal <= s.maxContribution, "Exceeds per-wallet max");
 
+        uint256 raisedAfter = s.totalRaised + amount;
+        uint256 tokensRequired = (raisedAfter * (10 ** uint256(s.tokenDecimals))) / s.priceMicro;
+        require(s.tokensDeposited >= tokensRequired, "Insufficient deposited tokens");
+        require(IERC20(s.tokenAddress).balanceOf(address(this)) >= tokensRequired, "Insufficient sale tokens");
+
         contributions[saleId][msg.sender] = newTotal;
-        s.totalRaised += amount;
+        s.totalRaised = raisedAfter;
 
         require(IERC20(usdc).transferFrom(msg.sender, address(this), amount), "USDC transferFrom failed");
         emit Contributed(saleId, msg.sender, amount, s.totalRaised);
@@ -163,6 +169,9 @@ contract IDOLaunchpad {
         require(block.timestamp > s.endTime, "Sale still live");
         require(!s.withdrawn, "Already withdrawn");
         require(s.totalRaised >= s.minRaise, "Softcap not met - use refund");
+        uint256 tokensRequired = (s.totalRaised * (10 ** uint256(s.tokenDecimals))) / s.priceMicro;
+        require(s.tokensDeposited >= tokensRequired, "Insufficient deposited tokens");
+        require(IERC20(s.tokenAddress).balanceOf(address(this)) >= tokensRequired, "Insufficient sale tokens");
 
         s.withdrawn = true;
         uint256 amount = s.totalRaised;

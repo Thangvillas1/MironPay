@@ -130,7 +130,6 @@ export default function TransactionDetailModal({ tx, onClose }: Props) {
                 </a>
               </div>
             )}
-            {tx.id && <Row label="Transaction ID" value={tx.id} />}
           </div>
 
           <div className="border-t border-white/8 pt-4 flex flex-col gap-2.5">

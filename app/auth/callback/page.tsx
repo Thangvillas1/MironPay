@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { useAuthStore } from '@/app/store/auth'
@@ -26,8 +26,12 @@ function CallbackHandler() {
   const searchParams = useSearchParams()
   const setUser = useAuthStore((s) => s.setUser)
   const [errorMessage, setErrorMessage] = useState('')
+  const handledRef = useRef(false)
 
   useEffect(() => {
+    if (handledRef.current) return
+    handledRef.current = true
+
     async function handleCallback() {
       // OAuth errors arrive as ?error=...&error_description=...
       const errorParam = searchParams.get('error')
@@ -62,8 +66,8 @@ function CallbackHandler() {
       router.replace(await resolvePostLoginRoute(data.session.user.id))
     }
 
-    handleCallback()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    void handleCallback()
+  }, [router, searchParams, setUser])
 
   if (errorMessage) {
     return (

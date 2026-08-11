@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Address } from 'viem'
-import { createHash } from 'crypto'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { getOnChainLimit } from '@/app/lib/spending-limit'
 import { depositToGateway, withdrawFromGateway } from '@/app/lib/x402-buyer'
 import { contributeToSale } from '@/app/lib/launchpad-chain'
+import { verifyPin } from '@/app/lib/pin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,11 +77,11 @@ export async function POST(request: NextRequest) {
       if (!rawPin) {
         return NextResponse.json({ error: 'PIN required to use Main Wallet.', code: 'PIN_REQUIRED' }, { status: 403 })
       }
-      const computedHash = createHash('sha256').update(`${user.id}:${rawPin}:miron`).digest('hex')
-      if (!profile?.pin_hash || computedHash !== profile.pin_hash) {
+      const pinResult = await verifyPin(supabase, user.id, rawPin)
+      if (!pinResult.ok) {
         return NextResponse.json({ error: 'Incorrect PIN. Please try again.', code: 'WRONG_PIN' }, { status: 403 })
       }
-      if (!profile.circle_wallet_id) {
+      if (!profile?.circle_wallet_id) {
         return NextResponse.json({ error: 'Main wallet not initialized.' }, { status: 400 })
       }
     } else {
@@ -258,19 +258,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Cộng Miron Score sau tx thành công
-    fetch(`${request.nextUrl.origin}/api/score/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action: action.type === 'swap' ? 'swap' : 'send' }),
-    }).catch(() => {})
-
-    // Agent tx bonus
-    fetch(`${request.nextUrl.origin}/api/score/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action: 'agent_tx' }),
-    }).catch(() => {})
-
     fetch(`${request.nextUrl.origin}/api/agent/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

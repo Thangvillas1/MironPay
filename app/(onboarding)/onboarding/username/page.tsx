@@ -35,9 +35,13 @@ function StatusIcon({ status }: { status: ValidationStatus }) {
 function UsernameContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [username, setUsername] = useState(() => (searchParams.get('username') ?? '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))
-  const [status, setStatus] = useState<ValidationStatus>('idle')
-  const [reason, setReason] = useState('')
+  const initialUsername = (searchParams.get('username') ?? '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20)
+  const initialFormatError = initialUsername ? validateUsernameFormat(initialUsername) : ''
+  const [username, setUsername] = useState(initialUsername)
+  const [status, setStatus] = useState<ValidationStatus>(
+    initialUsername ? (initialFormatError ? 'invalid' : 'validating') : 'idle'
+  )
+  const [reason, setReason] = useState(initialFormatError)
 
   const [userId, setUserId] = useState<string | null>(null)
 
@@ -49,24 +53,38 @@ function UsernameContent() {
   }, [router])
 
   useEffect(() => {
-    if (!username) { setStatus('idle'); setReason(''); return }
-
     const formatError = validateUsernameFormat(username)
-    if (formatError) { setStatus('invalid'); setReason(formatError); return }
+    if (!username || formatError || !userId) return
 
-    setStatus('validating')
+    let cancelled = false
     const timer = setTimeout(async () => {
       // Exclude the current user's own row — restarting onboarding after a
       // failed wallet-creation attempt should let them re-pick the same handle.
-      const { data: taken } = await supabase.rpc('is_username_taken', { p_username: username, p_exclude_id: userId })
+      const { data: taken, error } = await supabase.rpc('is_username_taken', { p_username: username, p_exclude_id: userId })
+      if (cancelled) return
+
+      if (error) {
+        setStatus('invalid')
+        setReason('Unable to check username. Please try again.')
+        return
+      }
+
       setStatus(!taken ? 'available' : 'taken')
     }, 500)
 
-    return () => clearTimeout(timer)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [username, userId])
 
   function handleInput(value: string) {
-    setUsername(value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))
+    const next = value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20)
+    const formatError = next ? validateUsernameFormat(next) : ''
+
+    setUsername(next)
+    setReason(formatError)
+    setStatus(!next ? 'idle' : formatError ? 'invalid' : 'validating')
   }
 
   function handleContinue() {

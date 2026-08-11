@@ -35,7 +35,10 @@ export default function PayrollEmployeesPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => { void load() })
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   async function toggleActive(emp: Employee) {
     await fetch(`/api/payroll/employees/${emp.id}`, {
