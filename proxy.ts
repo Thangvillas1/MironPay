@@ -1,29 +1,43 @@
-import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-// Route map (auth enforced client-side — see SPEC.md):
-//   /login                          public
-//   /auth/callback                  public
-//   /onboarding/username            requires session (no username yet)
-//   /onboarding/confirm-username    requires session + pending username in ?username=
-//   /onboarding/setup-pin           requires session + pending username in ?username=
-//   /dashboard                      requires session + username
-//
-// Proxy cannot read the Supabase session: the browser client stores it in
-// localStorage, not in a cookie. Auth guards live in each page's useEffect.
-//
-// TODO: migrate to @supabase/ssr, then enforce here:
-//   import { createServerClient } from '@supabase/ssr'
-//   const supabase = createServerClient(url, key, { cookies: { get: k => req.cookies.get(k)?.value } })
-//   const { data: { session } } = await supabase.auth.getSession()
-//   const { data: profile } = await supabase.from('profiles').select('username').eq('id', session.user.id).single()
-// Mobile UA block removed 11/07/2026 — the app now has a real responsive/PWA
-// mobile experience (dashboard, wallet flows, agent, launchpad, settings all
-// have mobile layouts; see the PWA build-out commits), so there's no longer
-// a reason to turn phones away at the edge.
-export function proxy() {
-  return NextResponse.next()
+const PUBLIC_PATHS = new Set(['/', '/auth/callback', '/leaderboard', '/mobile-app'])
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.has(pathname) || pathname.startsWith('/invoice/')
+}
+
+export async function proxy(request: NextRequest) {
+  let response = NextResponse.next({ request })
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!url || !anonKey) return response
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookies) => {
+        for (const cookie of cookies) request.cookies.set(cookie.name, cookie.value)
+        response = NextResponse.next({ request })
+        for (const cookie of cookies) response.cookies.set(cookie.name, cookie.value, cookie.options)
+      },
+    },
+  })
+
+  // getUser verifies the JWT with Supabase; getSession alone must not be used
+  // as an authorization decision in middleware.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user && !isPublicPath(request.nextUrl.pathname)) {
+    const redirect = request.nextUrl.clone()
+    redirect.pathname = '/'
+    redirect.searchParams.set('next', request.nextUrl.pathname)
+    return NextResponse.redirect(redirect)
+  }
+
+  return response
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|html)$).*)'],
 }

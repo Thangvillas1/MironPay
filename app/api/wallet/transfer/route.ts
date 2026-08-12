@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { circleClient } from '@/app/lib/circle'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
+import { awardVerifiedScore } from '@/app/lib/score-server'
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -83,6 +84,11 @@ export async function POST(request: NextRequest) {
       fee: { type: 'level', config: { feeLevel: 'LOW' } },
       idempotencyKey: crypto.randomUUID(),
     }).catch(e => console.error('[memo] contract call failed:', e))
+  }
+
+  if (txId) {
+    await awardVerifiedScore(user.id, 'send', txHash ?? txId)
+      .catch(error => console.error('[score/send]', error))
   }
 
   return NextResponse.json({

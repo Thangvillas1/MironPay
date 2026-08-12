@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:contracts": "node scripts/compile-contracts.mjs",
+    "test:smoke": "node scripts/smoke-production.mjs",
     "deploy:limit": "node --env-file=.env.local scripts/deploy-spending-limit.mjs",
     "deploy:launchpad": "node --env-file=.env.local scripts/deploy-ido-launchpad.mjs"
   },
@@ -18,6 +20,7 @@
     "@circle-fin/provider-cctp-v2": "^1.10.0",
     "@circle-fin/swap-kit": "^1.2.3",
     "@circle-fin/x402-batching": "^3.2.0",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.108.2",
     "@types/papaparse": "^5.5.2",
     "@x402/core": "^2.17.0",

@@ -5,6 +5,7 @@ import { circleClient } from '@/app/lib/circle'
 import { sendInvoiceEmail } from '@/app/lib/email'
 import { computeInvoiceTotal, invoiceContentHash, type InvoiceLineItem } from '@/app/lib/invoice-chain'
 import type { Hex } from 'viem'
+import { arcPublicClient } from '@/app/lib/arc-chain'
 
 const MAX_LINE_ITEMS = 100
 const MAX_DESCRIPTION_LENGTH = 500
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
 
   const wallet = await resolveCircleWalletId(supabase, user.id)
   if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 400 })
+  const createdBlock = await arcPublicClient().getBlockNumber()
 
   const nonce = crypto.randomUUID()
   const contentHash = invoiceContentHash({
@@ -144,6 +146,7 @@ export async function POST(request: NextRequest) {
         content_hash: contentHash,
         signature,
         signed_at: new Date().toISOString(),
+        created_block: createdBlock.toString(),
       })
       .select()
       .single()

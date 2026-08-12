@@ -9,7 +9,7 @@ import { sendInvoiceEmail } from '@/app/lib/email'
 // Not wired to Vercel Cron yet — trigger manually:
 //   curl -H "Authorization: Bearer $AGENT_INDEXER_CRON_SECRET" https://<host>/api/cron/invoice-overdue
 export async function GET(request: NextRequest) {
-  const secret = process.env.AGENT_INDEXER_CRON_SECRET
+  const secret = process.env.CRON_SECRET ?? process.env.AGENT_INDEXER_CRON_SECRET
   const auth = request.headers.get('Authorization')
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

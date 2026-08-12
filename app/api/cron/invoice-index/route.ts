@@ -35,17 +35,25 @@ async function applyInvoicePaymentChunk(
       .eq('receive_address', to)
       .in('status', ['pending', 'overdue'])
       .eq('amount', amount)
+      .or(`created_block.is.null,created_block.lte.${log.blockNumber?.toString() ?? '0'}`)
       .order('created_at', { ascending: true })
       .limit(2)
 
     // Address + amount is ambiguous when two open invoices share both values.
     // Never guess in that case; leave both open for issuer/manual reconciliation.
+    if ((candidates?.length ?? 0) > 1) {
+      await supabase.from('invoices')
+        .update({ reconciliation_status: 'ambiguous' })
+        .in('id', candidates!.map(candidate => candidate.id))
+        .in('status', ['pending', 'overdue'])
+      continue
+    }
     if (candidates?.length !== 1) continue
     const match = candidates[0]
 
     await supabase
       .from('invoices')
-      .update({ status: 'paid', paid_at: new Date().toISOString(), tx_hash: (log as unknown as { transactionHash?: string }).transactionHash ?? null })
+      .update({ status: 'paid', reconciliation_status: 'matched', paid_at: new Date().toISOString(), tx_hash: (log as unknown as { transactionHash?: string }).transactionHash ?? null })
       .eq('id', match.id)
       .in('status', ['pending', 'overdue']) // guard against a race with a second matching transfer
   }
@@ -56,7 +64,7 @@ async function applyInvoicePaymentChunk(
 // yet (project not deployed) — trigger manually:
 //   curl -H "Authorization: Bearer $AGENT_INDEXER_CRON_SECRET" https://<host>/api/cron/invoice-index
 export async function GET(request: NextRequest) {
-  const secret = process.env.AGENT_INDEXER_CRON_SECRET
+  const secret = process.env.CRON_SECRET ?? process.env.AGENT_INDEXER_CRON_SECRET
   const auth = request.headers.get('Authorization')
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

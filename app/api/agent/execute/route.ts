@@ -6,6 +6,7 @@ import { getOnChainLimit } from '@/app/lib/spending-limit'
 import { depositToGateway, withdrawFromGateway } from '@/app/lib/x402-buyer'
 import { contributeToSale } from '@/app/lib/launchpad-chain'
 import { verifyPin } from '@/app/lib/pin'
+import { awardVerifiedScore } from '@/app/lib/score-server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -255,6 +256,11 @@ export async function POST(request: NextRequest) {
       await supabase.from('agent_wallets')
         .update({ daily_spent: agentWallet.daily_spent + amount })
         .eq('user_id', user.id)
+    }
+
+    if (txHash) {
+      await awardVerifiedScore(user.id, 'agent_tx', txHash)
+        .catch(error => console.error('[score/agent_tx]', error))
     }
 
     // Cộng Miron Score sau tx thành công

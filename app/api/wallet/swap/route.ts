@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { circleSwapAdapter, swapKit, ARC_TESTNET, CIRCLE_KIT_KEY, isNoRouteError, swapKitErrorMessage } from '@/app/lib/circle-swap-kit'
+import { awardVerifiedScore } from '@/app/lib/score-server'
 
 const SUPPORTED_TOKENS = new Set(['USDC', 'EURC'])
 
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest) {
           await supabase.from('transaction_kinds').insert({
             tx_hash: result.txHash, kind: 'swap', wallet_address: walletAddress,
           }).then(undefined, () => {})
+          await awardVerifiedScore(user.id, 'swap', result.txHash)
+            .catch(error => console.error('[score/swap]', error))
         }
 
         return NextResponse.json({
