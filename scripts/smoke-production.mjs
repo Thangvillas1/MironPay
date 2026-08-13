@@ -30,8 +30,11 @@ try {
   const checks = [
     ['home', '/', 200],
     ['oauth callback', '/auth/callback', 200],
+    ['public mobile app', '/mobile-app', 200],
     ['public invoice', '/invoice/DOES-NOT-EXIST', 200],
     ['protected wallet page', '/wallet', 307],
+    ['protected payroll page', '/payroll', 307],
+    ['protected onboarding page', '/onboarding/username', 307],
     ['wallet API auth', '/api/wallet', 401],
     ['invoice API auth', '/api/invoices', 401],
     ['invoice cron auth', '/api/cron/invoice-index', 401],
