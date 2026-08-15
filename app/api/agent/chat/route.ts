@@ -5,6 +5,7 @@ import { payX402 } from '@/app/lib/x402-buyer'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { VERIFIED_SYMBOLS } from '@/app/lib/token-meta'
 import { TOKEN_USD_PRICE } from '@/app/lib/types'
+import { dedupeTokenBalancesBySymbol } from '@/app/lib/token-balance-dedupe'
 import {
   extractExplicitSendRecipient,
   isEvmAddress,
@@ -464,9 +465,6 @@ export async function POST(request: NextRequest) {
         // holds anything close to this on ARC Testnet — drop it before it ever
         // reaches the model instead of relying on the model to catch it.
         const SANE_MAX_BALANCE = 1_000_000
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const dropSpam = (tokens: any[]) => tokens.filter(t => parseFloat(t.amount ?? '0') <= SANE_MAX_BALANCE)
-
         // Verified tokens first, then by USD value (fixed peg price where known)
         // descending — same ordering already used on the Wallet page's asset
         // list, so the chat answer's line order matches what's on screen.
@@ -480,7 +478,9 @@ export async function POST(request: NextRequest) {
           return bValue - aValue
         })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const formatLines = (tokens: any[]) => sortTokens(dropSpam(tokens)).map(t => `  - ${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join('\n')
+        const formatLines = (tokens: any[]) => sortTokens(
+          dedupeTokenBalancesBySymbol(tokens, { maxBalance: SANE_MAX_BALANCE }),
+        ).map(t => `  - ${t.token?.symbol}: ${parseFloat(t.amount).toFixed(4)}`).join('\n')
 
         const mainSummary = formatLines(mainTokens) || '  - Empty'
         const agentSummary = formatLines(agentTokens) || '  - 0 USDC'

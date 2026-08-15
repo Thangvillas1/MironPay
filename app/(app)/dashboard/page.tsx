@@ -798,9 +798,8 @@ export default function DashboardPage() {
               )}
               {/* X402 Gateway reserve is folded into the total above but not
                   broken out here, kept invisible per instruction. */}
-              <div className="flex items-center gap-3" style={{ marginTop: 10 }}>
-                <span style={{ fontSize: 11, color: 'var(--mpm-muted2)' }}>Main <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(totalUsd)}</b></span>
-                <span style={{ fontSize: 11, color: 'var(--mpm-muted2)' }}>Agent <b style={{ color: 'var(--mpm-muted)', fontWeight: 600 }}>${formatUSD(agentTotalUsd)}</b></span>
+              <div style={{ marginTop: 10, fontSize: 11, color: 'var(--mpm-muted2)' }}>
+                Main Wallet + Agent Wallet
               </div>
             </div>
 
