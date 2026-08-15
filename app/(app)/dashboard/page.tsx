@@ -239,8 +239,20 @@ export default function DashboardPage() {
   const [fundPhase, setFundPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
   const [fundResult, setFundResult] = useState<{ amount: number; transactionId?: string; error?: string } | null>(null)
   const [withdrawPhase, setWithdrawPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
-  const [withdrawResult, setWithdrawResult] = useState<{ amount: number; transactionId?: string; error?: string } | null>(null)
+  const [withdrawResult, setWithdrawResult] = useState<{
+    amount: number
+    token?: string
+    transactionId?: string
+    txHash?: string | null
+    status?: 'sent' | 'pending'
+    estimatedFee?: number
+    feeReserve?: number
+    error?: string
+  } | null>(null)
   const [withdrawToken, setWithdrawToken] = useState('USDC')
+  const [withdrawMaxSelected, setWithdrawMaxSelected] = useState(false)
+  const [withdrawMaxLoading, setWithdrawMaxLoading] = useState(false)
+  const [withdrawQuote, setWithdrawQuote] = useState<{ estimatedFee: number; feeReserve: number; maxAmount: number } | null>(null)
 
   useEffect(() => {
     if (!showAgentInfo || !accessToken || reputationChecked) return
@@ -287,20 +299,28 @@ export default function DashboardPage() {
 
   async function handleWithdraw() {
     const amt = parseFloat(modalAmount)
-    if (isNaN(amt) || amt < 0.01) { setModalError('Minimum 0.01 USDC'); return }
+    if (isNaN(amt) || amt < 0.01) { setModalError(`Minimum 0.01 ${withdrawToken}`); return }
     setWithdrawPhase('pending'); setModalError('')
     try {
       const res = await fetch('/api/agent/wallet/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ amount: amt, token: withdrawToken }),
+        body: JSON.stringify({ amount: amt, token: withdrawToken, max: withdrawMaxSelected }),
       })
       const d = await res.json()
       if (!res.ok) {
         setWithdrawResult({ amount: amt, error: d.error ?? 'Withdrawal failed' })
         setWithdrawPhase('error'); return
       }
-      setWithdrawResult({ amount: d.withdrawn ?? amt, transactionId: d.transactionId })
+      setWithdrawResult({
+        amount: d.withdrawn ?? amt,
+        token: d.token ?? withdrawToken,
+        transactionId: d.transactionId,
+        txHash: d.txHash ?? null,
+        status: d.status ?? 'pending',
+        estimatedFee: d.estimatedFee,
+        feeReserve: d.feeReserve,
+      })
       setWithdrawPhase('success')
       setTimeout(() => { refreshAgentWallet(accessToken); refreshMainWallet(accessToken) }, 3000)
     } catch (e) {
@@ -309,10 +329,44 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleWithdrawMax() {
+    setWithdrawMaxLoading(true)
+    setModalError('')
+    setWithdrawMaxSelected(false)
+    setWithdrawQuote(null)
+    try {
+      const res = await fetch(`/api/agent/wallet/withdraw?token=${encodeURIComponent(withdrawToken)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setModalError(data.error ?? 'Could not estimate a safe maximum withdrawal.')
+        return
+      }
+      const maxAmount = Number(data.maxAmount)
+      if (!Number.isFinite(maxAmount) || maxAmount < 0.01) {
+        setModalError(`No ${withdrawToken} is available after reserving the ARC network fee.`)
+        return
+      }
+      setModalAmount(maxAmount.toFixed(6).replace(/\.?0+$/, ''))
+      setWithdrawQuote({
+        estimatedFee: Number(data.estimatedFee),
+        feeReserve: Number(data.feeReserve),
+        maxAmount,
+      })
+      setWithdrawMaxSelected(true)
+    } catch {
+      setModalError('Could not estimate the ARC network fee. Please try again.')
+    } finally {
+      setWithdrawMaxLoading(false)
+    }
+  }
+
   function closeWithdrawModal() {
     setShowWithdraw(false); setModalAmount(''); setModalError('')
     setWithdrawPhase('form'); setWithdrawResult(null)
     setWithdrawToken('USDC'); setWithdrawTokenStep('form')
+    setWithdrawMaxSelected(false); setWithdrawMaxLoading(false); setWithdrawQuote(null)
   }
 
   async function handleSetLimit() {
@@ -1598,7 +1652,14 @@ export default function DashboardPage() {
                       const fiat = t.usdValue != null ? `$${t.usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'
                       const isSelected = t.symbol === withdrawToken
                       return (
-                        <button key={t.symbol} onClick={() => { setWithdrawToken(t.symbol); setModalAmount(''); setWithdrawTokenStep('form') }}
+                        <button key={t.symbol} onClick={() => {
+                          setWithdrawToken(t.symbol)
+                          setModalAmount('')
+                          setModalError('')
+                          setWithdrawMaxSelected(false)
+                          setWithdrawQuote(null)
+                          setWithdrawTokenStep('form')
+                        }}
                           style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 14, background: isSelected ? 'rgba(99,102,241,.07)' : 'rgba(var(--c-fg-rgb),.05)', border: `1px solid ${isSelected ? '#6366f1' : 'rgba(var(--c-fg-rgb),.07)'}`, cursor: 'pointer', width: '100%', textAlign: 'left', transition: 'border-color .15s' }}>
                           {t.logoUrl
                             // eslint-disable-next-line @next/next/no-img-element
@@ -1630,7 +1691,11 @@ export default function DashboardPage() {
                       <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase' as const, color: 'var(--c-muted2)', marginBottom: 10 }}>Amount</p>
                       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8, flexWrap: 'wrap' as const }}>
                         <input
-                          type="number" value={modalAmount} onChange={e => setModalAmount(e.target.value)}
+                          type="number" value={modalAmount} onChange={e => {
+                            setModalAmount(e.target.value)
+                            setWithdrawMaxSelected(false)
+                            setWithdrawQuote(null)
+                          }}
                           placeholder="0.00" min="0.01" step="0.01" autoFocus
                           style={{ width: 180, textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color: 'var(--c-text)', fontSize: 48, fontWeight: 700, letterSpacing: '-.03em', fontVariantNumeric: 'tabular-nums' }}
                         />
@@ -1648,10 +1713,24 @@ export default function DashboardPage() {
                       {modalError && <p style={{ fontSize: 12, color: '#fb6f84', marginTop: 5 }}>{modalError}</p>}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      {[['25%', 0.25], ['50%', 0.5], ['75%', 0.75], ['100%', 1]].map(([label, pct]) => (
-                        <button key={label as string} onClick={() => setModalAmount((withdrawBal * (pct as number)).toFixed(4).replace(/\.?0+$/, ''))} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
+                      {[['25%', 0.25], ['50%', 0.5], ['75%', 0.75]].map(([label, pct]) => (
+                        <button key={label as string} onClick={() => {
+                          setModalAmount((withdrawBal * (pct as number)).toFixed(4).replace(/\.?0+$/, ''))
+                          setWithdrawMaxSelected(false)
+                          setWithdrawQuote(null)
+                          setModalError('')
+                        }} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
                       ))}
+                      <button onClick={handleWithdrawMax} disabled={withdrawMaxLoading}
+                        style={{ flex: 1, height: 38, borderRadius: 10, border: `1px solid ${withdrawMaxSelected ? '#6366f1' : 'rgba(var(--c-fg-rgb),.14)'}`, background: withdrawMaxSelected ? 'rgba(99,102,241,.12)' : 'rgba(var(--c-fg-rgb),.05)', color: withdrawMaxSelected ? 'var(--c-indigo-light)' : 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: withdrawMaxLoading ? 'wait' : 'pointer', opacity: withdrawMaxLoading ? .65 : 1 }}>
+                        {withdrawMaxLoading ? 'Estimating…' : 'Max'}
+                      </button>
                     </div>
+                    {withdrawQuote && (
+                      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.18)', fontSize: 11.5, color: 'var(--c-muted)' }}>
+                        Safe max: {withdrawQuote.maxAmount.toFixed(6)} {withdrawToken}. Reserved network fee: {withdrawQuote.feeReserve.toFixed(6)} USDC.
+                      </div>
+                    )}
                     <button
                       onClick={handleWithdraw}
                       style={{ width: '100%', height: 52, borderRadius: 14, border: 'none', background: parseFloat(modalAmount) > 0 ? 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)' : 'rgba(var(--c-fg-rgb),.07)', boxShadow: parseFloat(modalAmount) > 0 ? '0 8px 30px rgba(99,102,241,.42)' : 'none', color: parseFloat(modalAmount) > 0 ? '#fff' : 'var(--c-muted2)', fontSize: 15, fontWeight: 600, cursor: parseFloat(modalAmount) > 0 ? 'pointer' : 'not-allowed', marginTop: 4, transition: 'all .15s' }}
@@ -1679,12 +1758,21 @@ export default function DashboardPage() {
               {/* SUCCESS */}
               {withdrawPhase === 'success' && withdrawResult && (
                 <div style={{ textAlign: 'center', padding: '8px 0', animation: 'srsStep .25s ease' }}>
-                  <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'rgba(45,212,191,.12)', border: '1px solid rgba(45,212,191,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', animation: 'srsPop 400ms cubic-bezier(.22,1,.36,1)' }}>
-                    <svg width={38} height={38} viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+                  <div style={{ width: 84, height: 84, borderRadius: '50%', background: withdrawResult.status === 'sent' ? 'rgba(45,212,191,.12)' : 'rgba(245,158,11,.12)', border: `1px solid ${withdrawResult.status === 'sent' ? 'rgba(45,212,191,.25)' : 'rgba(245,158,11,.25)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', animation: 'srsPop 400ms cubic-bezier(.22,1,.36,1)' }}>
+                    {withdrawResult.status === 'sent'
+                      ? <svg width={38} height={38} viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+                      : <svg width={38} height={38} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    }
                   </div>
-                  <p style={{ fontSize: 22, fontWeight: 700, marginTop: 16, color: 'var(--c-text)' }}>Withdrawal Submitted!</p>
-                  <p style={{ fontSize: 13.5, color: 'var(--c-muted)', marginTop: 6 }}>-{withdrawResult.amount.toFixed(2)} {withdrawToken} → Main Wallet</p>
-                  <p style={{ fontSize: 12, color: 'var(--c-muted2)', marginTop: 4 }}>Will appear in ~30 seconds</p>
+                  <p style={{ fontSize: 22, fontWeight: 700, marginTop: 16, color: 'var(--c-text)' }}>{withdrawResult.status === 'sent' ? 'Withdrawal Sent' : 'Withdrawal Pending'}</p>
+                  <p style={{ fontSize: 13.5, color: 'var(--c-muted)', marginTop: 6 }}>-{withdrawResult.amount.toFixed(6).replace(/\.?0+$/, '')} {withdrawResult.token ?? withdrawToken} → Main Wallet</p>
+                  <p style={{ fontSize: 12, color: 'var(--c-muted2)', marginTop: 4 }}>{withdrawResult.status === 'sent' ? 'Broadcast to ARC Testnet.' : 'Accepted by Circle and waiting for ARC broadcast.'}</p>
+                  {withdrawResult.feeReserve !== undefined && (
+                    <p style={{ fontSize: 11.5, color: 'var(--c-muted2)', marginTop: 4 }}>Reserved network fee: {withdrawResult.feeReserve.toFixed(6)} USDC</p>
+                  )}
+                  {withdrawResult.txHash && (
+                    <a href={`https://testnet.arcscan.app/tx/${withdrawResult.txHash}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 10, fontSize: 12, color: 'var(--c-indigo-light)', textDecoration: 'none' }}>View on ARC Explorer ↗</a>
+                  )}
                   {withdrawResult.transactionId && (
                     <div style={{ marginTop: 20, padding: '12px 16px', borderRadius: 12, background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.2)', textAlign: 'left' }}>
                       <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase' as const, color: 'var(--c-muted2)', marginBottom: 4 }}>Transaction ID</p>
@@ -1711,7 +1799,7 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <button onClick={closeWithdrawModal} style={{ height: 52, borderRadius: 14, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                    <button onClick={() => { setWithdrawPhase('form'); setWithdrawResult(null) }} style={{ height: 52, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Try again</button>
+                    <button onClick={() => { setWithdrawPhase('form'); setWithdrawResult(null); setWithdrawMaxSelected(false); setWithdrawQuote(null) }} style={{ height: 52, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Try again</button>
                   </div>
                 </div>
               )}
