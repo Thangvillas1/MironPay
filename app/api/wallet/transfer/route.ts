@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { awardVerifiedScore } from '@/app/lib/score-server'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
+import { isSelfTransferAddress, normalizeWalletAddress } from '@/app/lib/self-transfer'
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -20,14 +21,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid destination address or amount' }, { status: 400 })
   }
 
+  const normalizedDestination = normalizeWalletAddress(destinationAddress)
+  if (!normalizedDestination) {
+    return NextResponse.json({ error: 'Recipient address is invalid.', code: 'INVALID_ADDRESS' }, { status: 400 })
+  }
+
+  const [wallet, { data: profile }] = await Promise.all([
+    resolveCircleWalletId(supabase, user.id),
+    supabase.from('profiles').select('agent_wallet_address').eq('id', user.id).single(),
+  ])
+  if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
+  if (isSelfTransferAddress(normalizedDestination, [wallet.walletAddress, profile?.agent_wallet_address])) {
+    return NextResponse.json({
+      error: 'You cannot send to your own Main Wallet or Agent Wallet. Use the dedicated Agent Wallet funding or withdrawal action instead.',
+      code: 'SELF_TRANSFER',
+    }, { status: 400 })
+  }
+
   const pinResult = await verifyPin(supabase, user.id, pin)
   if (!pinResult.ok) {
     const response = pinFailureHttp(pinResult)
     return NextResponse.json({ error: pinResult.error, code: pinResult.code }, response)
   }
-
-  const wallet = await resolveCircleWalletId(supabase, user.id)
-  if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
 
   const balanceRes = await circleClient.getWalletTokenBalance({ id: wallet.circleWalletId })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,7 +60,7 @@ export async function POST(request: NextRequest) {
   const tx = await circleClient.createTransaction({
     walletId: wallet.circleWalletId,
     tokenId: selectedToken.token.id,
-    destinationAddress,
+    destinationAddress: normalizedDestination,
     amount: [amount],
     fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
     idempotencyKey: crypto.randomUUID(),
@@ -77,7 +92,7 @@ export async function POST(request: NextRequest) {
     const { error: memoErr } = await supabase.from('transaction_memos').insert({
       tx_hash: txHash,
       sender_address: wallet.walletAddress,
-      recipient_address: destinationAddress,
+      recipient_address: normalizedDestination,
       amount: amount,
       memo: memoText,
     })
@@ -87,7 +102,7 @@ export async function POST(request: NextRequest) {
       walletId: wallet.circleWalletId,
       contractAddress: '0x5294E9927c3306DcBaDb03fe70b92e01cCede505',
       abiFunctionSignature: 'attachMemo(address,bytes,string)',
-      abiParameters: [destinationAddress, '0x', memoText],
+      abiParameters: [normalizedDestination, '0x', memoText],
       fee: { type: 'level', config: { feeLevel: 'LOW' } },
       idempotencyKey: crypto.randomUUID(),
     }).catch(e => console.error('[memo] contract call failed:', e))

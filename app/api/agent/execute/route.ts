@@ -9,6 +9,7 @@ import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 import { awardVerifiedScore } from '@/app/lib/score-server'
 import { isEvmAddress, sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
 import { classifyTransactionError } from '@/app/lib/transaction-error'
+import { isSelfTransferAddress } from '@/app/lib/self-transfer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +45,45 @@ export async function POST(request: NextRequest) {
       .select('agent_wallet_id, agent_wallet_address, circle_wallet_id, wallet_address, pin_hash')
       .eq('id', user.id)
       .single()
+
+    // Resolve and validate send recipients before PIN/session checks. Bad or
+    // self-directed commands must fail without consuming an authorization
+    // attempt, intent nonce, daily limit, or network gas.
+    let resolvedSendAddress: string | null = null
+    if (action.type === 'send') {
+      let destination = action.to ?? ''
+      if (destination.startsWith('@')) {
+        const username = destination.slice(1).toLowerCase()
+        const { data: walletAddress, error: resolveError } = await supabase
+          .rpc('resolve_username', { p_username: username })
+        if (resolveError) {
+          console.error('[agent/execute] username resolution failed:', resolveError.message)
+          return NextResponse.json({
+            error: 'The recipient could not be verified right now. No transaction was sent; please try again.',
+            code: 'RECIPIENT_LOOKUP_FAILED',
+            retryable: true,
+          }, { status: 503 })
+        }
+        if (!walletAddress) {
+          return NextResponse.json({
+            error: `@${username} was not found on MironPay. Check the username and try again.`,
+            code: 'RECIPIENT_NOT_FOUND',
+            retryable: false,
+          }, { status: 404 })
+        }
+        destination = walletAddress
+      }
+      if (!isEvmAddress(destination)) {
+        return NextResponse.json({ error: 'Recipient address is invalid.', code: 'INVALID_ADDRESS' }, { status: 400 })
+      }
+      if (isSelfTransferAddress(destination, [profile?.wallet_address, profile?.agent_wallet_address])) {
+        return NextResponse.json({
+          error: 'You cannot send to your own Main Wallet or Agent Wallet. Use Fund or Withdraw instead.',
+          code: 'SELF_TRANSFER',
+        }, { status: 400 })
+      }
+      resolvedSendAddress = destination
+    }
 
     // Every Agent Wallet action (never Main Wallet, which is gated by PIN
     // instead) requires a live, user-approved session — same model as
@@ -203,35 +243,7 @@ export async function POST(request: NextRequest) {
     let amountOut: string | null = null
 
     if (action.type === 'send') {
-      let destAddress: string = action.to ?? ''
-      if (destAddress.startsWith('@')) {
-        const uname = destAddress.slice(1).toLowerCase()
-        const { data: destWalletAddress, error: resolveError } = await supabase
-          .rpc('resolve_username', { p_username: uname })
-        if (resolveError) {
-          console.error('[agent/execute] username resolution failed:', resolveError.message)
-          return NextResponse.json({
-            error: 'The recipient could not be verified right now. No transaction was sent; please try again.',
-            code: 'RECIPIENT_LOOKUP_FAILED',
-            retryable: true,
-          }, { status: 503 })
-        }
-        if (!destWalletAddress) {
-          return NextResponse.json({
-            error: `@${uname} was not found on MironPay. Check the username and try again.`,
-            code: 'RECIPIENT_NOT_FOUND',
-            retryable: false,
-          }, { status: 404 })
-        }
-        destAddress = destWalletAddress
-      }
-
-      if (!isEvmAddress(destAddress)) {
-        return NextResponse.json({ error: 'Recipient address is invalid.', code: 'INVALID_ADDRESS' }, { status: 400 })
-      }
-      if (agentWalletAddress && destAddress.toLowerCase() === agentWalletAddress.toLowerCase()) {
-        return NextResponse.json({ error: 'Self-transfers are not allowed.', code: 'SELF_TRANSFER' }, { status: 400 })
-      }
+      const destAddress = resolvedSendAddress!
 
       // Dry-run: simulate the transfer first so a bad destination, unsupported
       // token, or insufficient gas surfaces as a clean error instead of a

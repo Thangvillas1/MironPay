@@ -6,6 +6,7 @@ import { supabase } from '@/app/lib/supabase'
 import { validateUsernameFormat } from '@/app/lib/username'
 import type { TokenBalance } from '@/app/lib/types'
 import { startPinRecovery } from '@/app/lib/pin-recovery-client'
+import { isSelfTransferAddress } from '@/app/lib/self-transfer'
 
 export type ModalMode = 'send' | 'receive' | 'swap' | null
 type Step = 'amount' | 'token' | 'confirm' | 'setup_pin' | 'confirm_pin' | 'pin' | 'progress' | 'success' | 'error' | 'form' | 'receive'
@@ -488,7 +489,8 @@ export default function SRSModal({
   const swapInBal = parseFloat(swapIn?.amount ?? '0')
   const sendFee = 0.001
   const sendTotal = (parseFloat(sendAmount || '0') + sendFee).toFixed(4)
-  const canSend = resolution === 'found' && parseFloat(sendAmount) > 0
+  const isSelfRecipient = isSelfTransferAddress(resolvedAddress, [walletAddress])
+  const canSend = resolution === 'found' && !isSelfRecipient && parseFloat(sendAmount) > 0
   const canSwap = parseFloat(swapAmount) > 0 && swapQuote?.estimatedOutput != null
   const swapReceiveAmt = swapQuote?.estimatedOutput?.amount ?? ''
   const showBack = ['token', 'confirm', 'pin', 'setup_pin', 'confirm_pin'].includes(step)
@@ -599,12 +601,12 @@ export default function SRSModal({
             <div style={{ animation: 'srsStep .25s ease', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <p style={S.label}>Recipient</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(var(--c-fg-rgb),.05)', border: `1px solid ${resolution === 'found' ? 'rgba(45,212,191,.4)' : resolution === 'invalid' || resolution === 'not_found' ? 'rgba(251,111,132,.4)' : 'rgba(var(--c-fg-rgb),.14)'}`, marginTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(var(--c-fg-rgb),.05)', border: `1px solid ${resolution === 'found' && !isSelfRecipient ? 'rgba(45,212,191,.4)' : resolution === 'invalid' || resolution === 'not_found' || isSelfRecipient ? 'rgba(251,111,132,.4)' : 'rgba(var(--c-fg-rgb),.14)'}`, marginTop: 8 }}>
                   <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#818cf8,#6366f1 52%,#4338ca)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                     {recipient ? recipient[0].toUpperCase() : '?'}
                   </span>
                   <input value={recipient} onChange={e => handleRecipientChange(e.target.value)} placeholder="@username or 0x address" spellCheck={false} autoComplete="off" style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--c-text)', fontSize: 14, fontFamily: 'var(--font-mono)' }} />
-                  {resolution === 'found' && (
+                  {resolution === 'found' && !isSelfRecipient && (
                     <svg width={18} height={18} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(45,212,191,.2)" /><path d="M7.5 12.2l3 3 6-6.4" fill="none" stroke="#2dd4bf" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" /></svg>
                   )}
                 </div>
@@ -614,12 +616,12 @@ export default function SRSModal({
                   </p>
                 )}
                 {resolution === 'resolving' && <p style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 5 }}>Resolving...</p>}
-                {resolution === 'found' && recipient.trim().startsWith('@') && (
+                {resolution === 'found' && !isSelfRecipient && recipient.trim().startsWith('@') && (
                   <p style={{ fontSize: 11, color: '#2dd4bf', marginTop: 5, paddingLeft: 2, fontFamily: 'var(--font-mono)' }}>
                     {resolvedAddress.slice(0, 6)}…{resolvedAddress.slice(-6)}
                   </p>
                 )}
-                {resolution === 'found' && recipient.trim().startsWith('0x') && (
+                {resolution === 'found' && !isSelfRecipient && recipient.trim().startsWith('0x') && (
                   <p style={{ fontSize: 11, marginTop: 5, paddingLeft: 2 }}>
                     {resolvedUsername ? (
                       <span style={{ color: '#2dd4bf' }}>@{resolvedUsername}</span>
@@ -627,6 +629,9 @@ export default function SRSModal({
                       <span style={{ color: 'var(--c-muted)' }}>No MironPay username linked to this address</span>
                     )}
                   </p>
+                )}
+                {resolution === 'found' && isSelfRecipient && (
+                  <p style={{ fontSize: 11, color: '#fb6f84', marginTop: 5, paddingLeft: 2 }}>You cannot send to your own wallet.</p>
                 )}
               </div>
 
