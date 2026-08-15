@@ -35,6 +35,7 @@ interface TxAction {
   tokenOut?: string
   projectId?: string
   walletSource?: 'agent' | 'main'
+  intentProof?: string
 }
 
 interface Message {
@@ -247,10 +248,10 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
           <div className="flex flex-col gap-2">
             {error && <p className="text-xs text-mp-danger">{error}</p>}
             <div className="flex gap-2">
-              <button onClick={() => onConfirm()}
-                className={`flex-1 text-white rounded-[8px] py-2 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${isMain ? 'bg-amber-500 hover:bg-amber-600' : 'bg-mp-primary hover:bg-blue-600'}`}>
+              <button onClick={() => onConfirm()} disabled={!isMain && !error}
+                className={`flex-1 text-white rounded-[8px] py-2 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 ${isMain ? 'bg-amber-500 hover:bg-amber-600' : 'bg-mp-primary hover:bg-blue-600'}`}>
                 {isMain && <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="3" y="11" width="18" height="11" rx="2"/><path strokeLinecap="round" d="M7 11V7a5 5 0 0110 0v4"/></svg>}
-                {isMain ? 'Confirm + PIN' : 'Confirm'}
+                {isMain ? 'Confirm + PIN' : error ? 'Retry' : 'Auto-executing'}
               </button>
               <button onClick={onCancel}
                 className="flex-1 bg-white/5 border border-white/8 text-mp-muted rounded-[8px] py-2 text-xs font-semibold hover:bg-white/10 transition-colors">
@@ -973,6 +974,8 @@ export default function AgentPage() {
         setTxResult(null)
         if (data.action.walletSource === 'main') {
           setMainWalletPending(data.action)
+        } else {
+          void executeAction(data.action)
         }
       }
 

@@ -5,6 +5,7 @@ import { payX402 } from '@/app/lib/x402-buyer'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { VERIFIED_SYMBOLS } from '@/app/lib/token-meta'
 import { TOKEN_USD_PRICE } from '@/app/lib/types'
+import { issueAgentIntent, validateAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
 
 const X402_DATA_FEE = 0.01 // placeholder for testnet — revisit for mainnet
 
@@ -102,9 +103,9 @@ const TOOLS = [
         properties: {
           to: { type: 'string', description: 'Recipient: @username or 0x wallet address' },
           amount: { type: 'string', description: 'Exact numeric amount (e.g. "5", "0.5"). Never pass "all" or "max" — ask user to confirm exact amount first.' },
-          token: { type: 'string', default: 'USDC', description: 'Token symbol: USDC or EURC. Default: USDC' },
+          token: { type: 'string', enum: ['USDC', 'EURC'], description: 'Token symbol explicitly written by the user: USDC or EURC. Never infer a default.' },
         },
-        required: ['to', 'amount'],
+        required: ['to', 'amount', 'token'],
       },
     },
   },
@@ -462,6 +463,8 @@ Each tool's own description below states exactly when to call it — follow thos
 - When any required info is missing, ask ONE concise question — never guess or fill in blanks
 - A message that is JUST a 0x address or contract, with no verb and no amount, is NEVER a send/swap/deposit command — never invent an amount (e.g. "1") to make a tool call fit. Ask the user what they want to do with that address (e.g. "look up this token, or send funds to it? If sending, how much?").
 - Money-moving tools only fire on an explicit, unambiguous instruction from the user (action + amount + recipient, all stated by them, not inferred). The user is responsible for stating commands clearly — if their message is vague, partial, or could be read multiple ways, you must ask instead of guessing, no matter how "obvious" the likely intent seems.
+- For sends, the CURRENT message must explicitly contain the amount, token (USDC or EURC), and recipient. Never reuse any of those fields from conversation history.
+- For swaps, the CURRENT message must explicitly contain the amount and both token symbols. Never default a missing token to USDC.
 
 ## Disambiguation rules
 - "all" / "hết" / "max" → ask user to confirm the exact amount from their balance
@@ -482,17 +485,16 @@ EURC: 19.7328
 - "fund agent" / "nạp cho agent" → tell user to use the Deposit button in the UI (this funds the Agent Wallet itself, not X402)
 - "nạp/deposit vào X402/Gateway" / "top up X402" → execute_gateway_deposit
 - "rút/withdraw từ X402/Gateway" → execute_gateway_withdraw
-- A short affirmative reply ("đúng rồi", "yes", "ok", "đúng") to your OWN prior message asking the user to restate a money command clearly is NOT itself a valid command — it has no verb/amount/recipient the server can check. Do not treat it as confirmation and do not say something generic/unrelated. Tell the user plainly to resend the FULL command in one message (verb + amount + tokens/recipient), e.g. "Vui lòng gõ lại đầy đủ: 'Swap 2 USDC thành EURC'" — every money command must be typed out completely each time, confirming only happens via the Confirm button after that.
+- A short affirmative reply ("đúng rồi", "yes", "ok", "đúng") is NOT a valid money command. Tell the user to resend the FULL command in one message (verb + exact amount + tokens/recipient).
 - "mua/buy/contribute/góp vào <project>" (project must be in Live Launchpad sales list) → execute_launchpad_contribute
 
 ## Wallets
 - Agent Wallet: default for all transactions (gasless, no PIN needed)
 - Main Wallet: user must say "main wallet" / "ví chính" explicitly — server enforces PIN
 
-## When calling a tool
-Reply with a short confirmation that the action is a draft awaiting confirmation, e.g.:
-"Ready to send 5 USDC to @alice from Agent Wallet. Confirm below to proceed."
-Never claim the transaction is done or already in progress — the system will show the real result after the user confirms.`
+## When calling a money tool
+Agent Wallet actions execute automatically after deterministic server validation. Say that the validated action is being executed automatically; never ask for confirmation.
+Main Wallet actions still require the user's PIN. Never claim a transaction succeeded until the system returns its real result.`
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -570,7 +572,7 @@ Never claim the transaction is done or already in progress — the system will s
     const assistantMsg = choice?.message
 
     let reply = ''
-    let action: Record<string, string> | null = null
+    let action: AgentAction | null = null
     let dataFee: { amount: number; txHash: string | null } | null = null
     let tokenChart: { symbol: string; points: Array<[number, number]> } | null = null
     let trendingData: { coins: Array<{ symbol: string; name: string; market_cap_rank: number | null; price_usd: number | null; change_24h_pct: number | null }> } | null = null
@@ -677,24 +679,24 @@ Never claim the transaction is done or already in progress — the system will s
         }
 
         if (fnName === 'execute_send') {
-          action = { type: 'send', to: args.to, amount: args.amount, token: args.token ?? 'USDC', walletSource }
+          action = { type: 'send', to: args.to, amount: args.amount, token: args.token, walletSource }
           reply = isMain
             ? `🔒 Main Wallet — PIN required\nReady to send ${args.amount} ${args.token ?? 'USDC'} to ${args.to}. Confirm below to proceed.`
-            : `Ready to send ${args.amount} ${args.token ?? 'USDC'} to ${args.to} from Agent Wallet (${onChainBalance.toFixed(2)} USDC). Confirm below to proceed.`
+            : `Executing ${args.amount} ${args.token ?? ''} to ${args.to} automatically from Agent Wallet.`
         } else if (fnName === 'execute_swap') {
           action = { type: 'swap', tokenIn: args.tokenIn, tokenOut: args.tokenOut, amount: args.amount, walletSource }
           reply = isMain
             ? `🔒 Main Wallet — PIN required\nReady to swap ${args.amount} ${args.tokenIn} → ${args.tokenOut}. Confirm below to proceed.`
-            : `Ready to swap ${args.amount} ${args.tokenIn} → ${args.tokenOut} from Agent Wallet. Confirm below to proceed.`
+            : `Executing ${args.amount} ${args.tokenIn} → ${args.tokenOut} automatically from Agent Wallet.`
         } else if (fnName === 'execute_gateway_deposit') {
           action = { type: 'gateway_deposit', amount: args.amount }
-          reply = `Ready to deposit ${args.amount} USDC into the X402 reserve. Confirm below to proceed.`
+          reply = `Depositing ${args.amount} USDC into the X402 reserve automatically.`
         } else if (fnName === 'execute_gateway_withdraw') {
           action = { type: 'gateway_withdraw', amount: args.amount }
-          reply = `Ready to withdraw ${args.amount} USDC from the X402 reserve. Confirm below to proceed.`
+          reply = `Withdrawing ${args.amount} USDC from the X402 reserve automatically.`
         } else if (fnName === 'execute_launchpad_contribute') {
           action = { type: 'launchpad_contribute', projectId: args.projectId, amount: args.amount }
-          reply = `Ready to contribute ${args.amount} USDC to ${args.projectId} from Agent Wallet. Confirm below to proceed.`
+          reply = `Contributing ${args.amount} USDC to ${args.projectId} automatically from Agent Wallet.`
         } else if (fnName === 'get_token_price') {
           let toolResultContent: string
           const symbol = (args.symbol ?? '').trim()
@@ -991,6 +993,47 @@ Never claim the transaction is done or already in progress — the system will s
     // statement gives them an identical DB-generated created_at, and Postgres
     // doesn't guarantee insertion order for ties when sorting, which was
     // flipping user/assistant order on reload.
+    // The model may propose an action, but only deterministic server checks can
+    // authorize it. The signed, short-lived proof binds the exact action to the
+    // user's exact message so /api/agent/execute cannot accept a modified draft.
+    if (action) {
+      const validation = validateAgentIntent(message, action)
+      if (!validation.ok) {
+        action = null
+        reply = validation.error
+      } else {
+        action = validation.action
+
+        if (action.type === 'send' && action.to) {
+          const requestedRecipient = action.to
+          let destinationAddress = requestedRecipient
+          if (requestedRecipient.startsWith('@')) {
+            const { data: resolvedAddress } = await supabase.rpc('resolve_username', {
+              p_username: requestedRecipient.slice(1).toLowerCase(),
+            })
+            if (!resolvedAddress) {
+              action = null
+              reply = `${requestedRecipient} was not found on MironPay.`
+            } else {
+              destinationAddress = resolvedAddress
+            }
+          }
+
+          if (action) {
+            const sourceAddress = action.walletSource === 'main'
+              ? resolvedMainWallet?.walletAddress
+              : profile.agent_wallet_address
+            if (sourceAddress && destinationAddress.toLowerCase() === sourceAddress.toLowerCase()) {
+              action = null
+              reply = 'The recipient is the same as the source wallet. Self-transfers are not allowed.'
+            }
+          }
+        }
+
+        if (action) action.intentProof = issueAgentIntent(user.id, action, message)
+      }
+    }
+
     const userTs = new Date()
     const assistantTs = new Date(userTs.getTime() + 1)
 

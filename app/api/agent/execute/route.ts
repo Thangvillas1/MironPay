@@ -7,6 +7,7 @@ import { depositToGateway, withdrawFromGateway } from '@/app/lib/x402-buyer'
 import { contributeToSale } from '@/app/lib/launchpad-chain'
 import { verifyPin } from '@/app/lib/pin'
 import { awardVerifiedScore } from '@/app/lib/score-server'
+import { isEvmAddress, sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,11 +19,17 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const action = body.action
+    const requestedAction = body.action as AgentAction | undefined
     const rawPin = body.pin as string | undefined
 
-
-    if (!action?.type) return NextResponse.json({ error: 'Missing action' }, { status: 400 })
+    if (!requestedAction?.type || !requestedAction.intentProof) {
+      return NextResponse.json({ error: 'A validated Agent intent is required.', code: 'INTENT_REQUIRED' }, { status: 403 })
+    }
+    const intent = verifyAgentIntent(requestedAction.intentProof, user.id)
+    if (!intent || !sameAgentAction(requestedAction, intent.action)) {
+      return NextResponse.json({ error: 'The Agent intent is invalid, expired, or was modified.', code: 'INVALID_INTENT' }, { status: 403 })
+    }
+    const action = intent.action
 
     const amount = parseFloat(action.amount ?? '0')
     if (isNaN(amount) || amount <= 0) {
@@ -88,6 +95,27 @@ export async function POST(request: NextRequest) {
     } else {
       if (!profile?.agent_wallet_id || !profile?.agent_wallet_address) {
         return NextResponse.json({ error: 'Agent wallet not initialized.' }, { status: 400 })
+      }
+    }
+
+    // A validated command is single-use. The unique nonce prevents a retry,
+    // double click, or replayed HTTP request from broadcasting the same intent
+    // twice. Fail closed if the replay ledger is unavailable.
+    // Agent swaps consume the nonce inside /api/wallet/swap so that route can
+    // independently authorize access to the Agent Wallet. Other actions consume
+    // it here before their first external side effect.
+    if (!(action.type === 'swap' && walletSource === 'agent')) {
+      const { error: intentUseError } = await supabase.from('agent_intent_uses').insert({
+        nonce: intent.nonce,
+        user_id: user.id,
+        expires_at: new Date(intent.expiresAt).toISOString(),
+      })
+      if (intentUseError) {
+        const replay = intentUseError.code === '23505'
+        return NextResponse.json({
+          error: replay ? 'This Agent command has already been executed.' : 'Agent intent verification is temporarily unavailable.',
+          code: replay ? 'INTENT_REPLAYED' : 'INTENT_LEDGER_UNAVAILABLE',
+        }, { status: replay ? 409 : 503 })
       }
     }
 
@@ -179,6 +207,13 @@ export async function POST(request: NextRequest) {
         destAddress = destWalletAddress
       }
 
+      if (!isEvmAddress(destAddress)) {
+        return NextResponse.json({ error: 'Recipient address is invalid.', code: 'INVALID_ADDRESS' }, { status: 400 })
+      }
+      if (agentWalletAddress && destAddress.toLowerCase() === agentWalletAddress.toLowerCase()) {
+        return NextResponse.json({ error: 'Self-transfers are not allowed.', code: 'SELF_TRANSFER' }, { status: 400 })
+      }
+
       // Dry-run: simulate the transfer first so a bad destination, unsupported
       // token, or insufficient gas surfaces as a clean error instead of a
       // broadcast (and gas-paying) transaction that then fails on-chain.
@@ -191,8 +226,9 @@ export async function POST(request: NextRequest) {
         })
       } catch (e) {
         return NextResponse.json({
-          error: `Transaction would fail: ${e instanceof Error ? e.message : 'invalid transfer parameters'}`,
+          error: 'The transfer simulation failed. Check the recipient, token balance, and available network fee.',
           code: 'DRY_RUN_FAILED',
+          detail: e instanceof Error ? e.message : 'invalid transfer parameters',
         }, { status: 400 })
       }
 
@@ -224,8 +260,7 @@ export async function POST(request: NextRequest) {
           tokenOut: action.tokenOut,
           amountIn: amount.toString(),
           slippageBps: 1500,
-          overrideWalletId: agentWalletId,
-          overrideWalletAddress: agentWalletAddress,
+          ...(walletSource === 'agent' ? { agentIntentProof: requestedAction.intentProof } : {}),
         }),
       })
       let swapData: Record<string, unknown> = {}
