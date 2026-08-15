@@ -26,14 +26,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Recipient address is invalid.', code: 'INVALID_ADDRESS' }, { status: 400 })
   }
 
-  const [wallet, { data: profile }] = await Promise.all([
-    resolveCircleWalletId(supabase, user.id),
-    supabase.from('profiles').select('agent_wallet_address').eq('id', user.id).single(),
-  ])
+  const wallet = await resolveCircleWalletId(supabase, user.id)
   if (!wallet) return NextResponse.json({ error: 'Wallet not found' }, { status: 404 })
-  if (isSelfTransferAddress(normalizedDestination, [wallet.walletAddress, profile?.agent_wallet_address])) {
+  if (isSelfTransferAddress(normalizedDestination, [wallet.walletAddress])) {
     return NextResponse.json({
-      error: 'You cannot send to your own Main Wallet or Agent Wallet. Use the dedicated Agent Wallet funding or withdrawal action instead.',
+      error: 'You cannot send from Main Wallet back to the same Main Wallet.',
       code: 'SELF_TRANSFER',
     }, { status: 400 })
   }

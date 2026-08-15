@@ -76,9 +76,10 @@ export async function POST(request: NextRequest) {
       if (!isEvmAddress(destination)) {
         return NextResponse.json({ error: 'Recipient address is invalid.', code: 'INVALID_ADDRESS' }, { status: 400 })
       }
-      if (isSelfTransferAddress(destination, [profile?.wallet_address, profile?.agent_wallet_address])) {
+      const sourceAddress = walletSource === 'main' ? profile?.wallet_address : profile?.agent_wallet_address
+      if (isSelfTransferAddress(destination, [sourceAddress])) {
         return NextResponse.json({
-          error: 'You cannot send to your own Main Wallet or Agent Wallet. Use Fund or Withdraw instead.',
+          error: `You cannot send from ${walletSource === 'main' ? 'Main Wallet' : 'Agent Wallet'} back to the same wallet.`,
           code: 'SELF_TRANSFER',
         }, { status: 400 })
       }
