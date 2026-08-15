@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import {
+  CIRCLE_MANAGED_PROVIDER,
+  circleManagedPaymentsEnabled,
+  createTransientPaymentIntent,
+  paymentIntentSnapshot,
+  publicOrder,
+} from '@/app/lib/circle-managed-payments'
 
 const ORDER_WINDOW_SECONDS = 180
 
@@ -22,6 +29,68 @@ export async function POST(request: NextRequest) {
 
   const expiresAt = new Date(Date.now() + ORDER_WINDOW_SECONDS * 1000)
 
+  if (circleManagedPaymentsEnabled()) {
+    const orderId = crypto.randomUUID()
+    const idempotencyKey = crypto.randomUUID()
+    const amountString = amountNum.toFixed(2)
+    const { data: managedProfile } = await supabase
+      .from('merchant_profiles')
+      .select('circle_merchant_wallet_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const { data: provisional, error: insertError } = await supabase
+      .from('merchant_orders')
+      .insert({
+        id: orderId,
+        merchant_user_id: user.id,
+        amount: amountString,
+        expires_at: expiresAt.toISOString(),
+        payment_provider: CIRCLE_MANAGED_PROVIDER,
+        provider_status: 'provisioning',
+        provider_idempotency_key: idempotencyKey,
+      })
+      .select()
+      .single()
+
+    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+
+    try {
+      const intent = await createTransientPaymentIntent({
+        idempotencyKey,
+        amount: amountString,
+        expiresOn: expiresAt.toISOString(),
+        customerExternalRef: orderId,
+        merchantWalletId: managedProfile?.circle_merchant_wallet_id,
+      })
+      const snapshot = paymentIntentSnapshot(intent)
+      const { data: updated, error: updateError } = await supabase
+        .from('merchant_orders')
+        .update({
+          provider_payment_intent_id: intent.id,
+          provider_status: snapshot.providerStatus,
+          provider_deposit_address: snapshot.depositAddress,
+          provider_chain: snapshot.chain,
+          provider_amount_paid: snapshot.amountPaid,
+          provider_synced_at: new Date().toISOString(),
+          provider_error: null,
+        })
+        .eq('id', orderId)
+        .select()
+        .single()
+
+      if (updateError) throw updateError
+      return NextResponse.json({ order: publicOrder(updated) }, { status: 201 })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Circle payment intent creation failed'
+      await supabase
+        .from('merchant_orders')
+        .update({ provider_status: 'failed', provider_error: message, status: 'cancelled' })
+        .eq('id', orderId)
+      return NextResponse.json({ error: message, orderId: provisional.id }, { status: 502 })
+    }
+  }
+
   const { data, error } = await supabase
     .from('merchant_orders')
     .insert({ merchant_user_id: user.id, amount: amountNum, expires_at: expiresAt.toISOString() })
@@ -29,7 +98,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ order: data })
+  return NextResponse.json({ order: publicOrder(data) })
 }
 
 export async function GET(request: NextRequest) {
