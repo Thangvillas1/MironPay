@@ -17,13 +17,17 @@ import { WalletLookupCard } from '@/app/components/WalletLookupCard'
 import { DexPairCard } from '@/app/components/DexPairCard'
 import { SwapQuoteCard } from '@/app/components/SwapQuoteCard'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
+import type { TokenBalance } from '@/app/lib/types'
+import { formatSpendableTokenBreakdown, getSpendableTokenBreakdown } from '@/app/lib/token-balance-display'
 
 interface AgentWallet {
   balance: number
+  total_usd?: number
   wallet_address: string | null
   daily_limit: number
   daily_spent: number
   msg_cost: number
+  tokenList?: TokenBalance[]
 }
 
 interface TxAction {
@@ -1004,6 +1008,7 @@ export default function AgentPage() {
   const msgsToday = agentWallet ? Math.floor(agentWallet.daily_spent / MSG_COST) : 0
   const msgsRemaining = agentWallet ? Math.max(0, Math.floor((agentWallet.daily_limit - agentWallet.daily_spent) / MSG_COST)) : 0
   const msgsFromBalance = agentWallet ? Math.floor(agentWallet.balance / MSG_COST) : 0
+  const agentTokenBreakdown = getSpendableTokenBreakdown(agentWallet?.tokenList, agentWallet?.balance ?? 0)
 
   if (!isMobileViewport) return null
 
@@ -1027,7 +1032,7 @@ export default function AgentPage() {
           <div className="flex items-center gap-2 shrink-0">
             <div className="text-right">
               <p style={{ fontSize: 12, fontWeight: 600, color: lowBalance ? 'var(--mpm-error)' : 'var(--mpm-text)' }}>
-                {formatUSDC(agentWallet.balance)} USD
+                {formatSpendableTokenBreakdown(agentTokenBreakdown)}
               </p>
               <p style={{ fontSize: 10, color: 'var(--mpm-muted)' }}>{msgsFromBalance} left</p>
             </div>
@@ -1251,12 +1256,10 @@ export default function AgentPage() {
                   </div>
                 )}
 
-                <div className="flex items-end gap-1.5 mb-1">
-                  <span className={`text-3xl font-bold ${lowBalance ? 'text-red-400' : 'text-mp-text'}`}>
-                    {formatUSDC(agentWallet.balance)}
-                  </span>
-                  <span className="text-sm text-mp-muted mb-0.5">USDC</span>
+                <div className={`text-3xl font-bold ${lowBalance ? 'text-red-400' : 'text-mp-text'}`}>
+                  ${(agentWallet.total_usd ?? agentWallet.balance).toFixed(2)}
                 </div>
+                <p className="text-xs text-mp-muted mt-1">{formatSpendableTokenBreakdown(agentTokenBreakdown)}</p>
                 <p className="text-xs text-mp-muted mb-1">≈ {msgsFromBalance} messages remaining</p>
 
                 {/* Wallet address */}

@@ -24,6 +24,11 @@ import { SwapQuoteCard } from '@/app/components/SwapQuoteCard'
 import { getActivityIcon } from '@/app/lib/activity-icon'
 import { TypewriterText, formatInlineText } from '@/app/components/TypewriterText'
 import { AgentPinModal } from '@/app/components/AgentPinModal'
+import {
+  combineSpendableTokenBreakdowns,
+  formatSpendableTokenBreakdown,
+  getSpendableTokenBreakdown,
+} from '@/app/lib/token-balance-display'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STALE_MS = 30_000
@@ -249,6 +254,10 @@ export default function DashboardPage() {
   async function handleFund() {
     const amt = parseFloat(modalAmount)
     if (isNaN(amt) || amt < 0.01) { setModalError('Minimum 0.01 USDC'); return }
+    if (amt > mainUsdcBalance) {
+      setModalError(`Available Main Wallet balance: ${formatUSD(mainUsdcBalance)} USDC`)
+      return
+    }
     setFundPhase('pending'); setModalError('')
     try {
       const res = await fetch('/api/agent/wallet/deposit', {
@@ -656,9 +665,12 @@ export default function DashboardPage() {
   // ── Computed ─────────────────────────────────────────────────────────────────
   const firstName = user?.user_metadata?.full_name?.split(' ').pop() ?? user?.email?.split('@')[0] ?? 'there'
   const totalUsd = tokenList.reduce((s, t) => s + (t.usdValue ?? 0), 0)
-  const mainBalance = tokenList.find(t => t.symbol === 'USDC')?.usdValue ?? totalUsd ?? (wallet?.balance ?? 0)
+  const mainUsdcBalance = Number(tokenList.find(t => t.symbol === 'USDC')?.amount ?? wallet?.balance ?? 0)
   const agentBalance = agentWallet?.balance ?? 0
   const agentTotalUsd = agentWallet?.total_usd ?? agentBalance
+  const mainTokenBreakdown = getSpendableTokenBreakdown(tokenList)
+  const agentTokenBreakdown = getSpendableTokenBreakdown(agentWallet?.tokenList, agentBalance)
+  const combinedTokenBreakdown = combineSpendableTokenBreakdowns(mainTokenBreakdown, agentTokenBreakdown)
   const msgCost = agentWallet?.msg_cost ?? 0.005
   const spentPct = agentWallet ? Math.min(100, (agentWallet.daily_spent / agentWallet.daily_limit) * 100) : 0
 
@@ -688,7 +700,8 @@ export default function DashboardPage() {
 
 
   // Main wallet: 7-day balance history (computed backwards from the current balance — uses
-  // totalUsd to match the $ figure shown on the card, not mainBalance which is USDC-only)
+  // totalUsd matches the $ figure shown on the card; mainUsdcBalance is only
+  // used where an operation specifically moves USDC.
   const chartValues: number[] = Array.from({ length: 7 }, (_, i) => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - (6 - i))
@@ -799,7 +812,7 @@ export default function DashboardPage() {
               {/* X402 Gateway reserve is folded into the total above but not
                   broken out here, kept invisible per instruction. */}
               <div style={{ marginTop: 10, fontSize: 11, color: 'var(--mpm-muted2)' }}>
-                Main Wallet + Agent Wallet
+                Across Main + Agent · {formatSpendableTokenBreakdown(combinedTokenBreakdown)}
               </div>
             </div>
 
@@ -812,6 +825,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div style={{ fontSize: 26, fontWeight: 600, color: 'var(--mpm-text)', marginTop: 6, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>${formatUSD(agentTotalUsd)}</div>
+              <div style={{ fontSize: 10.5, color: 'var(--mpm-muted2)', marginTop: 4 }}>{formatSpendableTokenBreakdown(agentTokenBreakdown)}</div>
               <div style={{ marginTop: 8 }}>
                 <div className="flex justify-between" style={{ fontSize: 10, color: 'var(--mpm-muted)', marginBottom: 5 }}>
                   <span>Daily spent</span><span>${formatUSD(agentWallet?.daily_spent ?? 0)}/${formatUSD(agentWallet?.daily_limit ?? 5)}</span>
@@ -952,6 +966,7 @@ export default function DashboardPage() {
                 <div style={{ position: 'absolute', top: -36, right: -36, width: 110, height: 110, borderRadius: '50%', background: '#6366f1', opacity: .14, filter: 'blur(30px)', pointerEvents: 'none' }} />
                 <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.005em', color: 'var(--c-muted)' }}>Main Wallet</div>
                 <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--c-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em', marginTop: 8 }}>${formatUSD(totalUsd)}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--c-muted2)', marginTop: 3 }}>{formatSpendableTokenBreakdown(mainTokenBreakdown)}</div>
                 {mainDelta24h !== 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: mainDelta24h > 0 ? '#2dd4bf' : '#fb6f84', marginTop: 3 }}>
                     <svg width={10} height={10} viewBox="0 0 24 24" fill="currentColor"><path d={mainDelta24h > 0 ? 'M12 4l8 16H4z' : 'M12 20L4 4h16z'} /></svg>
@@ -983,6 +998,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--c-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em', marginTop: 8 }}>${formatUSD(agentTotalUsd)}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--c-muted2)', marginTop: 3 }}>{formatSpendableTokenBreakdown(agentTokenBreakdown)}</div>
                 <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 3 }}>Auto-pilot on</div>
                 <div style={{ height: 46, marginTop: 10 }}>
                   <SparklineChart values={agentChartValues} color="#8b8aff" id="spk-agent" />
@@ -1469,7 +1485,7 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {[['25%', 0.25], ['50%', 0.5], ['75%', 0.75], ['100%', 1]].map(([label, pct]) => (
-                      <button key={label as string} onClick={() => setModalAmount((mainBalance * (pct as number)).toFixed(4).replace(/\.?0+$/, ''))} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
+                      <button key={label as string} onClick={() => setModalAmount((mainUsdcBalance * (pct as number)).toFixed(4).replace(/\.?0+$/, ''))} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
                     ))}
                   </div>
                   <button

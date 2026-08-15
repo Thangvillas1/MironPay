@@ -7,6 +7,7 @@ import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useAuthStore } from '@/app/store/auth'
 import { useWalletStore } from '@/app/store/wallet'
 import type { Transaction, TokenBalance } from '@/app/lib/types'
+import { formatSpendableTokenBreakdown, getSpendableTokenBreakdown } from '@/app/lib/token-balance-display'
 import { isPendingTx, isFailedTx, txStatusLabel } from '@/app/lib/types'
 import TransactionDetailModal from '@/app/components/TransactionDetailModal'
 import TransactionHistoryModal from '@/app/components/TransactionHistoryModal'
@@ -726,7 +727,7 @@ export default function WalletPage() {
             <WalletCard
               variant="blue" label="Main Wallet"
               balance={mainBalance}
-              symbol={tokenList.length === 1 ? (tokenList[0]?.symbol ?? 'USD') : 'Total USD'}
+              symbol={formatSpendableTokenBreakdown(getSpendableTokenBreakdown(tokenList))}
               address={walletAddress} status="Primary · ARC"
               onCopy={() => walletAddress && copyCardAddr(walletAddress, 'main')}
               copied={copiedCard === 'main'}
@@ -735,7 +736,7 @@ export default function WalletPage() {
             <WalletCard
               variant="purple" label="Agent AI"
               balance={agentWallet?.totalUsd ?? 0}
-              symbol={agentWallet?.totalUsd === agentWallet?.balance ? 'USDC' : 'Total USD'}
+              symbol={formatSpendableTokenBreakdown(getSpendableTokenBreakdown(agentWallet?.tokenList, agentWallet?.balance ?? 0))}
               address={agentWallet?.address ?? null}
               status={
                 !agentWallet?.address ? 'Not configured' :
