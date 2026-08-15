@@ -4,6 +4,7 @@ import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { circleSwapAdapter, swapKit, ARC_TESTNET, CIRCLE_KIT_KEY, isNoRouteError, swapKitErrorMessage } from '@/app/lib/circle-swap-kit'
 import { awardVerifiedScore } from '@/app/lib/score-server'
 import { sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
+import { classifyTransactionError } from '@/app/lib/transaction-error'
 
 const SUPPORTED_TOKENS = new Set(['USDC', 'EURC'])
 
@@ -117,19 +118,25 @@ export async function POST(request: NextRequest) {
     if (isNoRouteError(lastErr)) {
       return NextResponse.json({
         error: 'No swap route available on testnet right now. Please try again in a few minutes.',
+        code: 'NO_SWAP_ROUTE',
+        retryable: true,
       }, { status: 400 })
     }
     const message = swapKitErrorMessage(lastErr)
     if (message.includes('0xe52970aa')) {
       return NextResponse.json({
         error: 'Slippage too low — order could not be matched. Try again with higher slippage.',
+        code: 'SLIPPAGE_TOO_LOW',
+        retryable: true,
         slippageTooLow: true,
       }, { status: 400 })
     }
-    return NextResponse.json({ error: message || 'Swap failed' }, { status: 500 })
+    const failure = classifyTransactionError(lastErr ?? message, { operation: 'swap', token: tokenIn })
+    console.error('[swap/execute] swap failed:', lastErr)
+    return NextResponse.json(failure, { status: failure.status })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[swap/execute]', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const failure = classifyTransactionError(err, { operation: 'swap' })
+    console.error('[swap/execute] unexpected failure:', err)
+    return NextResponse.json(failure, { status: failure.status })
   }
 }

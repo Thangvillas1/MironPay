@@ -8,6 +8,7 @@ import { contributeToSale } from '@/app/lib/launchpad-chain'
 import { verifyPin } from '@/app/lib/pin'
 import { awardVerifiedScore } from '@/app/lib/score-server'
 import { isEvmAddress, sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
+import { classifyTransactionError } from '@/app/lib/transaction-error'
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,7 +77,9 @@ export async function POST(request: NextRequest) {
         const { txHash } = await withdrawFromGateway(profile.agent_wallet_id, profile.agent_wallet_address as Address, amount)
         return NextResponse.json({ success: true, txHash })
       } catch (e) {
-        return NextResponse.json({ error: e instanceof Error ? e.message : 'Gateway operation failed' }, { status: 500 })
+        const failure = classifyTransactionError(e, { operation: 'gateway', token: 'USDC' })
+        console.error('[agent/execute] gateway operation failed:', e)
+        return NextResponse.json(failure, { status: failure.status })
       }
     }
 
@@ -153,6 +156,8 @@ export async function POST(request: NextRequest) {
         const remaining = Math.max(0, effectiveLimit - agentWallet.daily_spent)
         return NextResponse.json({
           error: `Daily limit exceeded (${effectiveLimit} USDC). Remaining: ${remaining.toFixed(4)} USDC.`,
+          code: 'DAILY_LIMIT_EXCEEDED',
+          retryable: false,
           limitExceeded: true,
         }, { status: 402 })
       }
@@ -174,7 +179,8 @@ export async function POST(request: NextRequest) {
     if (agentBalance < amount) {
       return NextResponse.json({
         error: `Insufficient Agent Wallet balance: ${agentBalance.toFixed(4)} ${checkSymbol}. Please deposit more.`,
-        code: 'insufficient_balance',
+        code: 'INSUFFICIENT_TOKEN_BALANCE',
+        retryable: false,
       }, { status: 400 })
     }
 
@@ -199,10 +205,22 @@ export async function POST(request: NextRequest) {
       let destAddress: string = action.to ?? ''
       if (destAddress.startsWith('@')) {
         const uname = destAddress.slice(1).toLowerCase()
-        const { data: destWalletAddress } = await supabase
+        const { data: destWalletAddress, error: resolveError } = await supabase
           .rpc('resolve_username', { p_username: uname })
+        if (resolveError) {
+          console.error('[agent/execute] username resolution failed:', resolveError.message)
+          return NextResponse.json({
+            error: 'The recipient could not be verified right now. No transaction was sent; please try again.',
+            code: 'RECIPIENT_LOOKUP_FAILED',
+            retryable: true,
+          }, { status: 503 })
+        }
         if (!destWalletAddress) {
-          return NextResponse.json({ error: `@${uname} not found on MironPay` }, { status: 404 })
+          return NextResponse.json({
+            error: `@${uname} was not found on MironPay. Check the username and try again.`,
+            code: 'RECIPIENT_NOT_FOUND',
+            retryable: false,
+          }, { status: 404 })
         }
         destAddress = destWalletAddress
       }
@@ -225,11 +243,9 @@ export async function POST(request: NextRequest) {
           amount: [amount.toString()],
         })
       } catch (e) {
-        return NextResponse.json({
-          error: 'The transfer simulation failed. Check the recipient, token balance, and available network fee.',
-          code: 'DRY_RUN_FAILED',
-          detail: e instanceof Error ? e.message : 'invalid transfer parameters',
-        }, { status: 400 })
+        const failure = classifyTransactionError(e, { operation: 'send', token: checkSymbol })
+        console.error('[agent/execute] transfer simulation failed:', e)
+        return NextResponse.json(failure, { status: failure.status })
       }
 
       const tx = await circleClient.createTransaction({
@@ -266,7 +282,12 @@ export async function POST(request: NextRequest) {
       let swapData: Record<string, unknown> = {}
       try { swapData = await swapRes.json() } catch { /* empty */ }
       if (!swapRes.ok) {
-        return NextResponse.json({ error: (swapData.error as string) ?? 'Swap failed' }, { status: swapRes.status })
+        return NextResponse.json({
+          error: (swapData.error as string) ?? 'The swap could not be completed.',
+          code: (swapData.code as string) ?? 'TRANSACTION_FAILED',
+          retryable: Boolean(swapData.retryable),
+          ...(swapData.providerCode !== undefined ? { providerCode: swapData.providerCode } : {}),
+        }, { status: swapRes.status })
       }
       txId = swapData.transactionId as string
       txHash = swapData.txHash as string
@@ -313,8 +334,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, txId, txHash, amountOut })
 
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[agent/execute]', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const failure = classifyTransactionError(err)
+    console.error('[agent/execute] transaction failed:', err)
+    return NextResponse.json(failure, { status: failure.status })
   }
 }

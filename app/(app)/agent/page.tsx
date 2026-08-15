@@ -236,7 +236,6 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
             </div>
           </>
         )}
-        {error && <p className="text-[11px] text-mp-danger">{error}</p>}
       </div>
       <div className="px-4 pb-3">
         {executing ? (
@@ -248,11 +247,17 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
           <div className="flex flex-col gap-2">
             {error && <p className="text-xs text-mp-danger">{error}</p>}
             <div className="flex gap-2">
-              <button onClick={() => onConfirm()} disabled={!isMain && !error}
-                className={`flex-1 text-white rounded-[8px] py-2 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 ${isMain ? 'bg-amber-500 hover:bg-amber-600' : 'bg-mp-primary hover:bg-blue-600'}`}>
-                {isMain && <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="3" y="11" width="18" height="11" rx="2"/><path strokeLinecap="round" d="M7 11V7a5 5 0 0110 0v4"/></svg>}
-                {isMain ? 'Confirm + PIN' : error ? 'Retry' : 'Auto-executing'}
-              </button>
+              {!isMain && error ? (
+                <div className="flex-1 bg-mp-danger/10 border border-mp-danger/20 text-mp-danger rounded-[8px] px-3 py-2 text-[11px]">
+                  Send the full command again to create a new secure attempt.
+                </div>
+              ) : (
+                <button onClick={() => onConfirm()} disabled={!isMain}
+                  className={`flex-1 text-white rounded-[8px] py-2 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 ${isMain ? 'bg-amber-500 hover:bg-amber-600' : 'bg-mp-primary hover:bg-blue-600'}`}>
+                  {isMain && <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="3" y="11" width="18" height="11" rx="2"/><path strokeLinecap="round" d="M7 11V7a5 5 0 0110 0v4"/></svg>}
+                  {isMain ? 'Confirm + PIN' : 'Auto-executing'}
+                </button>
+              )}
               <button onClick={onCancel}
                 className="flex-1 bg-white/5 border border-white/8 text-mp-muted rounded-[8px] py-2 text-xs font-semibold hover:bg-white/10 transition-colors">
                 Cancel
@@ -853,7 +858,9 @@ export default function AgentPage() {
       let d: Record<string, unknown> = {}
       try { d = await res.json() } catch { /* empty */ }
       if (!res.ok) {
-        setActionError((d.error as string) ?? 'Transaction failed')
+        const message = (d.error as string) ?? 'The transaction could not be completed.'
+        const errorCode = typeof d.code === 'string' ? ` [${d.code}]` : ''
+        setActionError(`${message}${errorCode}`)
         setExecutingAction(false)
         return
       }
@@ -875,7 +882,8 @@ export default function AgentPage() {
       setTxResult({ txHash: d.txHash as string, transactionId: d.txId as string, amountOut: d.amountOut as string })
       setActionDone(true)
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Connection error')
+      console.error('[agent] transaction request failed:', e)
+      setActionError('Connection lost before the final status was received. Check transaction history before sending again. [NETWORK_ERROR]')
     } finally {
       setExecutingAction(false)
     }
