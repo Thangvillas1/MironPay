@@ -25,6 +25,35 @@ const EVM_ADDRESS = /^0x[0-9a-fA-F]{40}$/
 const USERNAME = /^@[a-z0-9_]{3,20}$/i
 const MAX_INTENT_AGE_MS = 2 * 60 * 1000
 
+const SEND_INTENT = /\b(?:send|transfer|pay|gui|chuyen)\b/i
+const NON_RECIPIENT_WORDS = new Set([
+  'agent', 'main', 'wallet', 'usdc', 'eurc', 'x402', 'gateway',
+])
+
+/**
+ * Extract only an explicitly typed send recipient. This intentionally avoids
+ * conversation history so a recipient can never leak from an earlier command.
+ * Plain MironPay usernames are accepted only after "to" / "cho".
+ */
+export function extractExplicitSendRecipient(sourceMessage: string): string | null {
+  const normalized = sourceMessage.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+  if (!SEND_INTENT.test(normalized)) return null
+
+  const address = sourceMessage.match(/0x[a-zA-Z0-9]+/i)?.[0]
+  if (address) return address
+
+  const handle = sourceMessage.match(/@[a-z0-9_]+/i)?.[0]
+  if (handle) return handle
+
+  const plainUsername = normalized.match(/\b(?:to|cho)\s+([a-z][a-z0-9_]{2,31})\b/i)?.[1]
+  if (!plainUsername || NON_RECIPIENT_WORDS.has(plainUsername.toLowerCase())) return null
+  return `@${plainUsername}`
+}
+
+export function isMironUsername(value: string): boolean {
+  return USERNAME.test(value)
+}
+
 function intentSecret(): string {
   const secret = process.env.AGENT_INTENT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!secret) throw new Error('AGENT_INTENT_SECRET is not configured')

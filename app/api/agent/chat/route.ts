@@ -5,7 +5,14 @@ import { payX402 } from '@/app/lib/x402-buyer'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { VERIFIED_SYMBOLS } from '@/app/lib/token-meta'
 import { TOKEN_USD_PRICE } from '@/app/lib/types'
-import { issueAgentIntent, validateAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
+import {
+  extractExplicitSendRecipient,
+  isEvmAddress,
+  isMironUsername,
+  issueAgentIntent,
+  validateAgentIntent,
+  type AgentAction,
+} from '@/app/lib/agent-intent'
 
 const X402_DATA_FEE = 0.01 // placeholder for testnet — revisit for mainnet
 
@@ -338,6 +345,79 @@ export async function POST(request: NextRequest) {
 
     if (!profile?.agent_wallet_id || !usdcTokenId) {
       return NextResponse.json({ error: 'wallet_not_ready', message: 'Agent Wallet not initialized.' }, { status: 400 })
+    }
+
+    // Validate an explicitly typed send recipient before asking for any other
+    // missing field. This keeps a partial command such as "send USDC to @name"
+    // from becoming a multi-step flow that only discovers a bad recipient at
+    // the very end. Invalid recipient checks are not charged as Agent messages.
+    const preflightRecipient = extractExplicitSendRecipient(message)
+    if (preflightRecipient) {
+      const normalizedMessage = message.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+      const replyInVietnamese = /\b(?:gui|chuyen|cho)\b/.test(normalizedMessage)
+      let recipientAddress: string | null = null
+      let recipientError: string | null = null
+
+      if (preflightRecipient.startsWith('@')) {
+        if (!isMironUsername(preflightRecipient)) {
+          recipientError = replyInVietnamese
+            ? `${preflightRecipient} không phải username MironPay hợp lệ.`
+            : `${preflightRecipient} is not a valid MironPay username.`
+        } else {
+          const { data: resolvedAddress, error: resolveError } = await supabase.rpc('resolve_username', {
+            p_username: preflightRecipient.slice(1).toLowerCase(),
+          })
+          if (resolveError) {
+            console.error('[agent/chat] recipient preflight failed:', resolveError.message)
+            recipientError = replyInVietnamese
+              ? 'Chưa thể kiểm tra người nhận lúc này. Vui lòng thử lại.'
+              : 'The recipient could not be verified right now. Please try again.'
+          } else if (!resolvedAddress) {
+            recipientError = replyInVietnamese
+              ? `${preflightRecipient} không tồn tại trên MironPay.`
+              : `${preflightRecipient} was not found on MironPay.`
+          } else {
+            recipientAddress = resolvedAddress
+          }
+        }
+      } else if (!isEvmAddress(preflightRecipient)) {
+        recipientError = replyInVietnamese
+          ? `Địa chỉ ví ${preflightRecipient} không hợp lệ.`
+          : `Wallet address ${preflightRecipient} is invalid.`
+      } else {
+        recipientAddress = preflightRecipient
+      }
+
+      const usesMainWallet = [
+        'vi chinh', 'main wallet', 'my wallet', 'vi cua toi',
+        'vi user', 'tu vi chinh',
+      ].some(keyword => normalizedMessage.includes(keyword))
+      const sourceAddress = usesMainWallet
+        ? resolvedMainWallet?.walletAddress
+        : profile.agent_wallet_address
+      if (!recipientError && recipientAddress && sourceAddress
+        && recipientAddress.toLowerCase() === sourceAddress.toLowerCase()) {
+        recipientError = replyInVietnamese
+          ? 'Không thể gửi tiền về chính ví nguồn.'
+          : 'The recipient is the same as the source wallet. Self-transfers are not allowed.'
+      }
+
+      if (recipientError) {
+        const userTs = new Date()
+        const assistantTs = new Date(userTs.getTime() + 1)
+        await supabase.from('agent_messages').insert([
+          { user_id: user.id, role: 'user', content: message, cost: 0, created_at: userTs.toISOString() },
+          { user_id: user.id, role: 'assistant', content: recipientError, cost: 0, created_at: assistantTs.toISOString() },
+        ])
+        return NextResponse.json({
+          reply: recipientError,
+          action: null,
+          cost: 0,
+          balance_after: onChainBalance,
+          input_fee_tx_hash: null,
+          data_fee: null,
+        })
+      }
     }
 
     let msgFeeTxHash: string | null = null
