@@ -1,6 +1,29 @@
 const USDC_DECIMALS = 6
 const SCALE = 10 ** USDC_DECIMALS
 
+export type WithdrawalToken = 'USDC' | 'EURC'
+
+export type WithdrawalTokenBalance = {
+  amount?: string | number | null
+  token?: {
+    id?: string | null
+    symbol?: string | null
+  } | null
+}
+
+export function parseWithdrawalToken(value: unknown): WithdrawalToken | null {
+  if (typeof value !== 'string') return null
+  const symbol = value.trim().toUpperCase()
+  return symbol === 'USDC' || symbol === 'EURC' ? symbol : null
+}
+
+export function selectWithdrawalTokenBalance<T extends WithdrawalTokenBalance>(
+  balances: T[],
+  tokenSymbol: WithdrawalToken,
+): T | undefined {
+  return balances.find(balance => balance.token?.symbol?.trim().toUpperCase() === tokenSymbol)
+}
+
 function roundDown(value: number): number {
   return Math.floor(Math.max(0, value) * SCALE) / SCALE
 }
@@ -15,7 +38,7 @@ export function calculateWithdrawalAvailability({
   usdcGasBalance,
   estimatedNetworkFee,
 }: {
-  tokenSymbol: 'USDC' | 'EURC'
+  tokenSymbol: WithdrawalToken
   tokenBalance: number
   usdcGasBalance: number
   estimatedNetworkFee: number

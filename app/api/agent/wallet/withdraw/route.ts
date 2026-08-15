@@ -3,10 +3,13 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { dedupeTokenBalancesBySymbol } from '@/app/lib/token-balance-dedupe'
-import { calculateWithdrawalAvailability } from '@/app/lib/withdrawal-amount'
+import {
+  calculateWithdrawalAvailability,
+  parseWithdrawalToken,
+  selectWithdrawalTokenBalance,
+  type WithdrawalToken,
+} from '@/app/lib/withdrawal-amount'
 import { classifyTransactionError } from '@/app/lib/transaction-error'
-
-const SUPPORTED_TOKENS = new Set(['USDC', 'EURC'])
 
 type AgentTokenBalance = {
   amount?: string
@@ -17,7 +20,7 @@ type WithdrawalQuote = {
   agentWalletId: string
   destinationAddress: string
   tokenId: string
-  tokenSymbol: 'USDC' | 'EURC'
+  tokenSymbol: WithdrawalToken
   balance: number
   estimatedFee: number
   feeReserve: number
@@ -28,15 +31,10 @@ type QuoteResult =
   | { ok: true; quote: WithdrawalQuote }
   | { ok: false; status: number; body: Record<string, unknown> }
 
-function requestedToken(value: unknown): 'USDC' | 'EURC' | null {
-  const symbol = typeof value === 'string' ? value.trim().toUpperCase() : 'USDC'
-  return SUPPORTED_TOKENS.has(symbol) ? symbol as 'USDC' | 'EURC' : null
-}
-
 async function buildWithdrawalQuote(
   supabase: ReturnType<typeof createServerSupabaseClient>,
   userId: string,
-  tokenSymbol: 'USDC' | 'EURC',
+  tokenSymbol: WithdrawalToken,
 ): Promise<QuoteResult> {
   const [{ data: profile }, userWallet] = await Promise.all([
     supabase
@@ -57,8 +55,8 @@ async function buildWithdrawalQuote(
   const balanceResponse = await circleClient.getWalletTokenBalance({ id: profile.agent_wallet_id })
   const rawBalances = (balanceResponse.data?.tokenBalances ?? []) as AgentTokenBalance[]
   const balances = dedupeTokenBalancesBySymbol(rawBalances)
-  const selected = balances.find(balance => balance.token?.symbol?.toUpperCase() === tokenSymbol)
-  const usdc = balances.find(balance => balance.token?.symbol?.toUpperCase() === 'USDC')
+  const selected = selectWithdrawalTokenBalance(balances, tokenSymbol)
+  const usdc = selectWithdrawalTokenBalance(balances, 'USDC')
   const balance = Number(selected?.amount ?? 0)
   const usdcGasBalance = Number(usdc?.amount ?? 0)
   const tokenId = selected?.token?.id
@@ -149,8 +147,8 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await authenticatedRequest(request)
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const tokenSymbol = requestedToken(request.nextUrl.searchParams.get('token'))
-    if (!tokenSymbol) return NextResponse.json({ error: 'Only USDC and EURC can be withdrawn.', code: 'UNSUPPORTED_TOKEN' }, { status: 400 })
+    const tokenSymbol = parseWithdrawalToken(request.nextUrl.searchParams.get('token'))
+    if (!tokenSymbol) return NextResponse.json({ error: 'A valid withdrawal token (USDC or EURC) is required.', code: 'INVALID_TOKEN' }, { status: 400 })
 
     const result = await buildWithdrawalQuote(auth.supabase, auth.user.id, tokenSymbol)
     if (!result.ok) return NextResponse.json(result.body, { status: result.status })
@@ -169,8 +167,10 @@ export async function POST(request: NextRequest) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const tokenSymbol = requestedToken(body.token)
-    if (!tokenSymbol) return NextResponse.json({ error: 'Only USDC and EURC can be withdrawn.', code: 'UNSUPPORTED_TOKEN' }, { status: 400 })
+    // Never default a missing token to USDC. A malformed EURC request must fail
+    // closed instead of silently transferring a different asset.
+    const tokenSymbol = parseWithdrawalToken(body.token)
+    if (!tokenSymbol) return NextResponse.json({ error: 'A valid withdrawal token (USDC or EURC) is required.', code: 'INVALID_TOKEN' }, { status: 400 })
 
     const result = await buildWithdrawalQuote(auth.supabase, auth.user.id, tokenSymbol)
     if (!result.ok) return NextResponse.json(result.body, { status: result.status })
