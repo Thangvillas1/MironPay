@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/app/lib/supabase'
 import { validateUsernameFormat } from '@/app/lib/username'
 import type { TokenBalance } from '@/app/lib/types'
+import { startPinRecovery } from '@/app/lib/pin-recovery-client'
 
 export type ModalMode = 'send' | 'receive' | 'swap' | null
 type Step = 'amount' | 'token' | 'confirm' | 'setup_pin' | 'confirm_pin' | 'pin' | 'progress' | 'success' | 'error' | 'form' | 'receive'
@@ -77,9 +78,10 @@ interface PinPadProps {
   heading: string
   onKey: (key: string) => void
   onDelete: () => void
+  onForgotPin: () => void
 }
 
-function PinPad({ step, pin, pinError, pinLoading, title, heading, onKey, onDelete }: PinPadProps) {
+function PinPad({ step, pin, pinError, pinLoading, title, heading, onKey, onDelete, onForgotPin }: PinPadProps) {
   const isSetup = step === 'setup_pin' || step === 'confirm_pin'
   return (
     <div style={{ animation: 'srsStep .25s ease', textAlign: 'center' }}>
@@ -96,19 +98,17 @@ function PinPad({ step, pin, pinError, pinLoading, title, heading, onKey, onDele
         ))}
       </div>
       {pinError ? <p style={{ fontSize: 12.5, color: '#fb6f84', marginBottom: 16, minHeight: 20 }}>{pinError}</p> : <div style={{ marginBottom: 16, minHeight: 20 }} />}
-      {pinLoading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2.5px solid rgba(99,102,241,.3)', borderTopColor: '#818cf8', animation: 'srsSpin 0.8s linear infinite' }} />
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, maxWidth: 288, margin: '0 auto' }}>
+      <div style={{ position: 'relative', minHeight: 200 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, maxWidth: 288, margin: '0 auto', opacity: pinLoading ? .35 : 1, pointerEvents: pinLoading ? 'none' : 'auto' }}>
           {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((key, i) => (
             <button key={i} onClick={key === '⌫' ? onDelete : key === '' ? undefined : () => onKey(key)} disabled={key === ''} style={{ height: 58, borderRadius: 14, border: '1px solid rgba(var(--c-fg-rgb),.07)', background: key === '' ? 'transparent' : 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 22, fontWeight: 600, cursor: key === '' ? 'default' : 'pointer', transition: 'background .1s', opacity: key === '' ? 0 : 1 }}>
               {key}
             </button>
           ))}
         </div>
-      )}
+        {pinLoading && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, borderRadius: '50%', border: '2.5px solid rgba(99,102,241,.3)', borderTopColor: '#818cf8', animation: 'srsSpin 0.8s linear infinite' }} /></div>}
+      </div>
+      {step === 'pin' && <button onClick={onForgotPin} disabled={pinLoading} style={{ marginTop: 12, border: 'none', background: 'transparent', color: '#818cf8', fontSize: 12.5, fontWeight: 600, cursor: pinLoading ? 'wait' : 'pointer' }}>Forgot PIN?</button>}
     </div>
   )
 }
@@ -169,6 +169,7 @@ export default function SRSModal({
   const [pinError, setPinError] = useState('')
   const [pinLoading, setPinLoading] = useState(false)
   const pinAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const transactionPinRef = useRef('')
 
   // ── Progress ───────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState(0)
@@ -266,6 +267,7 @@ export default function SRSModal({
     abortedRef.current = true
     clearTimers()
     setPin('')
+    transactionPinRef.current = ''
     onClose()
   }
 
@@ -300,6 +302,7 @@ export default function SRSModal({
         body: JSON.stringify({ pin: enteredPin }),
       })
       if (res.ok) {
+        transactionPinRef.current = enteredPin
         enterProgress()
       } else {
         const d = await res.json()
@@ -327,6 +330,7 @@ export default function SRSModal({
         body: JSON.stringify({ pin: confirmedPin }),
       })
       if (res.ok) {
+        transactionPinRef.current = confirmedPin
         onPINSet?.()
         enterProgress()
       } else {
@@ -339,6 +343,18 @@ export default function SRSModal({
       setPin('')
     }
     setPinLoading(false)
+  }
+
+  async function handleForgotPin() {
+    if (pinAutoRef.current) clearTimeout(pinAutoRef.current)
+    setPinLoading(true)
+    setPinError('')
+    try {
+      await startPinRecovery()
+    } catch (error) {
+      setPinError(error instanceof Error ? error.message : 'Could not open Google verification.')
+      setPinLoading(false)
+    }
   }
 
   // ── Progress + TX ───────────────────────────────────────────────────────────
@@ -380,10 +396,12 @@ export default function SRSModal({
   async function runSendTx() {
     try {
       const sendTok = tokenList[sendTokenIdx]
+      const transactionPin = transactionPinRef.current
+      transactionPinRef.current = ''
       const res = await fetch('/api/wallet/transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ destinationAddress: resolvedAddress, amount: sendAmount.trim(), memo: memo.trim(), tokenSymbol: sendTok?.symbol }),
+        body: JSON.stringify({ destinationAddress: resolvedAddress, amount: sendAmount.trim(), memo: memo.trim(), tokenSymbol: sendTok?.symbol, pin: transactionPin }),
       })
       const d = await res.json()
       if (res.ok) {
@@ -400,10 +418,12 @@ export default function SRSModal({
   async function runSwapTx() {
     try {
       const tokIn = swapTokens[swapInIdx]; const tokOut = swapTokens[swapOutIdx]
+      const transactionPin = transactionPinRef.current
+      transactionPinRef.current = ''
       const res = await fetch('/api/wallet/swap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ tokenIn: tokIn?.symbol, tokenOut: tokOut?.symbol, amountIn: swapAmount, slippageBps }),
+        body: JSON.stringify({ tokenIn: tokIn?.symbol, tokenOut: tokOut?.symbol, amountIn: swapAmount, slippageBps, pin: transactionPin }),
       })
       const d = await res.json()
       if (res.ok) {
@@ -424,7 +444,7 @@ export default function SRSModal({
     else if (step === 'confirm') setStep('amount')
     else if (step === 'setup_pin') setStep(mode === 'swap' ? 'form' : 'confirm')
     else if (step === 'confirm_pin') { setSetupPin(''); setPin(''); setPinError(''); setStep('setup_pin') }
-    else if (step === 'pin') { setPin(''); setStep(mode === 'swap' ? 'form' : 'confirm') }
+    else if (step === 'pin') { setPin(''); transactionPinRef.current = ''; setStep(mode === 'swap' ? 'form' : 'confirm') }
   }
 
   function openTokenSelect(from: 'send' | 'swapIn' | 'swapOut') { setTokenSelectFor(from); setStep('token') }
@@ -703,7 +723,7 @@ export default function SRSModal({
 
           {/* ────────── PIN STEPS (shared pad) ────────── */}
           {(step === 'pin' || step === 'setup_pin' || step === 'confirm_pin') && (
-            <PinPad step={step} pin={pin} pinError={pinError} pinLoading={pinLoading} title={pinTitle} heading={pinHeading} onKey={handlePinKey} onDelete={handlePinDel} />
+            <PinPad step={step} pin={pin} pinError={pinError} pinLoading={pinLoading} title={pinTitle} heading={pinHeading} onKey={handlePinKey} onDelete={handlePinDel} onForgotPin={handleForgotPin} />
           )}
 
           {/* ────────── PROGRESS ────────── */}

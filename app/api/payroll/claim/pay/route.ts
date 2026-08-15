@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { verifyPin } from '@/app/lib/pin'
+import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 import { circleClient } from '@/app/lib/circle'
 import { sendPayrollClaimEmail } from '@/app/lib/email'
 import {
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
   const pinResult = await verifyPin(supabase, user.id, pin ?? '')
   if (!pinResult.ok) {
-    return NextResponse.json({ error: pinResult.error }, { status: pinResult.error === 'Incorrect PIN' ? 401 : 400 })
+    return NextResponse.json({ error: pinResult.error, code: pinResult.code }, pinFailureHttp(pinResult))
   }
 
   if (!period || typeof period !== 'string') {

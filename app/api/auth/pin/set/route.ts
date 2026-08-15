@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { hashPin } from '@/app/lib/pin'
 
 export async function POST(request: NextRequest) {
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
   // username) in the same call a returning user uses to just change their PIN.
   const row: { id: string; pin_hash: string; username?: string } = { id: user.id, pin_hash }
   if (typeof username === 'string' && username) row.username = username
-  const { error } = await supabase.from('profiles').upsert(row)
+  const { error } = await createAdminSupabaseClient().from('profiles').upsert(row)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ ok: true })

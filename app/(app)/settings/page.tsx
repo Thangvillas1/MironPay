@@ -6,6 +6,8 @@ import { supabase } from '@/app/lib/supabase'
 import { isOnboardingComplete } from '@/app/lib/onboarding'
 import { useAuthStore } from '@/app/store/auth'
 import { useWalletStore } from '@/app/store/wallet'
+import PinResetModal from '@/app/components/PinResetModal'
+import { startPinRecovery } from '@/app/lib/pin-recovery-client'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -24,6 +26,10 @@ export default function SettingsPage() {
   const [isIOS, setIsIOS] = useState(false)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showManualHint, setShowManualHint] = useState(false)
+  const [accessToken, setAccessToken] = useState('')
+  const [resetPinOpen, setResetPinOpen] = useState(false)
+  const [recoveryLoading, setRecoveryLoading] = useState(false)
+  const [recoveryError, setRecoveryError] = useState('')
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches
@@ -76,10 +82,15 @@ export default function SettingsPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.replace('/'); return }
       if (!(await isOnboardingComplete(session.user.id))) { router.replace('/'); return }
+      setAccessToken(session.access_token)
       if (!user) setUser(session.user)
       const { data: profile } = await supabase.from('profiles').select('pin_hash, username').eq('id', session.user.id).single()
       setHasPIN(!!profile?.pin_hash)
       setUsername(profile?.username ?? null)
+      if (new URLSearchParams(window.location.search).get('reset_pin') === '1') {
+        setResetPinOpen(true)
+        window.history.replaceState({}, '', '/settings')
+      }
       setLoading(false)
     }
     init()
@@ -95,6 +106,17 @@ export default function SettingsPage() {
     setWalletAddress(null)
     setLastFetched(0)
     router.replace('/')
+  }
+
+  async function handleStartPinRecovery() {
+    setRecoveryLoading(true)
+    setRecoveryError('')
+    try {
+      await startPinRecovery()
+    } catch (error) {
+      setRecoveryError(error instanceof Error ? error.message : 'Could not open Google verification.')
+      setRecoveryLoading(false)
+    }
   }
 
   const emailVerified = !!user?.email_confirmed_at
@@ -119,6 +141,12 @@ export default function SettingsPage() {
         <span style={{ fontSize: 13, color: 'var(--c-muted)' }}>PIN</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: hasPIN ? '#2dd4bf' : 'var(--c-warning)' }}>{hasPIN ? 'Enabled' : 'Not set'}</span>
       </div>
+      {hasPIN && (
+        <button onClick={handleStartPinRecovery} disabled={recoveryLoading} style={{ width: '100%', padding: '9px 0', border: 'none', borderTop: '1px solid rgba(var(--c-fg-rgb),.07)', background: 'transparent', color: '#818cf8', textAlign: 'left', fontSize: 12.5, fontWeight: 600, cursor: recoveryLoading ? 'wait' : 'pointer' }}>
+          {recoveryLoading ? 'Opening Google verification…' : 'Forgot or reset PIN'}
+        </button>
+      )}
+      {recoveryError && <p style={{ fontSize: 11.5, color: '#fb6f84', margin: '4px 0 8px' }}>{recoveryError}</p>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderTop: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
         <span style={{ fontSize: 13, color: 'var(--c-muted)' }}>Email verified</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: emailVerified ? '#2dd4bf' : 'var(--c-warning)' }}>{emailVerified ? 'Verified' : 'Unverified'}</span>
@@ -227,6 +255,13 @@ export default function SettingsPage() {
         <h1 style={{ margin: '0 0 20px', fontSize: 22, fontWeight: 700, letterSpacing: '-.01em', color: 'var(--c-text)' }}>Settings</h1>
         <div style={{ maxWidth: 420 }}>{securityCard}</div>
       </div>
+      {resetPinOpen && accessToken && (
+        <PinResetModal
+          accessToken={accessToken}
+          onClose={() => setResetPinOpen(false)}
+          onComplete={() => setHasPIN(true)}
+        />
+      )}
     </>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { startPinRecovery } from '@/app/lib/pin-recovery-client'
 
 // Standalone bridge modal — deliberately NOT wired into SRSModal.tsx / its
 // ModalMode union, so the existing send/receive/swap flow stays untouched.
@@ -283,7 +284,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       }
       setPinStep(false)
       setPinVerifying(false)
-      await submitWithdraw()
+      await submitWithdraw(enteredPin)
     } catch {
       setPinError('Connection error — try again')
       setPinValue('')
@@ -309,7 +310,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
     }
   }
 
-  async function submitWithdraw() {
+  async function submitWithdraw(pin: string) {
     setError(null)
     setStatus('submitting')
     setPhase(0)
@@ -331,7 +332,7 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
       const res = await fetch('/api/wallet/bridge/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ externalChain: chainSlug, amount, recipientAddress }),
+        body: JSON.stringify({ externalChain: chainSlug, amount, recipientAddress, pin }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Withdraw failed')
@@ -481,12 +482,8 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                 ? <p style={{ fontSize: 12.5, color: '#fb6f84', marginBottom: 16, minHeight: 20 }}>{pinError}</p>
                 : <div style={{ marginBottom: 16, minHeight: 20 }} />}
 
-              {pinVerifying ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2.5px solid rgba(99,102,241,.3)', borderTopColor: '#818cf8', animation: 'srsSpin 0.8s linear infinite' }} />
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, maxWidth: 288, margin: '0 auto' }}>
+              <div style={{ position: 'relative', minHeight: 200 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, maxWidth: 288, margin: '0 auto', opacity: pinVerifying ? .35 : 1, pointerEvents: pinVerifying ? 'none' : 'auto' }}>
                   {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) => (
                     <button
                       key={i}
@@ -505,9 +502,20 @@ export default function BridgeModal({ open, onClose, accessToken, walletAddress,
                     </button>
                   ))}
                 </div>
-              )}
+                {pinVerifying && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, borderRadius: '50%', border: '2.5px solid rgba(99,102,241,.3)', borderTopColor: '#818cf8', animation: 'srsSpin 0.8s linear infinite' }} /></div>}
+              </div>
 
-              <button onClick={() => setPinStep(false)} disabled={pinVerifying} className="mp-btn-ghost" style={{ marginTop: 18, background: 'none', border: 'none', color: 'var(--c-muted)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginTop: 18 }}>
+                <button onClick={() => setPinStep(false)} disabled={pinVerifying} className="mp-btn-ghost" style={{ background: 'none', border: 'none', color: 'var(--c-muted)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={() => {
+                  setPinVerifying(true)
+                  setPinError(null)
+                  void startPinRecovery().catch(error => {
+                    setPinError(error instanceof Error ? error.message : 'Could not open Google verification.')
+                    setPinVerifying(false)
+                  })
+                }} disabled={pinVerifying} style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Forgot PIN?</button>
+              </div>
             </div>
           ) : status === 'submitting' || status === 'awaiting_signature' || status === 'completing' ? (
             <div style={{ animation: 'srsStep .25s ease', padding: '6px 2px' }}>

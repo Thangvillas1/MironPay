@@ -3,6 +3,7 @@ import { circleClient } from '@/app/lib/circle'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { awardVerifiedScore } from '@/app/lib/score-server'
+import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -13,10 +14,16 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { destinationAddress, amount, memo, tokenSymbol = 'USDC' } = body
+  const { destinationAddress, amount, memo, tokenSymbol = 'USDC', pin } = body
 
   if (!destinationAddress || !amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
     return NextResponse.json({ error: 'Invalid destination address or amount' }, { status: 400 })
+  }
+
+  const pinResult = await verifyPin(supabase, user.id, pin)
+  if (!pinResult.ok) {
+    const response = pinFailureHttp(pinResult)
+    return NextResponse.json({ error: pinResult.error, code: pinResult.code }, response)
   }
 
   const wallet = await resolveCircleWalletId(supabase, user.id)

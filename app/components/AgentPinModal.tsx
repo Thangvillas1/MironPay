@@ -1,12 +1,17 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { startPinRecovery } from '@/app/lib/pin-recovery-client'
 
 export function AgentPinModal({ onSuccess, onCancel }: { onSuccess: (pin: string) => void; onCancel: () => void }) {
   const pinRef = useRef('')
+  const submittedRef = useRef(false)
   const [dots, setDots] = useState(0)
+  const [recoveryLoading, setRecoveryLoading] = useState(false)
+  const [recoveryError, setRecoveryError] = useState('')
 
   function handleKey(key: string) {
+    if (submittedRef.current || recoveryLoading) return
     if (key === '⌫') {
       pinRef.current = pinRef.current.slice(0, -1)
       setDots(pinRef.current.length)
@@ -16,6 +21,7 @@ export function AgentPinModal({ onSuccess, onCancel }: { onSuccess: (pin: string
     pinRef.current += key
     setDots(pinRef.current.length)
     if (pinRef.current.length === 6) {
+      submittedRef.current = true
       const pin = pinRef.current
       pinRef.current = ''
       setDots(0)
@@ -48,6 +54,17 @@ export function AgentPinModal({ onSuccess, onCancel }: { onSuccess: (pin: string
             </button>
           ))}
         </div>
+        {recoveryError && <p className="text-xs text-red-400 text-center">{recoveryError}</p>}
+        <button onClick={() => {
+          setRecoveryLoading(true)
+          setRecoveryError('')
+          void startPinRecovery().catch(error => {
+            setRecoveryError(error instanceof Error ? error.message : 'Could not open Google verification.')
+            setRecoveryLoading(false)
+          })
+        }} disabled={recoveryLoading} className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+          {recoveryLoading ? 'Opening Google…' : 'Forgot PIN?'}
+        </button>
         <button onClick={onCancel} className="text-sm text-mp-muted hover:text-mp-text transition-colors">Cancel</button>
       </div>
     </div>

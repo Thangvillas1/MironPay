@@ -1,6 +1,9 @@
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'crypto'
 import { promisify } from 'util'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import type { PinVerificationResult } from '@/app/lib/pin-policy'
+export { isRecentPinAuthentication, pinFailureHttp } from '@/app/lib/pin-policy'
 
 const scrypt = promisify(scryptCallback)
 type RateLimitRow = { allowed: boolean; retry_after_seconds: number }
@@ -34,16 +37,21 @@ export async function verifyPin(
   supabase: SupabaseClient,
   userId: string,
   pin: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<PinVerificationResult> {
   if (!pin || typeof pin !== 'string' || !/^\d{6}$/.test(pin)) {
-    return { ok: false, error: 'Invalid PIN format' }
+    return { ok: false, error: 'PIN must be exactly 6 digits', code: 'INVALID_PIN' }
   }
 
   const { data: limitRows, error: limitError } = await supabase.rpc('check_pin_rate_limit', { p_user_id: userId })
-  if (limitError) return { ok: false, error: 'PIN verification is temporarily unavailable' }
+  if (limitError) return { ok: false, error: 'PIN verification is temporarily unavailable', code: 'PIN_UNAVAILABLE' }
   const limit = (limitRows as RateLimitRow[] | null)?.[0]
   if (limit && !limit.allowed) {
-    return { ok: false, error: `Too many PIN attempts. Try again in ${limit.retry_after_seconds} seconds` }
+    return {
+      ok: false,
+      error: `Too many PIN attempts. Try again in ${limit.retry_after_seconds} seconds`,
+      code: 'PIN_LOCKED',
+      retryAfterSeconds: limit.retry_after_seconds,
+    }
   }
 
   const { data: profile } = await supabase
@@ -52,20 +60,28 @@ export async function verifyPin(
     .eq('id', userId)
     .single()
 
-  if (!profile?.pin_hash) return { ok: false, error: 'PIN not set' }
+  if (!profile?.pin_hash) return { ok: false, error: 'PIN not set', code: 'PIN_NOT_SET' }
   if (!(await matchesPin(userId, pin, profile.pin_hash))) {
     const { data: resultRows, error } = await supabase.rpc('record_pin_result', { p_user_id: userId, p_success: false })
-    if (error) return { ok: false, error: 'PIN verification is temporarily unavailable' }
+    if (error) return { ok: false, error: 'PIN verification is temporarily unavailable', code: 'PIN_UNAVAILABLE' }
     const result = (resultRows as RateLimitRow[] | null)?.[0]
     return result && !result.allowed
-      ? { ok: false, error: `Too many PIN attempts. Try again in ${result.retry_after_seconds} seconds` }
-      : { ok: false, error: 'Incorrect PIN' }
+      ? {
+          ok: false,
+          error: `Too many PIN attempts. Try again in ${result.retry_after_seconds} seconds`,
+          code: 'PIN_LOCKED',
+          retryAfterSeconds: result.retry_after_seconds,
+        }
+      : { ok: false, error: 'Incorrect PIN', code: 'WRONG_PIN' }
   }
 
   const { error: resetError } = await supabase.rpc('record_pin_result', { p_user_id: userId, p_success: true })
-  if (resetError) return { ok: false, error: 'PIN verification is temporarily unavailable' }
+  if (resetError) return { ok: false, error: 'PIN verification is temporarily unavailable', code: 'PIN_UNAVAILABLE' }
   if (!profile.pin_hash.startsWith('scrypt$')) {
-    await supabase.from('profiles').update({ pin_hash: await hashPin(userId, pin) }).eq('id', userId)
+    await createAdminSupabaseClient()
+      .from('profiles')
+      .update({ pin_hash: await hashPin(userId, pin) })
+      .eq('id', userId)
   }
 
   return { ok: true }

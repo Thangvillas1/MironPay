@@ -1189,6 +1189,9 @@ export default function DashboardPage() {
                                 {(msg.txResult.code === 'PIN_REQUIRED' || msg.txResult.code === 'WRONG_PIN') && (
                                   <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Enter the correct Main Wallet PIN, then try again.</p>
                                 )}
+                                {msg.txResult.code === 'PIN_LOCKED' && (
+                                  <p style={{ fontSize: 12, color: '#4ade80', marginTop: 4 }}>Wait for the lock to expire, or use Forgot PIN to verify with Google.</p>
+                                )}
                               </>
                             )}
                           </div>

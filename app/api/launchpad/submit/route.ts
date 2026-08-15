@@ -3,7 +3,7 @@ import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { verifyPin } from '@/app/lib/pin'
+import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 
 const LISTING_FEE_USDC = 50
 const TREASURY_ADDRESS = process.env.AGENT_OWNER_ADDRESS!
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Verify PIN (same canonical hash used across the whole app)
     const pinResult = await verifyPin(supabase, user.id, pin)
-    if (!pinResult.ok) return NextResponse.json({ error: pinResult.error }, { status: 403 })
+    if (!pinResult.ok) return NextResponse.json({ error: pinResult.error, code: pinResult.code }, pinFailureHttp(pinResult))
 
     // Resolve unique project slug
     const baseSlug = slugify(name)

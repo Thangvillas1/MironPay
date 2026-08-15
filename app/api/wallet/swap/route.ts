@@ -5,6 +5,7 @@ import { circleSwapAdapter, swapKit, ARC_TESTNET, CIRCLE_KIT_KEY, isNoRouteError
 import { awardVerifiedScore } from '@/app/lib/score-server'
 import { sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
 import { classifyTransactionError } from '@/app/lib/transaction-error'
+import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 
 const SUPPORTED_TOKENS = new Set(['USDC', 'EURC'])
 
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { tokenIn, tokenOut, amountIn, slippageBps: rawSlippage, agentIntentProof } = body
+    const { tokenIn, tokenOut, amountIn, slippageBps: rawSlippage, agentIntentProof, pin } = body
     const slippageBps: number = typeof rawSlippage === 'number'
       ? Math.min(10000, Math.max(10, rawSlippage))
       : 3000 // 30% default — testnet liquidity is thin
@@ -28,6 +29,14 @@ export async function POST(request: NextRequest) {
     }
     if (!SUPPORTED_TOKENS.has(tokenIn) || !SUPPORTED_TOKENS.has(tokenOut)) {
       return NextResponse.json({ error: `Unsupported token: ${tokenIn} or ${tokenOut}` }, { status: 400 })
+    }
+
+    if (typeof agentIntentProof !== 'string') {
+      const pinResult = await verifyPin(supabase, user.id, pin)
+      if (!pinResult.ok) {
+        const response = pinFailureHttp(pinResult)
+        return NextResponse.json({ error: pinResult.error, code: pinResult.code }, response)
+      }
     }
 
     // Agent swaps require the exact short-lived intent minted by /api/agent/chat.

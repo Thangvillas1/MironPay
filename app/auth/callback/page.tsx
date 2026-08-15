@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { useAuthStore } from '@/app/store/auth'
 import AuthShell from '@/app/components/AuthShell'
+import { PIN_RECOVERY_NEXT, PIN_RECOVERY_USER_KEY } from '@/app/lib/pin-recovery-client'
 
 // An account only "exists" once wallets are created (last onboarding step).
 // If a user dropped off before that — even if they'd already picked a
@@ -33,6 +34,9 @@ function CallbackHandler() {
     handledRef.current = true
 
     async function handleCallback() {
+      const requestedNext = searchParams.get('next')
+      const recoveryRequested = requestedNext === PIN_RECOVERY_NEXT
+
       // OAuth errors arrive as ?error=...&error_description=...
       const errorParam = searchParams.get('error')
       if (errorParam) {
@@ -47,8 +51,18 @@ function CallbackHandler() {
         // No code — check if session already exists (e.g. user navigated here directly)
         const { data } = await supabase.auth.getSession()
         if (data.session) {
+          if (recoveryRequested) {
+            const expectedUserId = sessionStorage.getItem(PIN_RECOVERY_USER_KEY)
+            if (expectedUserId && expectedUserId !== data.session.user.id) {
+              await supabase.auth.signOut()
+              setErrorMessage('Use the same Google account that owns this MironPay wallet.')
+              return
+            }
+            sessionStorage.removeItem(PIN_RECOVERY_USER_KEY)
+          }
           setUser(data.session.user)
-          router.replace(await resolvePostLoginRoute(data.session.user.id))
+          const defaultRoute = await resolvePostLoginRoute(data.session.user.id)
+          router.replace(recoveryRequested && defaultRoute === '/dashboard' ? PIN_RECOVERY_NEXT : defaultRoute)
         } else {
           setErrorMessage('No authorization code received. Please try signing in again.')
         }
@@ -63,7 +77,17 @@ function CallbackHandler() {
       }
 
       setUser(data.session.user)
-      router.replace(await resolvePostLoginRoute(data.session.user.id))
+      if (recoveryRequested) {
+        const expectedUserId = sessionStorage.getItem(PIN_RECOVERY_USER_KEY)
+        if (expectedUserId && expectedUserId !== data.session.user.id) {
+          await supabase.auth.signOut()
+          setErrorMessage('Use the same Google account that owns this MironPay wallet.')
+          return
+        }
+        sessionStorage.removeItem(PIN_RECOVERY_USER_KEY)
+      }
+      const defaultRoute = await resolvePostLoginRoute(data.session.user.id)
+      router.replace(recoveryRequested && defaultRoute === '/dashboard' ? PIN_RECOVERY_NEXT : defaultRoute)
     }
 
     void handleCallback()

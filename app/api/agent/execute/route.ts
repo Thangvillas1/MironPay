@@ -5,7 +5,7 @@ import { circleClient } from '@/app/lib/circle'
 import { getOnChainLimit } from '@/app/lib/spending-limit'
 import { depositToGateway, withdrawFromGateway } from '@/app/lib/x402-buyer'
 import { contributeToSale } from '@/app/lib/launchpad-chain'
-import { verifyPin } from '@/app/lib/pin'
+import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 import { awardVerifiedScore } from '@/app/lib/score-server'
 import { isEvmAddress, sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
 import { classifyTransactionError } from '@/app/lib/transaction-error'
@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
       }
       const pinResult = await verifyPin(supabase, user.id, rawPin)
       if (!pinResult.ok) {
-        return NextResponse.json({ error: 'Incorrect PIN. Please try again.', code: 'WRONG_PIN' }, { status: 403 })
+        const response = pinFailureHttp(pinResult)
+        return NextResponse.json({ error: pinResult.error, code: pinResult.code }, response)
       }
       if (!profile?.circle_wallet_id) {
         return NextResponse.json({ error: 'Main wallet not initialized.' }, { status: 400 })

@@ -3,6 +3,7 @@ import { getAddress } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, isNoRouteError, bridgeErrorMessage, jsonSafe } from '@/app/lib/circle-bridge-kit'
+import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +15,16 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { externalChain: externalChainSlug, amount, recipientAddress: rawRecipient } = body
+    const { externalChain: externalChainSlug, amount, recipientAddress: rawRecipient, pin } = body
 
     if (!externalChainSlug || !amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0 || !rawRecipient) {
       return NextResponse.json({ error: 'Missing or invalid params' }, { status: 400 })
+    }
+
+    const pinResult = await verifyPin(supabase, user.id, pin)
+    if (!pinResult.ok) {
+      const response = pinFailureHttp(pinResult)
+      return NextResponse.json({ error: pinResult.error, code: pinResult.code }, response)
     }
     const externalChain = resolveExternalChain(externalChainSlug)
     if (!externalChain) {
