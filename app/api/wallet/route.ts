@@ -5,6 +5,7 @@ import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { TOKEN_USD_PRICE } from '@/app/lib/types'
 import { fetchSimplePrice } from '@/app/lib/coingecko'
 import { VERIFIED_SYMBOLS, TOKEN_LOGOS } from '@/app/lib/token-meta'
+import { ARC_MEMO_CONTRACT, readArcTransactionMemo } from '@/app/lib/arc-transaction-memo'
 
 
 export async function GET(request: NextRequest) {
@@ -88,16 +89,28 @@ export async function GET(request: NextRequest) {
   // so we need to know which zero-amount rows are actually tagged before
   // deciding what to drop.
   const allTxHashes = allTxs.map((tx) => tx.txHash).filter(Boolean)
-  const memoMap: Record<string, string> = {}
+  const memoMap: Record<string, {
+    memo: string
+    senderAddress?: string
+    recipientAddress?: string
+    amount?: string
+    source: 'database' | 'onchain'
+  }> = {}
   const kindMap: Record<string, string> = {}
   const kindAmountMap: Record<string, { amount: string; token: string } | undefined> = {}
   if (allTxHashes.length > 0) {
     const [{ data: memos }, { data: kinds }] = await Promise.all([
-      supabase.from('transaction_memos').select('tx_hash, memo').in('tx_hash', allTxHashes),
+      supabase.from('transaction_memos').select('tx_hash, memo, sender_address, recipient_address, amount').in('tx_hash', allTxHashes),
       supabase.from('transaction_kinds').select('tx_hash, kind, amount, token').in('tx_hash', allTxHashes),
     ])
     for (const m of memos ?? []) {
-      memoMap[m.tx_hash] = m.memo
+      memoMap[m.tx_hash] = {
+        memo: m.memo,
+        senderAddress: m.sender_address,
+        recipientAddress: m.recipient_address,
+        amount: m.amount ?? undefined,
+        source: 'database',
+      }
     }
     for (const k of kinds ?? []) {
       kindMap[k.tx_hash] = k.kind
@@ -105,22 +118,50 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // A sender from another Arc app cannot write to MironPay's private database.
+  // Recover its memo from the official Memo predeploy in the same transaction.
+  // Limit this to inbound records (plus our own memo-contract calls when the DB
+  // cache write failed) to keep the wallet request bounded.
+  const onchainCandidates = allTxs.filter((tx) => {
+    if (!tx.txHash || memoMap[tx.txHash]) return false
+    return tx.transactionType === 'INBOUND'
+      || String(tx.destinationAddress ?? '').toLowerCase() === ARC_MEMO_CONTRACT.toLowerCase()
+  }).slice(0, 20)
+  const onchainResults = await Promise.allSettled(
+    onchainCandidates.map((tx) => readArcTransactionMemo(tx.txHash, walletAddress))
+  )
+  onchainResults.forEach((result, index) => {
+    if (result.status !== 'fulfilled' || !result.value) return
+    const txHash = onchainCandidates[index].txHash
+    memoMap[txHash] = {
+      memo: result.value.memo,
+      senderAddress: result.value.senderAddress,
+      recipientAddress: result.value.recipientAddress,
+      source: 'onchain',
+    }
+  })
+
   const rawTxs = allTxs.filter((tx) => {
     // Bỏ contract execution txs (swap overhead) — amount=0 OUTBOUND, không phải transfer thực
     // ...unless it's a tagged bridge withdrawal, whose only on-chain record
     // IS a zero-amount contract execution (see kindAmountMap above).
     if (tx.transactionType !== 'INBOUND' && parseFloat(tx.amounts?.[0] ?? '0') === 0) {
-      return !!(tx.txHash && kindMap[tx.txHash] === 'bridge_out')
+      return !!(tx.txHash && (kindMap[tx.txHash] === 'bridge_out' || memoMap[tx.txHash]))
     }
     return true
   })
 
   const transactions = rawTxs.map((tx) => {
     const storedAmount = tx.txHash ? kindAmountMap[tx.txHash] : undefined
+    const transactionMemo = tx.txHash ? memoMap[tx.txHash] : undefined
     return {
       id: tx.id,
       type: (tx.transactionType === 'INBOUND' ? 'credit' : 'debit') as 'credit' | 'debit',
-      amount: storedAmount ? parseFloat(storedAmount.amount) : parseFloat(tx.amounts?.[0] ?? '0'),
+      amount: storedAmount
+        ? parseFloat(storedAmount.amount)
+        : transactionMemo?.amount
+        ? parseFloat(transactionMemo.amount)
+        : parseFloat(tx.amounts?.[0] ?? '0'),
       tokenSymbol: (storedAmount?.token ?? tx.token?.symbol ?? txTokenMap[tx.tokenId ?? ''] ?? 'USDC') as string,
       // Circle only ever reports a generic Sent/Received — swap the label to
       // "Swap"/"Bridge"/"Payroll" when this tx_hash was tagged at execution
@@ -139,10 +180,11 @@ export async function GET(request: NextRequest) {
       state: tx.state,
       txHash: tx.txHash,
       blockchain: tx.blockchain,
-      sourceAddress: tx.sourceAddress,
-      destinationAddress: tx.destinationAddress,
+      sourceAddress: transactionMemo?.senderAddress ?? tx.sourceAddress,
+      destinationAddress: transactionMemo?.recipientAddress ?? tx.destinationAddress,
       networkFee: tx.networkFee,
-      memo: tx.txHash ? memoMap[tx.txHash] : undefined,
+      memo: transactionMemo?.memo,
+      memoSource: transactionMemo?.source,
     }
   })
 
