@@ -1024,14 +1024,14 @@ export default function AgentPage() {
         padding: '16px 18px', background: 'var(--mpm-glass-bg)', backdropFilter: 'blur(var(--mpm-glass-blur))', WebkitBackdropFilter: 'blur(var(--mpm-glass-blur))',
         borderBottom: '1px solid var(--mpm-glass-border)', paddingTop: 'calc(env(safe-area-inset-top) + 16px)',
       }}>
-        <div className="flex-1 min-w-0 flex items-center gap-1.5">
-          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--mpm-text)' }}>Miron Agent</span>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mpm-success)' }} />
+        <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
+          <span className="truncate" style={{ fontSize: 15, fontWeight: 600, color: 'var(--mpm-text)' }}>Miron Agent</span>
+          <span className="shrink-0" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--mpm-success)' }} />
         </div>
         {!loadingWallet && agentWallet && (
           <div className="flex items-center gap-2 shrink-0">
-            <div className="text-right">
-              <p style={{ fontSize: 12, fontWeight: 600, color: lowBalance ? 'var(--mpm-error)' : 'var(--mpm-text)' }}>
+            <div className="hidden min-[400px]:block text-right min-w-0 max-w-[108px]">
+              <p className="truncate" style={{ fontSize: 12, fontWeight: 600, color: lowBalance ? 'var(--mpm-error)' : 'var(--mpm-text)' }}>
                 {formatSpendableTokenBreakdown(agentTokenBreakdown)}
               </p>
               <p style={{ fontSize: 10, color: 'var(--mpm-muted)' }}>{msgsFromBalance} left</p>
@@ -1045,6 +1045,17 @@ export default function AgentPage() {
                 background: lowBalance ? 'rgba(255,93,108,.1)' : 'rgba(47,107,255,.1)',
               }}>
               Deposit
+            </button>
+            <button
+              onClick={() => setShowLimit(true)}
+              aria-label="Change Agent spending limit"
+              style={{
+                fontSize: 12, fontWeight: 600, padding: '6px 10px', borderRadius: 8,
+                color: 'var(--mpm-text)', border: '1px solid var(--mpm-glass-border)',
+                background: 'var(--mpm-panel)', whiteSpace: 'nowrap',
+              }}
+            >
+              Limit
             </button>
           </div>
         )}
