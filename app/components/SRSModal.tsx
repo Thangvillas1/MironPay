@@ -85,7 +85,7 @@ interface PinPadProps {
 function PinPad({ step, pin, pinError, pinLoading, title, heading, onKey, onDelete, onForgotPin }: PinPadProps) {
   const isSetup = step === 'setup_pin' || step === 'confirm_pin'
   return (
-    <div style={{ animation: 'srsStep .25s ease', textAlign: 'center' }}>
+    <div style={{ textAlign: 'center' }}>
       <div style={{ width: 54, height: 54, margin: '6px auto 0', borderRadius: 16, background: 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)', boxShadow: '0 8px 30px rgba(99,102,241,.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
         {isSetup
           ? <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M2 20c0-4 4.5-7 10-7s10 3 10 7" /></svg>
@@ -526,6 +526,11 @@ export default function SRSModal({
   // ── PIN pad (shared) ────────────────────────────────────────────────────────
   const pinTitle = step === 'setup_pin' ? 'Create a 6-digit PIN' : step === 'confirm_pin' ? 'Re-enter your PIN' : mode === 'swap' ? '6-digit PIN to authorize swap' : '6-digit PIN to authorize transfer'
   const pinHeading = step === 'setup_pin' ? 'Set your PIN' : step === 'confirm_pin' ? 'Confirm your PIN' : 'Enter your PIN'
+  // Keep the modal frame fixed from review through authorization/result.
+  // Without this, opening the taller PIN pad re-centers the panel ~40px up,
+  // which looks like the whole screen is shaking. `min()` keeps short
+  // viewports within the existing 90vh scroll boundary.
+  const stableTransactionFrame = ['confirm', 'pin', 'setup_pin', 'confirm_pin', 'progress', 'success', 'error'].includes(step)
 
   return (
     <div
@@ -536,7 +541,7 @@ export default function SRSModal({
       <div
         onClick={e => e.stopPropagation()}
         className="srs-panel"
-        style={{ width: 432, maxWidth: '94vw', maxHeight: '90vh', borderRadius: 22, ...S.panel, border: '1px solid rgba(var(--c-fg-rgb),.14)', boxShadow: '0 30px 80px rgba(3,8,20,.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'srsUp 340ms cubic-bezier(.22,1,.36,1)' }}
+        style={{ width: 432, maxWidth: '94vw', minHeight: stableTransactionFrame ? 'min(621px, 90vh)' : undefined, maxHeight: '90vh', borderRadius: 22, ...S.panel, border: '1px solid rgba(var(--c-fg-rgb),.14)', boxShadow: '0 30px 80px rgba(3,8,20,.6)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'srsUp 340ms cubic-bezier(.22,1,.36,1)' }}
       >
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px', borderBottom: '1px solid rgba(var(--c-fg-rgb),.07)', flexShrink: 0 }}>
