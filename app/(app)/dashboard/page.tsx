@@ -1553,28 +1553,6 @@ export default function DashboardPage() {
         <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
       )}
 
-      {agentSessionUpdating && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="pointer-events-none fixed left-1/2 top-5 z-[80] flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-indigo-300/25 bg-[#17172b]/95 px-4 py-3 text-white shadow-2xl backdrop-blur-md"
-          style={{ minWidth: 250, boxShadow: '0 16px 50px rgba(0,0,0,.45), 0 0 28px rgba(99,102,241,.2)' }}
-        >
-          <svg className="h-5 w-5 shrink-0 animate-spin text-indigo-300" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity=".25" />
-            <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-          <div>
-            <div className="text-sm font-semibold">
-              {agentSessionUpdating === 'enable' ? 'Đang bật Agent…' : 'Đang tắt Agent…'}
-            </div>
-            <div className="mt-0.5 text-[11px] text-white/60">
-              Vui lòng chờ hệ thống xác nhận.
-            </div>
-          </div>
-        </div>
-      )}
-
       {pendingMainAction && (
         <AgentPinModal
           onSuccess={(pin) => {
