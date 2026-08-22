@@ -1519,9 +1519,9 @@ export default function DashboardPage() {
           title="Enable Agent session"
           description="Enter your PIN once to authorize autonomous Agent actions for 30 minutes."
           onCancel={() => setApprovingAgentSession(false)}
-          onSuccess={async (pin) => {
-            await approveAgentSession(pin, 30)
+          onSuccess={(pin) => {
             setApprovingAgentSession(false)
+            void approveAgentSession(pin, 30)
           }}
         />
       )}
