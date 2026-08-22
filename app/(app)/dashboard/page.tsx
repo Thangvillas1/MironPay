@@ -634,10 +634,10 @@ export default function DashboardPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function runExecuteAction(action: any, token: string, pin?: string) {
     const progressLabel = action.type === 'swap'
-      ? 'Miron Agent đang xác nhận swap…'
+      ? 'Miron Agent is confirming the swap…'
       : action.type === 'send'
-        ? 'Miron Agent đang xác nhận giao dịch gửi tiền…'
-        : 'Miron Agent đang xác nhận giao dịch…'
+        ? 'Miron Agent is confirming the transfer…'
+        : 'Miron Agent is confirming the transaction…'
     setAgentActionProgress(progressLabel)
     try {
       const execRes = await fetch('/api/agent/execute', {
