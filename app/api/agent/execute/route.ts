@@ -356,7 +356,9 @@ export async function POST(request: NextRequest) {
           tokenOut: action.tokenOut,
           amountIn: amount.toString(),
           slippageBps: 1500,
-          ...(walletSource === 'agent' ? { agentIntentProof: requestedAction.intentProof } : {}),
+          ...(walletSource === 'agent'
+            ? { agentIntentProof: requestedAction.intentProof }
+            : { pin: rawPin }),
         }),
       })
       let swapData: Record<string, unknown> = {}

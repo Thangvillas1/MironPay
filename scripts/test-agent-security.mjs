@@ -64,6 +64,7 @@ assert.match(executeSource, /onExternalAttempt:[\s\S]*launchpadExternalAttempted
 assert.match(executeSource, /onTransactionCreated:[\s\S]*launchpadExternalAttempted = true[\s\S]*await attachReservationTransaction/)
 assert.match(executeSource, /error instanceof LaunchpadTerminalError[\s\S]*release_agent_spend[\s\S]*LAUNCHPAD_TRANSACTION_FAILED/)
 assert.match(executeSource, /if \(!txHash\)[\s\S]*status: 'pending'[\s\S]*TRANSACTION_NOT_COMPLETE/)
+assert.match(executeSource, /walletSource === 'agent'[\s\S]*agentIntentProof:[\s\S]*pin: rawPin/)
 const launchpadSource = fs.readFileSync('app/lib/launchpad-chain.ts', 'utf8')
 assert.ok(launchpadSource.indexOf('onExternalAttempt?.()') < launchpadSource.indexOf('const contributeRes = await circleClient.createContractExecutionTransaction'))
 const buyerSource = fs.readFileSync('app/lib/x402-buyer.ts', 'utf8')
