@@ -42,7 +42,9 @@ interface AgentWalletData {
   msg_cost: number
   wallet_address: string | null
   gateway_reserved?: number
+  gateway_online?: boolean
   tokenList?: TokenBalance[]
+  transactions?: Transaction[]
   session_expires_at?: string | null
 }
 
@@ -791,8 +793,15 @@ export default function DashboardPage() {
   const agentTokenBreakdown = getSpendableTokenBreakdown(agentWallet?.tokenList, agentBalance)
   const combinedTokenBreakdown = combineSpendableTokenBreakdowns(mainTokenBreakdown, agentTokenBreakdown)
   const msgCost = agentWallet?.msg_cost ?? 0.005
-  const spentPct = agentWallet ? Math.min(100, (agentWallet.daily_spent / agentWallet.daily_limit) * 100) : 0
+  const agentDailyLimit = Math.max(0, Number(agentWallet?.daily_limit ?? 0))
+  const agentDailySpent = Math.max(0, Number(agentWallet?.daily_spent ?? 0))
+  const agentDailyRemaining = Math.max(0, agentDailyLimit - agentDailySpent)
+  const spentPct = agentDailyLimit > 0 ? Math.min(100, (agentDailySpent / agentDailyLimit) * 100) : 0
   const sessionActive = Boolean(agentWallet?.session_expires_at && Date.parse(agentWallet.session_expires_at) > sessionNow)
+  const agentSessionSecondsLeft = sessionActive
+    ? Math.max(0, Math.ceil((Date.parse(agentWallet!.session_expires_at!) - sessionNow) / 1000))
+    : 0
+  const agentSessionTimeLabel = `${Math.floor(agentSessionSecondsLeft / 60)}:${(agentSessionSecondsLeft % 60).toString().padStart(2, '0')}`
 
   // tx.amount is the raw token quantity (e.g. 0.01 ETH), not USD — convert using
   // each token's current price (from tokenList) before summing; USDC/USDT are treated as pegged 1:1.
@@ -844,15 +853,30 @@ export default function DashboardPage() {
     ? recentActivity.filter(a => a.kind === 'agent' || a.kind === 'msg')
     : recentActivity
 
-  // Agent wallet: 7-day balance history (computed backwards from the current balance)
+  // Agent wallet: reconstruct the 7-day balance from confirmed Circle wallet
+  // transactions. Chat costs are currently disabled, so using message costs
+  // here produced a permanently flat chart even when funds moved on-chain.
+  const agentPriceBySymbol: Record<string, number> = {}
+  for (const token of agentWallet?.tokenList ?? []) {
+    const amount = Number(token.amount)
+    if (token.usdValue !== null && amount > 0) agentPriceBySymbol[token.symbol] = token.usdValue / amount
+  }
+  const agentTxUsd = (tx: Transaction) => {
+    if (tx.tokenSymbol === 'USDC' || tx.tokenSymbol === 'USDT') return tx.amount
+    return agentPriceBySymbol[tx.tokenSymbol] !== undefined
+      ? tx.amount * agentPriceBySymbol[tx.tokenSymbol]
+      : tx.amount
+  }
+  const confirmedAgentTransactions = (agentWallet?.transactions ?? [])
+    .filter(tx => tx.state === 'COMPLETE')
   const agentChartValues: number[] = Array.from({ length: 7 }, (_, i) => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - (6 - i))
     cutoff.setHours(23, 59, 59, 999)
-    const futureCosts = messages
-      .filter(m => m.role === 'assistant' && new Date(m.created_at) > cutoff)
-      .reduce((s: number, m) => s + (m.cost ?? 0), 0 as number)
-    return Math.max(0, agentBalance + futureCosts)
+    const futureNet = confirmedAgentTransactions
+      .filter(tx => new Date(tx.created_at) > cutoff)
+      .reduce((sum, tx) => sum + (tx.type === 'credit' ? agentTxUsd(tx) : -agentTxUsd(tx)), 0)
+    return Math.max(0, agentTotalUsd - futureNet)
   })
 
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
@@ -935,8 +959,8 @@ export default function DashboardPage() {
             <div className="flex flex-col shrink-0" style={{ width: 220, scrollSnapAlign: 'start', padding: '18px 16px', borderRadius: 'var(--mpm-radius-xl)', background: 'linear-gradient(135deg,rgba(109,108,255,0.16),rgba(13,28,64,0.04))', border: '1px solid rgba(109,108,255,0.28)' }}>
               <div className="flex items-center justify-between">
                 <div style={{ fontSize: 11.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Agent Wallet</div>
-                <span className="inline-flex items-center gap-1" style={{ fontSize: 10, fontWeight: 600, color: 'var(--mpm-success)' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: sessionActive ? 'var(--mpm-success)' : 'var(--mpm-muted)' }} />{sessionActive ? 'Active' : 'Inactive'}
+                <span className="inline-flex items-center gap-1" style={{ fontSize: 10, fontWeight: 600, color: sessionActive ? 'var(--mpm-success)' : 'var(--mpm-muted)' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: sessionActive ? 'var(--mpm-success)' : 'var(--mpm-muted)' }} />{sessionActive ? 'Authorized' : 'Paused'}
                 </span>
               </div>
               <div style={{ fontSize: 26, fontWeight: 600, color: 'var(--mpm-text)', marginTop: 6, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>${formatUSD(agentTotalUsd)}</div>
@@ -1108,8 +1132,8 @@ export default function DashboardPage() {
                 <div style={{ position: 'absolute', top: -36, right: -36, width: 110, height: 110, borderRadius: '50%', background: '#8b7cff', opacity: .14, filter: 'blur(30px)', pointerEvents: 'none' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.005em', color: 'var(--c-muted)' }}>Agent Wallet</div>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#2dd4bf' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: sessionActive ? '#2dd4bf' : 'var(--c-muted)', boxShadow: sessionActive ? '0 0 6px #2dd4bf' : 'none', display: 'inline-block' }} />{sessionActive ? 'Active' : 'Inactive'}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: sessionActive ? '#2dd4bf' : 'var(--c-muted)' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: sessionActive ? '#2dd4bf' : 'var(--c-muted)', boxShadow: sessionActive ? '0 0 6px #2dd4bf' : 'none', display: 'inline-block' }} />{sessionActive ? 'Authorized' : 'Paused'}
                   </span>
                 </div>
                 <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--c-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em', marginTop: 8 }}>${formatUSD(agentTotalUsd)}</div>
@@ -1139,21 +1163,25 @@ export default function DashboardPage() {
                     <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#22c6e0" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>
                     Agent status
                   </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#2dd4bf' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: sessionActive ? '#2dd4bf' : 'var(--c-muted)', display: 'inline-block' }} />{sessionActive ? 'Online' : 'Offline'}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: sessionActive ? '#2dd4bf' : 'var(--c-muted)' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: sessionActive ? '#2dd4bf' : 'var(--c-muted)', display: 'inline-block' }} />{sessionActive ? 'Authorized' : 'Paused'}
                   </span>
                 </div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.09em', color: 'var(--c-muted2)', textTransform: 'uppercase' as const }}>Used today</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.09em', color: 'var(--c-muted2)', textTransform: 'uppercase' as const }}>Autonomous session</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 3 }}>
-                  <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: 'var(--c-text)' }}>${formatUSD(agentWallet?.daily_spent ?? 0)}</span>
-                  <span style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 500 }}>/ ${formatUSD(agentWallet?.daily_limit ?? 5)}</span>
+                  <span style={{ fontSize: sessionActive ? 30 : 23, fontWeight: 700, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: 'var(--c-text)' }}>{sessionActive ? agentSessionTimeLabel : 'Not authorized'}</span>
+                  {sessionActive && <span style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 500 }}>remaining</span>}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginTop: 8 }}>
+                  <span>Daily spend</span>
+                  <span>${formatUSD(agentDailySpent)} / ${formatUSD(agentDailyLimit)}</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 9999, background: 'rgba(var(--c-fg-rgb),.06)', overflow: 'hidden', marginTop: 10 }}>
                   <div style={{ width: `${Math.min(spentPct, 100)}%`, height: '100%', borderRadius: 9999, background: 'linear-gradient(90deg,#5ad6ea,#22c6e0)', transition: 'width .4s' }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginTop: 6 }}>
-                  <span>{spentPct.toFixed(0)}% used</span>
-                  <span>${formatUSD((agentWallet?.daily_limit ?? 5) - (agentWallet?.daily_spent ?? 0))} left</span>
+                  <span style={{ color: agentWallet?.gateway_online ? '#2dd4bf' : '#fb6f84' }}>{agentWallet?.gateway_online ? 'X402 reachable' : 'X402 unavailable'}</span>
+                  <span>${formatUSD(agentDailyRemaining)} available</span>
                 </div>
               </div>
 
@@ -1178,7 +1206,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
-                      {sessionActive ? 'Online · on-chain verified' : 'Offline · session approval required'}
+                      {sessionActive ? 'Autonomous session authorized' : 'Session authorization required'}
                     </div>
                   </div>
                 </div>
@@ -1357,15 +1385,10 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--c-muted2)', marginTop: 8, padding: '0 3px' }}>
                   {(() => {
-                    const expiresAt = agentWallet?.session_expires_at ? new Date(agentWallet.session_expires_at) : null
-                    const active = !!expiresAt && expiresAt.getTime() > sessionNow
-                    const secsLeft = active ? Math.max(0, Math.ceil((expiresAt!.getTime() - sessionNow) / 1000)) : 0
-                    const mm = Math.floor(secsLeft / 60)
-                    const ss = secsLeft % 60
-                    return active ? (
+                    return sessionActive ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ color: '#4ade80' }}>● Agent session active</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>({mm}:{ss.toString().padStart(2, '0')} left)</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>({agentSessionTimeLabel} left)</span>
                         <button onClick={revokeAgentSession} disabled={agentSessionUpdating !== null} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#fb6f84', textDecoration: agentSessionUpdating === 'revoke' ? 'none' : 'underline', cursor: agentSessionUpdating ? 'wait' : 'pointer', fontSize: 11, padding: 0, opacity: agentSessionUpdating ? .75 : 1 }}>
                           {agentSessionUpdating === 'revoke' && <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />}
                           {agentSessionUpdating === 'revoke' ? 'Revoking…' : 'revoke'}
@@ -1416,7 +1439,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>Agent status</div>
+                <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>Agent activity</div>
                 <div style={{ display: 'flex', gap: 7 }}>
                   {[
                     [agentIdentity ? `#${agentIdentity.agent_id}` : '—', 'agent id'],
