@@ -219,6 +219,7 @@ export default function DashboardPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [pendingMainAction, setPendingMainAction] = useState<{ action: any; token: string } | null>(null)
   const [approvingAgentSession, setApprovingAgentSession] = useState(false)
+  const [agentSessionUpdating, setAgentSessionUpdating] = useState<'enable' | 'revoke' | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // SRS Modal (Send / Receive / Swap)
@@ -436,27 +437,48 @@ export default function DashboardPage() {
   }
 
   async function approveAgentSession(pin: string, minutes = 30): Promise<boolean> {
-    const res = await fetch('/api/agent/wallet/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ minutes, pin }),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setChatError(data.error ?? 'Could not enable Agent session.')
+    setAgentSessionUpdating('enable')
+    try {
+      const res = await fetch('/api/agent/wallet/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ minutes, pin }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setChatError(data.error ?? 'Could not enable Agent session.')
+        return false
+      }
+      setChatError('')
+      await refreshAgentWallet(accessToken)
+      return true
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : 'Could not enable Agent session.')
       return false
+    } finally {
+      setAgentSessionUpdating(null)
     }
-    setChatError('')
-    await refreshAgentWallet(accessToken)
-    return true
   }
 
   async function revokeAgentSession() {
-    const res = await fetch('/api/agent/wallet/session', {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (res.ok) refreshAgentWallet(accessToken)
+    setAgentSessionUpdating('revoke')
+    try {
+      const res = await fetch('/api/agent/wallet/session', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setChatError(data.error ?? 'Could not revoke Agent session.')
+        return
+      }
+      setChatError('')
+      await refreshAgentWallet(accessToken)
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : 'Could not revoke Agent session.')
+    } finally {
+      setAgentSessionUpdating(null)
+    }
   }
 
   async function refreshAgentStats(token: string) {
@@ -1346,11 +1368,16 @@ export default function DashboardPage() {
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ color: '#4ade80' }}>● Agent session active</span>
                         <span style={{ fontVariantNumeric: 'tabular-nums' }}>({mm}:{ss.toString().padStart(2, '0')} left)</span>
-                        <button onClick={revokeAgentSession} style={{ background: 'none', border: 'none', color: '#fb6f84', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, padding: 0 }}>revoke</button>
+                        <button onClick={revokeAgentSession} disabled={agentSessionUpdating !== null} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#fb6f84', textDecoration: agentSessionUpdating === 'revoke' ? 'none' : 'underline', cursor: agentSessionUpdating ? 'wait' : 'pointer', fontSize: 11, padding: 0, opacity: agentSessionUpdating ? .75 : 1 }}>
+                          {agentSessionUpdating === 'revoke' && <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />}
+                          {agentSessionUpdating === 'revoke' ? 'Revoking…' : 'revoke'}
+                        </button>
                       </span>
                     ) : (
-                      <button onClick={() => setApprovingAgentSession(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#fb6f84', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: 0 }}>
-                        ⚠️ Enable agent (30 min)
+                      <button onClick={() => setApprovingAgentSession(true)} disabled={agentSessionUpdating !== null} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#fb6f84', textDecoration: agentSessionUpdating === 'enable' ? 'none' : 'underline', cursor: agentSessionUpdating ? 'wait' : 'pointer', fontSize: 11, fontWeight: 700, padding: 0, opacity: agentSessionUpdating ? .75 : 1 }}>
+                        {agentSessionUpdating === 'enable' ? (
+                          <><span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" /> Enabling…</>
+                        ) : '⚠️ Enable agent (30 min)'}
                       </button>
                     )
                   })()}
