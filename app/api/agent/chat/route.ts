@@ -13,6 +13,7 @@ import {
   isEvmAddress,
   isMironUsername,
   issueAgentIntent,
+  parseDirectSwapIntent,
   validateAgentIntent,
   type AgentAction,
 } from '@/app/lib/agent-intent'
@@ -327,6 +328,32 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: profile } = await supabase.from('profiles').select('agent_wallet_id, agent_wallet_address, circle_wallet_id, wallet_address, miron_level').eq('id', user.id).single()
+
+    // A fully specified swap does not need memories, portfolio aggregation, or
+    // an AI model. Return the validated action immediately so Main Wallet PIN
+    // appears without waiting for those unrelated network round trips.
+    const directSwap = parseDirectSwapIntent(message)
+    if (directSwap) {
+      directSwap.intentProof = issueAgentIntent(user.id, directSwap, message)
+      const reply = directSwap.walletSource === 'main'
+        ? `Ready to swap ${directSwap.amount} ${directSwap.tokenIn} to ${directSwap.tokenOut} from Main Wallet. Enter your PIN to continue.`
+        : `Executing swap of ${directSwap.amount} ${directSwap.tokenIn} to ${directSwap.tokenOut} from Agent Wallet.`
+      const userTs = new Date()
+      const assistantTs = new Date(userTs.getTime() + 1)
+      const { error: messageError } = await supabase.from('agent_messages').insert([
+        { user_id: user.id, role: 'user', content: message, cost: 0, created_at: userTs.toISOString() },
+        { user_id: user.id, role: 'assistant', content: reply, cost: 0, created_at: assistantTs.toISOString() },
+      ])
+      if (messageError) console.warn('[agent/chat] direct swap message persistence deferred:', messageError.message)
+      return NextResponse.json({
+        reply,
+        action: directSwap,
+        cost: 0,
+        balance_after: Number(wallet.balance ?? 0),
+        input_fee_tx_hash: null,
+        data_fee: null,
+      })
+    }
     // circle_wallet_id on profiles can be null for legacy users — resolve (and backfill)
     // it the same way the Wallet page does, so agent chat sees the same Main Wallet balance.
     const resolvedMainWallet = await resolveCircleWalletId(supabase, user.id)

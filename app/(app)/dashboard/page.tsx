@@ -220,6 +220,7 @@ export default function DashboardPage() {
   const [pendingMainAction, setPendingMainAction] = useState<{ action: any; token: string } | null>(null)
   const [approvingAgentSession, setApprovingAgentSession] = useState(false)
   const [agentSessionUpdating, setAgentSessionUpdating] = useState<'enable' | 'revoke' | null>(null)
+  const [agentActionProgress, setAgentActionProgress] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // SRS Modal (Send / Receive / Swap)
@@ -632,64 +633,76 @@ export default function DashboardPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function runExecuteAction(action: any, token: string, pin?: string) {
-    const execRes = await fetch('/api/agent/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action, ...(pin ? { pin } : {}) }),
-    })
-    const execData = await execRes.json()
-    const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    const nowISO = new Date().toISOString()
+    const progressLabel = action.type === 'swap'
+      ? 'Đang thực hiện swap…'
+      : action.type === 'send'
+        ? 'Đang gửi giao dịch…'
+        : 'Đang thực hiện giao dịch…'
+    setAgentActionProgress(progressLabel)
+    try {
+      const execRes = await fetch('/api/agent/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action, ...(pin ? { pin } : {}) }),
+      })
+      const execData = await execRes.json()
+      const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      const nowISO = new Date().toISOString()
 
-    const isComplete = execRes.ok && execData.success === true
-    const isProcessing = execRes.ok && execData.success !== true
-    const txResult: TxResult = !isComplete ? {
-      success: false,
-      type: action.type,
-      amountIn: action.amount,
-      tokenIn: action.tokenIn ?? action.token ?? 'USDC',
-      tokenOut: action.tokenOut,
-      to: action.to,
-      projectId: action.projectId,
-      sym: action.sym,
-      tokensEstimate: action.tokensEstimate,
-      error: isProcessing ? 'Transaction accepted and processing. It will reconcile automatically; do not resend.' : (execData.error ?? 'Unknown error'),
-      code: isProcessing ? 'PROCESSING' : execData.code,
-      processing: isProcessing,
-      limitExceeded: execData.limitExceeded,
-    } : {
-      success: true,
-      type: action.type,
-      amountIn: action.amount,
-      tokenIn: action.tokenIn ?? action.token ?? 'USDC',
-      amountOut: execData.amountOut,
-      tokenOut: action.tokenOut,
-      to: action.to,
-      projectId: action.projectId,
-      sym: action.sym,
-      tokensEstimate: action.tokensEstimate,
-      txHash: execData.txHash,
-      txId: execData.txId,
+      const isComplete = execRes.ok && execData.success === true
+      const isProcessing = execRes.ok && execData.success !== true
+      const txResult: TxResult = !isComplete ? {
+        success: false,
+        type: action.type,
+        amountIn: action.amount,
+        tokenIn: action.tokenIn ?? action.token ?? 'USDC',
+        tokenOut: action.tokenOut,
+        to: action.to,
+        projectId: action.projectId,
+        sym: action.sym,
+        tokensEstimate: action.tokensEstimate,
+        error: isProcessing ? 'Transaction accepted and processing. It will reconcile automatically; do not resend.' : (execData.error ?? 'Unknown error'),
+        code: isProcessing ? 'PROCESSING' : execData.code,
+        processing: isProcessing,
+        limitExceeded: execData.limitExceeded,
+      } : {
+        success: true,
+        type: action.type,
+        amountIn: action.amount,
+        tokenIn: action.tokenIn ?? action.token ?? 'USDC',
+        amountOut: execData.amountOut,
+        tokenOut: action.tokenOut,
+        to: action.to,
+        projectId: action.projectId,
+        sym: action.sym,
+        tokensEstimate: action.tokensEstimate,
+        txHash: execData.txHash,
+        txId: execData.txId,
+      }
+
+      // Save to Supabase so it's still there after an F5
+      const txContent = JSON.stringify({ __txResult: true, ...txResult })
+      const { data: inserted } = await supabase.from('agent_messages').insert({
+        user_id: user?.id,
+        role: 'assistant',
+        content: txContent,
+        cost: 0,
+      }).select('id').single()
+
+      setMessages(prev => [...prev, {
+        id: inserted?.id ?? `exec_${Date.now()}`,
+        role: 'assistant',
+        content: txContent,
+        txResult,
+        time: now, created_at: nowISO,
+      }])
+
+      if (txResult.success) setTimeout(() => refreshAgentWallet(token), 3000)
+    } catch {
+      setChatError('Connection error while executing the transaction. Please try again.')
+    } finally {
+      setAgentActionProgress(null)
     }
-
-    // Save to Supabase so it's still there after an F5
-    const txContent = JSON.stringify({ __txResult: true, ...txResult })
-    const { data: inserted } = await supabase.from('agent_messages').insert({
-      user_id: user?.id,
-      role: 'assistant',
-      content: txContent,
-      cost: 0,
-    }).select('id').single()
-
-    setMessages(prev => [...prev, {
-      id: inserted?.id ?? `exec_${Date.now()}`,
-      role: 'assistant',
-      content: txContent,
-      txResult,
-      time: now, created_at: nowISO,
-    }])
-
-    if (txResult.success) setTimeout(() => refreshAgentWallet(token), 3000)
   }
 
   async function handleSend(overrideText?: string) {
@@ -1537,7 +1550,7 @@ export default function DashboardPage() {
         <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
       )}
 
-      {agentSessionUpdating && (
+      {(agentSessionUpdating || agentActionProgress) && (
         <div
           role="status"
           aria-live="polite"
@@ -1549,8 +1562,12 @@ export default function DashboardPage() {
             <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
           </svg>
           <div>
-            <div className="text-sm font-semibold">{agentSessionUpdating === 'enable' ? 'Đang bật Agent…' : 'Đang tắt Agent…'}</div>
-            <div className="mt-0.5 text-[11px] text-white/60">Vui lòng chờ hệ thống xác nhận.</div>
+            <div className="text-sm font-semibold">
+              {agentActionProgress ?? (agentSessionUpdating === 'enable' ? 'Đang bật Agent…' : 'Đang tắt Agent…')}
+            </div>
+            <div className="mt-0.5 text-[11px] text-white/60">
+              {agentActionProgress ? 'Đang chờ mạng xác nhận, vui lòng không gửi lại lệnh.' : 'Vui lòng chờ hệ thống xác nhận.'}
+            </div>
           </div>
         </div>
       )}

@@ -29,6 +29,14 @@ assert.equal(intent.validateAgentIntent('send 2 USDC to @alice', { type: 'send',
 assert.equal(intent.validateAgentIntent('can you send 2 USDC to @alice', { type: 'send', amount: '2', token: 'USDC', to: '@alice' }).ok, false)
 assert.equal(intent.validateAgentIntent('swap 2 USDC to EURC', { type: 'swap', amount: '2', tokenIn: 'USDC', tokenOut: 'EURC' }).ok, true)
 assert.equal(intent.validateAgentIntent('swap 2 EURC to USDC', { type: 'swap', amount: '2', tokenIn: 'USDC', tokenOut: 'EURC' }).ok, false)
+assert.deepEqual(intent.parseDirectSwapIntent('swap 2 usdc to eurc main wallet'), {
+  type: 'swap', amount: '2', tokenIn: 'USDC', tokenOut: 'EURC', walletSource: 'main',
+})
+assert.deepEqual(intent.parseDirectSwapIntent('đổi 2 EURC sang USDC ví agent'), {
+  type: 'swap', amount: '2', tokenIn: 'EURC', tokenOut: 'USDC', walletSource: 'agent',
+})
+assert.equal(intent.parseDirectSwapIntent('can you swap 2 USDC to EURC main wallet'), null)
+assert.equal(intent.parseDirectSwapIntent('swap 1,000 USDC to EURC main wallet'), null)
 
 const lifecycle = loadTs('app/lib/agent-transaction-lifecycle.ts', {
   '@/app/lib/circle': { circleClient: {} }, '@/app/lib/supabase-admin': { createAdminSupabaseClient: () => ({}) },
@@ -80,6 +88,9 @@ assert.match(sessionSource, /if \(error\) return NextResponse\.json\(\{ error: '
 const swapSource = fs.readFileSync('app/api/wallet/swap/route.ts', 'utf8')
 assert.match(swapSource, /createAdminSupabaseClient\(\)\.from\('agent_intent_uses'\)\.insert/)
 assert.match(swapSource, /assertCircleWalletBinding\(profile\.agent_wallet_id, profile\.agent_wallet_address\)/)
+assert.match(swapSource, /typeof agentIntentProof !== 'string' && !hasInternalAgentAuthorization\(request\)/)
+assert.match(swapSource, /const RETRY_DELAYS_MS = \[1000, 2000, 3000\]/)
+assert.match(chatSource, /const directSwap = parseDirectSwapIntent\(message\)/)
 const limitSource = fs.readFileSync('app/lib/spending-limit.ts', 'utf8')
 assert.match(limitSource, /if \(!contractAddress\) return null/)
 assert.match(limitSource, /status: 'pending', txHash: hash/)

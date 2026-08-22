@@ -7,7 +7,7 @@ import { sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/
 import { classifyTransactionError } from '@/app/lib/transaction-error'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
-import { assertCircleWalletBinding } from '@/app/lib/agent-security'
+import { assertCircleWalletBinding, hasInternalAgentAuthorization } from '@/app/lib/agent-security'
 
 const SUPPORTED_TOKENS = new Set(['USDC', 'EURC'])
 
@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Unsupported token: ${tokenIn} or ${tokenOut}` }, { status: 400 })
     }
 
-    if (typeof agentIntentProof !== 'string') {
+    // /api/agent/execute already verified this user's PIN. Its signed internal
+    // header avoids repeating the expensive PIN hash verification here; direct
+    // callers still have to provide and verify their PIN normally.
+    if (typeof agentIntentProof !== 'string' && !hasInternalAgentAuthorization(request)) {
       const pinResult = await verifyPin(supabase, user.id, pin)
       if (!pinResult.ok) {
         const response = pinFailureHttp(pinResult)
@@ -88,7 +91,9 @@ export async function POST(request: NextRequest) {
     // transaction needed on supported tokens), calldata, submission and
     // waiting for the tx hash. Retry on a transient "no route" quote with
     // increasing backoff — testnet liquidity can reappear a few seconds later.
-    const RETRY_DELAYS_MS = [1500, 3000, 5000, 8000]
+    // Keep transient testnet retries bounded so an unavailable route reports
+    // back in about six seconds instead of leaving the UI waiting ~18 seconds.
+    const RETRY_DELAYS_MS = [1000, 2000, 3000]
     let lastErr: unknown = null
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       if (attempt > 0) await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]))

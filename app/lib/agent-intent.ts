@@ -31,6 +31,38 @@ const NON_RECIPIENT_WORDS = new Set([
   'agent', 'main', 'wallet', 'usdc', 'eurc', 'x402', 'gateway',
 ])
 
+function normalizeIntentText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/đ/gi, match => match === 'Đ' ? 'D' : 'd')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+/**
+ * Parse only a complete, unambiguous one-line swap command. This fast path
+ * avoids an AI round trip, while the normal validator remains the authority
+ * that rejects questions, negation, ambiguous amounts, or changed direction.
+ */
+export function parseDirectSwapIntent(sourceMessage: string): AgentAction | null {
+  const normalized = normalizeIntentText(sourceMessage)
+  const match = normalized.match(
+    /^(?:please\s+)?(?:swap|exchange|convert|doi|hoan doi)\s+(\d+(?:\.\d{1,6})?)\s+(usdc|eurc)\s+(?:to|into|for|sang|thanh|->)\s+(usdc|eurc)(?:\s+(?:from\s+)?(main wallet|my wallet|vi chinh|vi cua toi|agent wallet|vi agent))?$/i,
+  )
+  if (!match) return null
+
+  const candidate: AgentAction = {
+    type: 'swap',
+    amount: match[1],
+    tokenIn: match[2].toUpperCase(),
+    tokenOut: match[3].toUpperCase(),
+    walletSource: /^(?:main wallet|my wallet|vi chinh|vi cua toi)$/i.test(match[4] ?? '') ? 'main' : 'agent',
+  }
+  const validation = validateAgentIntent(sourceMessage, candidate)
+  return validation.ok ? validation.action : null
+}
+
 /**
  * Extract only an explicitly typed send recipient. This intentionally avoids
  * conversation history so a recipient can never leak from an earlier command.
@@ -105,7 +137,7 @@ export function validateAgentIntent(
     return { ok: false, error: 'Please include the exact amount in your command.' }
   }
 
-  const normalizedCommand = sourceMessage.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+  const normalizedCommand = normalizeIntentText(sourceMessage)
   if (/\?\s*$/.test(normalizedCommand)
     || /\b(?:do not|don't|dont|not|khong|dung|neu|if|maybe|co nen|should|would|could|can you|did you|will you|why|how|co the|co phai|tai sao|lam sao)\b/i.test(normalizedCommand)) {
     return { ok: false, error: 'Please give a direct, unconditional command rather than a question or hypothetical.' }
