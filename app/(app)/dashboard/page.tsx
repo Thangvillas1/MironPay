@@ -794,11 +794,6 @@ export default function DashboardPage() {
   const spentPct = agentWallet ? Math.min(100, (agentWallet.daily_spent / agentWallet.daily_limit) * 100) : 0
   const sessionActive = Boolean(agentWallet?.session_expires_at && Date.parse(agentWallet.session_expires_at) > sessionNow)
 
-  // Most recent successful swap/send — powers the personalized suggestion
-  // chips below the chat instead of a hardcoded "Swap USDC → EURC".
-  const lastSwap = [...messages].reverse().find(m => m.txResult?.success && m.txResult.type === 'swap')?.txResult
-  const lastSend = [...messages].reverse().find(m => m.txResult?.success && m.txResult.type === 'send')?.txResult
-
   // tx.amount is the raw token quantity (e.g. 0.01 ETH), not USD — convert using
   // each token's current price (from tokenList) before summing; USDC/USDT are treated as pegged 1:1.
   const priceBySymbol: Record<string, number> = {}
@@ -1343,25 +1338,6 @@ export default function DashboardPage() {
                 )}
                 {chatError && <p style={{ fontSize: 12, textAlign: 'center' as const, color: '#fb6f84' }}>{chatError}</p>}
                 <div ref={messagesEndRef} />
-              </div>
-
-              {/* Suggestion chips */}
-              <div style={{ display: 'flex', gap: 7, padding: '0 18px 10px', flexWrap: 'wrap' as const, flexShrink: 0 }}>
-                {[
-                  { text: 'Check my balance', fn: () => setInput('Check my balance') },
-                  ...(lastSwap?.tokenIn && lastSwap?.tokenOut
-                    ? [{ text: `Swap ${lastSwap.tokenIn} → ${lastSwap.tokenOut} again`, fn: () => setInput(`Swap ${lastSwap.tokenIn} → ${lastSwap.tokenOut}`) }]
-                    : tokenList.some(t => t.symbol === 'USDC' && (t.usdValue ?? 0) > 0)
-                    ? [{ text: 'Swap USDC → EURC', fn: () => setInput('Swap USDC → EURC') }]
-                    : []),
-                  ...(agentBalance < 1
-                    ? [{ text: 'Fund my Agent Wallet', fn: () => setInput('Fund my Agent Wallet with 5 USDC') }]
-                    : lastSend?.to
-                    ? [{ text: `Send to ${lastSend.to} again`, fn: () => setInput(`Send USDC to ${lastSend.to}`) }]
-                    : [{ text: 'Send USDC to a friend', fn: () => setInput('Send USDC to @') }]),
-                ].map(c => (
-                  <button key={c.text} onClick={c.fn} className="mp-btn-ghost" style={{ padding: '6px 12px', borderRadius: 9999, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{c.text}</button>
-                ))}
               </div>
 
               {/* Input bar */}

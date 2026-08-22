@@ -1124,14 +1124,6 @@ export default function AgentPage() {
                 </div>
                 <p className="text-sm font-semibold text-mp-text">Hello! I&apos;m MironPay Agent</p>
                 <p className="text-xs text-mp-muted max-w-xs">Ask me about your portfolio, token prices, transactions, or anything crypto.</p>
-                <div className="flex flex-wrap gap-2 justify-center mt-1">
-                  {['Current balance?', 'Should I swap USDC to EURC?', 'My transaction history'].map(q => (
-                    <button key={q} onClick={() => setInput(q)}
-                      className="text-xs text-mp-primary border border-mp-primary/30 bg-mp-primary/8 rounded-full px-3 py-1.5 hover:bg-mp-primary/15 transition-colors">
-                      {q}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
 
