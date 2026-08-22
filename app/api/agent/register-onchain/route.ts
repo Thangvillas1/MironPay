@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createWalletClient, createPublicClient, http, parseAbi } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import { hasInternalAgentAuthorization } from '@/app/lib/agent-security'
 
 // ── ARC Testnet config ────────────────────────────────────────────────────────
 const arcTestnet = {
@@ -26,6 +28,7 @@ const AGENT_METADATA_URI = 'ipfs://bafkreibdi6623n3xpf7ymk62ckb4bo75o3qemwkpfvp5
 
 export async function POST(request: NextRequest) {
   try {
+    if (!hasInternalAgentAuthorization(request)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     // Chỉ admin mới gọi được (kiểm tra qua Supabase)
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
     const supabase = createServerSupabaseClient(token)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = createAdminSupabaseClient()
 
     // Kiểm tra env
     const ownerKey = process.env.AGENT_OWNER_PRIVATE_KEY
@@ -41,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Kiểm tra đã đăng ký chưa (tránh đăng ký 2 lần)
-    const { data: existing } = await supabase
+    const { data: existing } = await admin
       .from('miron_agent_identity')
       .select('agent_id, tx_hash')
       .single()
@@ -98,13 +102,14 @@ export async function POST(request: NextRequest) {
     console.log('[register-onchain] Agent ID:', agentId)
 
     // ── Lưu vào Supabase ──────────────────────────────────────────────────────
-    await supabase.from('miron_agent_identity').insert({
+    const { error: identityError } = await admin.from('miron_agent_identity').insert({
       agent_id: agentId,
       owner_address: ownerAccount.address,
       metadata_uri: AGENT_METADATA_URI,
       tx_hash: registerHash,
       registered_at: new Date().toISOString(),
     })
+    if (identityError) throw identityError
 
     return NextResponse.json({
       success: true,

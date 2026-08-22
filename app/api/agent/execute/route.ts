@@ -4,12 +4,15 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { getOnChainLimit } from '@/app/lib/spending-limit'
 import { depositToGateway, withdrawFromGateway } from '@/app/lib/x402-buyer'
-import { contributeToSale } from '@/app/lib/launchpad-chain'
+import { contributeToSale, LaunchpadTerminalError } from '@/app/lib/launchpad-chain'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 import { awardVerifiedScore } from '@/app/lib/score-server'
 import { isEvmAddress, sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
 import { classifyTransactionError } from '@/app/lib/transaction-error'
 import { isSelfTransferAddress } from '@/app/lib/self-transfer'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import { assertCircleWalletBinding, internalAgentAuthorizationHeader, levelCap, parseAgentAmount, resolveCanonicalAgentToken } from '@/app/lib/agent-security'
+import { attachReservationTransaction, reconcileAgentReservations } from '@/app/lib/agent-transaction-lifecycle'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,8 +36,8 @@ export async function POST(request: NextRequest) {
     }
     const action = intent.action
 
-    const amount = parseFloat(action.amount ?? '0')
-    if (isNaN(amount) || amount <= 0) {
+    const amount = parseAgentAmount(action.amount)
+    if (amount === null) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
 
@@ -45,6 +48,8 @@ export async function POST(request: NextRequest) {
       .select('agent_wallet_id, agent_wallet_address, circle_wallet_id, wallet_address, pin_hash')
       .eq('id', user.id)
       .single()
+    const admin = createAdminSupabaseClient()
+    await reconcileAgentReservations(user.id).catch(error => console.warn('[agent/execute] reconciliation deferred:', error))
 
     // Resolve and validate send recipients before PIN/session checks. Bad or
     // self-directed commands must fail without consuming an authorization
@@ -110,7 +115,12 @@ export async function POST(request: NextRequest) {
       if (!profile?.agent_wallet_id || !profile?.agent_wallet_address) {
         return NextResponse.json({ error: 'Agent wallet not initialized.' }, { status: 400 })
       }
+      const { error: intentUseError } = await admin.from('agent_intent_uses').insert({
+        nonce: intent.nonce, user_id: user.id, expires_at: new Date(intent.expiresAt).toISOString(),
+      })
+      if (intentUseError) return NextResponse.json({ error: 'This Agent command has already been executed.', code: 'INTENT_REPLAYED' }, { status: 409 })
       try {
+        await assertCircleWalletBinding(profile.agent_wallet_id, profile.agent_wallet_address)
         if (action.type === 'gateway_deposit') {
           const { txHash } = await depositToGateway(profile.agent_wallet_id, profile.agent_wallet_address as Address, amount)
           return NextResponse.json({ success: true, txHash })
@@ -150,7 +160,7 @@ export async function POST(request: NextRequest) {
     // independently authorize access to the Agent Wallet. Other actions consume
     // it here before their first external side effect.
     if (!(action.type === 'swap' && walletSource === 'agent')) {
-      const { error: intentUseError } = await supabase.from('agent_intent_uses').insert({
+      const { error: intentUseError } = await admin.from('agent_intent_uses').insert({
         nonce: intent.nonce,
         user_id: user.id,
         expires_at: new Date(intent.expiresAt).toISOString(),
@@ -166,19 +176,21 @@ export async function POST(request: NextRequest) {
 
     const agentWalletId = walletSource === 'main' ? profile!.circle_wallet_id! : profile!.agent_wallet_id!
     const agentWalletAddress = walletSource === 'main' ? (profile!.wallet_address ?? '') : profile!.agent_wallet_address!
+    if (!agentWalletAddress) return NextResponse.json({ error: 'Wallet address is missing.', code: 'WALLET_BINDING_MISSING' }, { status: 400 })
+    await assertCircleWalletBinding(agentWalletId, agentWalletAddress)
 
     // Spending limit enforcement
     const today = new Date().toISOString().slice(0, 10)
-    let { data: agentWallet } = await supabase
+    let { data: agentWallet } = await admin
       .from('agent_wallets').select('*').eq('user_id', user.id).single()
 
     if (!agentWallet) {
-      await supabase.from('agent_wallets').insert({ user_id: user.id })
+      await admin.from('agent_wallets').upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true })
       agentWallet = { daily_limit: 5, daily_spent: 0, daily_reset_date: today }
     }
 
     if (agentWallet.daily_reset_date !== today) {
-      await supabase.from('agent_wallets').update({ daily_spent: 0, daily_reset_date: today }).eq('user_id', user.id)
+      await admin.from('agent_wallets').update({ daily_spent: 0, daily_reset_date: today }).eq('user_id', user.id)
       agentWallet.daily_spent = 0
     }
 
@@ -191,10 +203,13 @@ export async function POST(request: NextRequest) {
     // On-chain limit is authoritative for agent wallet transactions
     if (countsTowardLimit) {
       const onChainLimit = await getOnChainLimit(agentWalletAddress)
-      const effectiveLimit = onChainLimit ?? agentWallet.daily_limit
-
-      const projectedSpend = agentWallet.daily_spent + amount
-      if (projectedSpend > effectiveLimit) {
+      const { data: levelRow } = await supabase.from('profiles').select('miron_level').eq('id', user.id).single()
+      const effectiveLimit = Math.min(onChainLimit ?? agentWallet.daily_limit, levelCap(levelRow?.miron_level))
+      const { data: reserved, error: reserveError } = await admin.rpc('reserve_agent_spend', {
+        p_user_id: user.id, p_nonce: intent.nonce, p_amount: amount, p_effective_limit: effectiveLimit,
+      })
+      if (reserveError) return NextResponse.json({ error: 'Spending limit reservation is unavailable.', code: 'LIMIT_LEDGER_UNAVAILABLE' }, { status: 503 })
+      if (!reserved) {
         const remaining = Math.max(0, effectiveLimit - agentWallet.daily_spent)
         return NextResponse.json({
           error: `Daily limit exceeded (${effectiveLimit} USDC). Remaining: ${remaining.toFixed(4)} USDC.`,
@@ -203,10 +218,22 @@ export async function POST(request: NextRequest) {
           limitExceeded: true,
         }, { status: 402 })
       }
+      const { error: walletAttachError } = await admin.from('agent_spend_reservations')
+        .update({ circle_wallet_id: agentWalletId }).eq('nonce', intent.nonce).eq('user_id', user.id)
+      if (walletAttachError) {
+        await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
+        return NextResponse.json({ error: 'Could not prepare transaction reconciliation.', code: 'RESERVATION_ATTACH_FAILED' }, { status: 503 })
+      }
     }
 
     // Kiểm tra số dư
-    const balRes = await circleClient.getWalletTokenBalance({ id: agentWalletId })
+    let balRes
+    try {
+      balRes = await circleClient.getWalletTokenBalance({ id: agentWalletId })
+    } catch (error) {
+      if (countsTowardLimit) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
+      throw error
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tokenBalances: any[] = balRes.data?.tokenBalances ?? []
 
@@ -215,10 +242,17 @@ export async function POST(request: NextRequest) {
       : action.type === 'swap'
       ? (action.tokenIn?.toUpperCase() ?? 'USDC')
       : 'USDC'
-    const checkTokenBal = tokenBalances.find(b => b.token?.symbol === checkSymbol)
+    const checkTokenBal = resolveCanonicalAgentToken(tokenBalances, checkSymbol)
     const agentBalance = parseFloat(checkTokenBal?.amount ?? '0')
+    const checkTokenId = checkTokenBal?.token?.id
+
+    if (!checkTokenId) {
+      if (countsTowardLimit) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
+      return NextResponse.json({ error: `Canonical ${checkSymbol} token was not found.`, code: 'CANONICAL_TOKEN_NOT_FOUND' }, { status: 400 })
+    }
 
     if (agentBalance < amount) {
+      if (countsTowardLimit) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
       return NextResponse.json({
         error: `Insufficient Agent Wallet balance: ${agentBalance.toFixed(4)} ${checkSymbol}. Please deposit more.`,
         code: 'INSUFFICIENT_TOKEN_BALANCE',
@@ -235,8 +269,8 @@ export async function POST(request: NextRequest) {
     // On-chain validation (fire-and-forget)
     fetch(`${request.nextUrl.origin}/api/agent/validate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ actionType: action.type, amount, detail: actionDetail }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-miron-agent-internal': internalAgentAuthorizationHeader() ?? '' },
+      body: JSON.stringify({ actionType: action.type, amount, detail: actionDetail, intentNonce: intent.nonce }),
     }).catch(() => {})
 
     let txId: string | null = null
@@ -252,33 +286,65 @@ export async function POST(request: NextRequest) {
       try {
         await circleClient.estimateTransferFee({
           walletId: agentWalletId,
-          tokenId: checkTokenBal?.token?.id,
+          tokenId: checkTokenId,
           destinationAddress: destAddress,
           amount: [amount.toString()],
         })
       } catch (e) {
+        if (countsTowardLimit) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
         const failure = classifyTransactionError(e, { operation: 'send', token: checkSymbol })
         console.error('[agent/execute] transfer simulation failed:', e)
         return NextResponse.json(failure, { status: failure.status })
       }
 
-      const tx = await circleClient.createTransaction({
-        walletId: agentWalletId,
-        tokenId: checkTokenBal?.token?.id,
-        destinationAddress: destAddress,
-        amount: [amount.toString()],
-        fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-        idempotencyKey: crypto.randomUUID(),
-      })
+      let tx
+      try {
+        tx = await circleClient.createTransaction({
+          walletId: agentWalletId,
+          tokenId: checkTokenId,
+          destinationAddress: destAddress,
+          amount: [amount.toString()],
+          fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+          idempotencyKey: intent.nonce,
+          refId: intent.nonce,
+        })
+      } catch (error) {
+        // Once Circle submission starts a transport error is ambiguous: Circle
+        // may already have accepted the idempotent refId. Keep the reservation
+        // fail-closed so reconciliation can discover it by wallet + refId.
+        console.error('[agent/execute] Circle submission outcome is uncertain:', error)
+        return NextResponse.json({ success: false, accepted: true, status: 'pending', state: 'SUBMISSION_UNCERTAIN', txId: null, txHash: null }, { status: 202 })
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       txId = (tx.data as any)?.id ?? null
 
+      if (!txId) {
+        return NextResponse.json({ success: false, accepted: true, status: 'pending', state: 'SUBMISSION_UNCERTAIN', txId: null, txHash: null }, { status: 202 })
+      }
+      if (countsTowardLimit) {
+        try {
+          await attachReservationTransaction(user.id, intent.nonce, agentWalletId, txId)
+        } catch (error) {
+          console.error('[agent/execute] transaction accepted but reservation attachment is pending:', error)
+          return NextResponse.json({ success: false, accepted: true, status: 'pending', state: 'ACCOUNTING_PENDING', txId, txHash: null }, { status: 202 })
+        }
+      }
       if (txId) {
         try {
-          const confirmed = await circleClient.getTransaction({ id: txId, waitForState: 'SENT', pollingInterval: 1500 })
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          txHash = (confirmed.data as any)?.transaction?.txHash ?? null
-        } catch { /* timeout ok */ }
+          const confirmed = await circleClient.getTransaction({ id: txId, waitForState: 'COMPLETE', pollingInterval: 1500 })
+          const completedTransaction = (confirmed.data as unknown as { transaction?: { txHash?: string; state?: string } }).transaction
+          txHash = completedTransaction?.txHash ?? null
+          const state = completedTransaction?.state ?? 'UNKNOWN'
+          if (state !== 'COMPLETE' || !txHash) {
+            if (['FAILED', 'CANCELLED', 'DENIED'].includes(state)) {
+              if (countsTowardLimit) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
+              return NextResponse.json({ error: `Circle transaction failed (${state}).`, code: 'TRANSACTION_FAILED', state, txId, txHash }, { status: 502 })
+            }
+            return NextResponse.json({ success: false, accepted: true, status: 'pending', state, txId, txHash }, { status: 202 })
+          }
+        } catch {
+          return NextResponse.json({ success: false, accepted: true, status: 'pending', txId, txHash }, { status: 202 })
+        }
       }
 
     } else if (action.type === 'swap') {
@@ -311,21 +377,52 @@ export async function POST(request: NextRequest) {
       const projectId: string = action.projectId ?? ''
       const { data: sale } = await supabase.from('launchpad_sales').select('project_id').eq('project_id', projectId).maybeSingle()
       if (!sale) {
+        if (countsTowardLimit) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
         return NextResponse.json({ error: `"${projectId}" is not a live Launchpad sale.` }, { status: 404 })
       }
 
-      const { txHash: contributeTxHash } = await contributeToSale(agentWalletId, agentWalletAddress, projectId, amount)
-      txHash = contributeTxHash
+      let launchpadExternalAttempted = false
+      try {
+        const { txId: contributeTxId, txHash: contributeTxHash } = await contributeToSale(agentWalletId, agentWalletAddress, projectId, amount, {
+          idempotencyKey: intent.nonce,
+          onExternalAttempt: () => { launchpadExternalAttempted = true },
+          onTransactionCreated: async (createdTxId) => {
+            launchpadExternalAttempted = true
+            txId = createdTxId
+            await attachReservationTransaction(user.id, intent.nonce, agentWalletId, createdTxId)
+          },
+        })
+        txId = contributeTxId
+        txHash = contributeTxHash
+      } catch (error) {
+        if (error instanceof LaunchpadTerminalError) {
+          if (countsTowardLimit) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
+          return NextResponse.json({ error: error.message, code: 'LAUNCHPAD_TRANSACTION_FAILED', state: 'FAILED', txId: error.txId }, { status: 409 })
+        }
+        if (countsTowardLimit && !launchpadExternalAttempted) await admin.rpc('release_agent_spend', { p_user_id: user.id, p_nonce: intent.nonce })
+        if (launchpadExternalAttempted) {
+          await reconcileAgentReservations(user.id).catch(() => {})
+          return NextResponse.json({ success: false, accepted: true, status: 'pending', state: 'SUBMISSION_UNCERTAIN', txId, txHash }, { status: 202 })
+        }
+        throw error
+      }
+      if (!txHash) {
+        return NextResponse.json({ success: false, accepted: true, status: 'pending', state: 'TRANSACTION_NOT_COMPLETE', txId, txHash }, { status: 202 })
+      }
 
-      await supabase.from('launchpad_contributions').insert({
-        project_id: projectId, user_id: user.id, amount, tx_hash: txHash,
-      })
     }
 
     if (countsTowardLimit) {
-      await supabase.from('agent_wallets')
-        .update({ daily_spent: agentWallet.daily_spent + amount })
-        .eq('user_id', user.id)
+      const { data: finalized, error: finalizeError } = await admin.rpc('finalize_agent_spend', {
+        p_user_id: user.id, p_nonce: intent.nonce, p_transaction_id: txId, p_transaction_hash: txHash,
+      })
+      if (finalizeError || !finalized) {
+        return NextResponse.json({ error: 'Transaction completed but accounting finalization is pending.', code: 'ACCOUNTING_PENDING', txId, txHash }, { status: 202 })
+      }
+    }
+    if (action.type === 'launchpad_contribute' && txHash) {
+      await supabase.from('launchpad_contributions').insert({ project_id: action.projectId, user_id: user.id, amount, tx_hash: txHash })
+        .then(({ error }) => { if (error) console.error('[agent/execute] contribution persistence deferred:', error.message) })
     }
 
     if (txHash) {
@@ -336,9 +433,9 @@ export async function POST(request: NextRequest) {
     // Cộng Miron Score sau tx thành công
     fetch(`${request.nextUrl.origin}/api/agent/feedback`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-miron-agent-internal': internalAgentAuthorizationHeader() ?? '' },
       body: JSON.stringify({
-        actionType: action.type, success: true, txHash, amount,
+        actionType: action.type, success: true, txId, txHash, amount,
         detail: action.type === 'send' ? `Send ${amount} ${checkSymbol} to ${action.to}` :
           action.type === 'launchpad_contribute' ? `Launchpad contribute ${amount} USDC to ${action.projectId}` :
           `Swap ${amount} ${action.tokenIn} -> ${action.tokenOut}`,

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
-import { payX402 } from '@/app/lib/x402-buyer'
+import { isX402SettlementUncertain, payX402, X402SettlementUncertainError } from '@/app/lib/x402-buyer'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { VERIFIED_SYMBOLS } from '@/app/lib/token-meta'
 import { TOKEN_USD_PRICE } from '@/app/lib/types'
 import { dedupeTokenBalancesBySymbol } from '@/app/lib/token-balance-dedupe'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import { levelCap, resolveCanonicalAgentToken } from '@/app/lib/agent-security'
 import {
   extractExplicitSendRecipient,
   isEvmAddress,
@@ -33,9 +35,10 @@ async function callX402Tool<T>(
     return { content: 'Data lookup unavailable: Agent Wallet not initialized. Answer using general knowledge instead.', fee: null, data: null }
   }
   try {
-    const { data, txHash } = await payX402<T>(`${origin}${path}`, profile.agent_wallet_id, profile.agent_wallet_address as `0x${string}`)
-    return { content: formatResult(data), fee: txHash ? { amount: X402_DATA_FEE, txHash } : null, data }
+    const { data, txHash, feeAmount } = await payX402<T>(`${origin}${path}`, profile.agent_wallet_id, profile.agent_wallet_address as `0x${string}`)
+    return { content: formatResult(data), fee: txHash ? { amount: feeAmount, txHash } : null, data }
   } catch (e) {
+    if (isX402SettlementUncertain(e)) throw e
     return { content: `Data lookup unavailable (${e instanceof Error ? e.message : 'unknown error'}). Answer using general knowledge instead.`, fee: null, data: null }
   }
 }
@@ -298,6 +301,7 @@ const TOOLS = [
 ]
 
 export async function POST(request: NextRequest) {
+  let pendingReservation: { userId: string; nonce: string } | null = null
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -313,16 +317,16 @@ export async function POST(request: NextRequest) {
     let { data: wallet } = await supabase.from('agent_wallets').select('*').eq('user_id', user.id).single()
 
     if (!wallet) {
-      await supabase.from('agent_wallets').insert({ user_id: user.id })
+      await createAdminSupabaseClient().from('agent_wallets').upsert({ user_id: user.id }, { onConflict: 'user_id', ignoreDuplicates: true })
       wallet = { balance: 0, daily_limit: 5, daily_spent: 0, daily_reset_date: today }
     }
 
     if (wallet.daily_reset_date !== today) {
-      await supabase.from('agent_wallets').update({ daily_spent: 0, daily_reset_date: today }).eq('user_id', user.id)
+      await createAdminSupabaseClient().from('agent_wallets').update({ daily_spent: 0, daily_reset_date: today }).eq('user_id', user.id)
       wallet.daily_spent = 0
     }
 
-    const { data: profile } = await supabase.from('profiles').select('agent_wallet_id, agent_wallet_address, circle_wallet_id, wallet_address').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('profiles').select('agent_wallet_id, agent_wallet_address, circle_wallet_id, wallet_address, miron_level').eq('id', user.id).single()
     // circle_wallet_id on profiles can be null for legacy users — resolve (and backfill)
     // it the same way the Wallet page does, so agent chat sees the same Main Wallet balance.
     const resolvedMainWallet = await resolveCircleWalletId(supabase, user.id)
@@ -331,7 +335,7 @@ export async function POST(request: NextRequest) {
     if (profile?.agent_wallet_id) {
       const balRes = await circleClient.getWalletTokenBalance({ id: profile.agent_wallet_id })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const usdc = (balRes.data?.tokenBalances as any[])?.find(b => b.token?.symbol === 'USDC')
+      const usdc = resolveCanonicalAgentToken((balRes.data?.tokenBalances as any[]) ?? [], 'USDC')
       onChainBalance = parseFloat(usdc?.amount ?? '0')
       usdcTokenId = usdc?.token?.id
     }
@@ -650,6 +654,26 @@ Main Wallet actions still require the user's PIN. Never claim a transaction succ
     const groqData = await groqRes.json()
     const choice = groqData.choices?.[0]
     const assistantMsg = choice?.message
+    const paidToolNames = new Set(['get_token_price', 'get_trending_tokens', 'get_swap_quote', 'get_dex_pair', 'get_defi_data', 'get_market_sentiment', 'lookup_wallet', 'get_stablecoin_data'])
+    const requestedPaidTools = (assistantMsg?.tool_calls ?? []).filter((call: { function?: { name?: string } }) => paidToolNames.has(call.function?.name ?? ''))
+    let paidReservationNonce: string | null = null
+    if (requestedPaidTools.length > 1) {
+      return NextResponse.json({ error: 'MULTIPLE_PAID_TOOLS', message: 'Use one paid data lookup per message so the spending limit remains exact.' }, { status: 400 })
+    }
+    if (requestedPaidTools.length === 1) {
+      const expiresAt = wallet.session_expires_at ? Date.parse(wallet.session_expires_at) : 0
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+        return NextResponse.json({ error: 'SESSION_EXPIRED', message: 'Approve an Agent session before using paid x402 data.' }, { status: 403 })
+      }
+      paidReservationNonce = crypto.randomUUID()
+      const effectiveLimit = Math.min(Number(wallet.daily_limit), levelCap(profile?.miron_level))
+      const { data: reserved, error: reserveError } = await createAdminSupabaseClient().rpc('reserve_agent_spend', {
+        p_user_id: user.id, p_nonce: paidReservationNonce, p_amount: X402_DATA_FEE, p_effective_limit: effectiveLimit,
+      })
+      if (reserveError) return NextResponse.json({ error: 'LIMIT_LEDGER_UNAVAILABLE' }, { status: 503 })
+      if (!reserved) return NextResponse.json({ error: 'DAILY_LIMIT_EXCEEDED' }, { status: 402 })
+      pendingReservation = { userId: user.id, nonce: paidReservationNonce }
+    }
 
     let reply = ''
     let action: AgentAction | null = null
@@ -791,6 +815,7 @@ Main Wallet actions still require the user's PIN. Never claim a transaction succ
               const cached = priceCache.get(cacheKey)
               let data: CachedPrice['data']
               let txHash: string | null
+              let paidActualFee = 0
               if (cached && cached.expiresAt > Date.now()) {
                 data = cached.data
                 txHash = null // no new on-chain payment made — served from cache
@@ -803,9 +828,10 @@ Main Wallet actions still require the user's PIN. Never claim a transaction succ
                 )
                 data = paid.data
                 txHash = paid.txHash
+                paidActualFee = paid.feeAmount
                 priceCache.set(cacheKey, { data, expiresAt: Date.now() + PRICE_CACHE_TTL_MS })
               }
-              dataFee = txHash ? { amount: X402_DATA_FEE, txHash } : null
+              dataFee = txHash ? { amount: paidActualFee, txHash } : null
               if (data.chart_24h?.length > 1) tokenChart = { symbol: data.symbol, points: data.chart_24h }
               toolResultContent = (txHash ? `Full live data for ${data.name} (${data.symbol}), paid $${X402_DATA_FEE} USDC via x402 — ` : `Full live data for ${data.name} (${data.symbol}), served from a recent cached lookup (no new fee charged) — `)
                 + `price_usd=${data.price_usd}, change_24h_pct=${data.change_24h_pct}, `
@@ -822,6 +848,7 @@ Main Wallet actions still require the user's PIN. Never claim a transaction succ
                 + `5. Use ONLY the numbers above — never estimate or guess.\n`
                 + `6. Any field showing "null" means that specific metric wasn't available from the data source this time (a fallback provider was used) — never say the literal word "null" to the user; if they specifically ask about that metric, say it's not available right now.`
             } catch (e) {
+              if (isX402SettlementUncertain(e)) throw e
               const errMsg = e instanceof Error ? e.message : String(e)
               console.error(`[agent/chat] get_token_price("${symbol}") failed:`, errMsg)
               toolResultContent = `Live price lookup for "${symbol}" failed (${errMsg}) — no fee was charged for this failed attempt. Tell the user plainly that the live data lookup failed right now and to try again in a moment. Do NOT guess a price from memory — crypto prices go stale in minutes and a wrong number is worse than admitting the lookup failed.`
@@ -1117,6 +1144,27 @@ Main Wallet actions still require the user's PIN. Never claim a transaction succ
     const userTs = new Date()
     const assistantTs = new Date(userTs.getTime() + 1)
 
+    if (paidReservationNonce) {
+      if (dataFee?.txHash) {
+        const accounting = createAdminSupabaseClient()
+        const { data: finalized, error: finalizeError } = await accounting.rpc('finalize_agent_spend_actual', {
+          p_user_id: user.id, p_nonce: paidReservationNonce, p_actual_amount: dataFee.amount, p_transaction_hash: dataFee.txHash,
+        })
+        if (finalizeError || !finalized) {
+          // Preserve the settlement proof so reconciliation can finish without
+          // ever releasing a payment which has already been submitted.
+          await accounting.from('agent_spend_reservations').update({
+            amount: dataFee.amount,
+            transaction_hash: dataFee.txHash,
+          }).eq('user_id', user.id).eq('nonce', paidReservationNonce).eq('status', 'reserved')
+          return NextResponse.json({ success: false, status: 'pending', code: 'ACCOUNTING_PENDING', txHash: dataFee.txHash }, { status: 202 })
+        }
+      } else {
+        await createAdminSupabaseClient().rpc('release_agent_spend', { p_user_id: user.id, p_nonce: paidReservationNonce })
+      }
+      pendingReservation = null
+    }
+
     await Promise.all([
       supabase.from('agent_messages').insert([
         { user_id: user.id, role: 'user', content: message, cost: CHARGE_MESSAGE_FEE ? MSG_COST : 0, input_fee_tx_hash: msgFeeTxHash, created_at: userTs.toISOString() },
@@ -1136,9 +1184,7 @@ Main Wallet actions still require the user's PIN. Never claim a transaction succ
           created_at: assistantTs.toISOString(),
         },
       ]),
-      supabase.from('agent_wallets').update({
-        daily_spent: wallet.daily_spent + (CHARGE_MESSAGE_FEE ? MSG_COST : 0),
-      }).eq('user_id', user.id),
+      Promise.resolve(),
     ])
 
     return NextResponse.json({
@@ -1156,6 +1202,30 @@ Main Wallet actions still require the user's PIN. Never claim a transaction succ
     })
 
   } catch (err) {
+    if (pendingReservation && err instanceof X402SettlementUncertainError && err.txHash && err.feeAmount !== null) {
+      const accounting = createAdminSupabaseClient()
+      const { data: finalized, error: finalizeError } = await accounting.rpc('finalize_agent_spend_actual', {
+        p_user_id: pendingReservation.userId,
+        p_nonce: pendingReservation.nonce,
+        p_actual_amount: err.feeAmount,
+        p_transaction_hash: err.txHash,
+      })
+      if (!finalizeError && finalized) {
+        pendingReservation = null
+      } else {
+        await accounting.from('agent_spend_reservations').update({
+          amount: err.feeAmount,
+          transaction_hash: err.txHash,
+        }).eq('user_id', pendingReservation.userId).eq('nonce', pendingReservation.nonce).eq('status', 'reserved')
+      }
+    }
+    if (pendingReservation && !isX402SettlementUncertain(err)) {
+      try {
+        await createAdminSupabaseClient().rpc('release_agent_spend', {
+          p_user_id: pendingReservation.userId, p_nonce: pendingReservation.nonce,
+        })
+      } catch { /* best-effort; wallet reconciliation remains fail-closed */ }
+    }
     const errMsg = err instanceof Error ? err.message : String(err)
     console.error('[agent/chat]', errMsg)
     return NextResponse.json({ error: errMsg }, { status: 500 })

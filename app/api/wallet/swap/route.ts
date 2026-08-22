@@ -6,6 +6,8 @@ import { awardVerifiedScore } from '@/app/lib/score-server'
 import { sameAgentAction, verifyAgentIntent, type AgentAction } from '@/app/lib/agent-intent'
 import { classifyTransactionError } from '@/app/lib/transaction-error'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import { assertCircleWalletBinding } from '@/app/lib/agent-security'
 
 const SUPPORTED_TOKENS = new Set(['USDC', 'EURC'])
 
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid or expired Agent swap intent.', code: 'INVALID_INTENT' }, { status: 403 })
       }
 
-      const { error: intentUseError } = await supabase.from('agent_intent_uses').insert({
+      const { error: intentUseError } = await createAdminSupabaseClient().from('agent_intent_uses').insert({
         nonce: intent.nonce,
         user_id: user.id,
         expires_at: new Date(intent.expiresAt).toISOString(),
@@ -73,6 +75,7 @@ export async function POST(request: NextRequest) {
       if (!profile?.agent_wallet_id || !profile.agent_wallet_address) {
         return NextResponse.json({ error: 'Agent wallet not initialized.' }, { status: 400 })
       }
+      await assertCircleWalletBinding(profile.agent_wallet_id, profile.agent_wallet_address)
       walletAddress = profile.agent_wallet_address
     } else {
       const wallet = await resolveCircleWalletId(supabase, user.id)

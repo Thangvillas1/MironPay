@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { circleClient } from '@/app/lib/circle'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { dedupeTokenBalancesBySymbol } from '@/app/lib/token-balance-dedupe'
 import {
   calculateWithdrawalAvailability,
   parseWithdrawalToken,
-  selectWithdrawalTokenBalance,
   type WithdrawalToken,
 } from '@/app/lib/withdrawal-amount'
 import { classifyTransactionError } from '@/app/lib/transaction-error'
+import { assertCircleWalletBinding, resolveCanonicalAgentToken } from '@/app/lib/agent-security'
 
 type AgentTokenBalance = {
   amount?: string
@@ -39,24 +38,24 @@ async function buildWithdrawalQuote(
   const [{ data: profile }, userWallet] = await Promise.all([
     supabase
       .from('profiles')
-      .select('agent_wallet_id')
+      .select('agent_wallet_id, agent_wallet_address')
       .eq('id', userId)
       .single(),
     resolveCircleWalletId(supabase, userId),
   ])
 
-  if (!profile?.agent_wallet_id) {
+  if (!profile?.agent_wallet_id || !profile.agent_wallet_address) {
     return { ok: false, status: 400, body: { error: 'Agent Wallet is not initialized.', code: 'AGENT_WALLET_NOT_FOUND' } }
   }
   if (!userWallet?.walletAddress) {
     return { ok: false, status: 404, body: { error: 'Main Wallet was not found.', code: 'MAIN_WALLET_NOT_FOUND' } }
   }
 
+  await assertCircleWalletBinding(profile.agent_wallet_id, profile.agent_wallet_address)
   const balanceResponse = await circleClient.getWalletTokenBalance({ id: profile.agent_wallet_id })
   const rawBalances = (balanceResponse.data?.tokenBalances ?? []) as AgentTokenBalance[]
-  const balances = dedupeTokenBalancesBySymbol(rawBalances)
-  const selected = selectWithdrawalTokenBalance(balances, tokenSymbol)
-  const usdc = selectWithdrawalTokenBalance(balances, 'USDC')
+  const selected = resolveCanonicalAgentToken(rawBalances, tokenSymbol)
+  const usdc = resolveCanonicalAgentToken(rawBalances, 'USDC')
   const balance = Number(selected?.amount ?? 0)
   const usdcGasBalance = Number(usdc?.amount ?? 0)
   const tokenId = selected?.token?.id
@@ -171,6 +170,10 @@ export async function POST(request: NextRequest) {
     // closed instead of silently transferring a different asset.
     const tokenSymbol = parseWithdrawalToken(body.token)
     if (!tokenSymbol) return NextResponse.json({ error: 'A valid withdrawal token (USDC or EURC) is required.', code: 'INVALID_TOKEN' }, { status: 400 })
+    const idempotencyKey = typeof body.idempotencyKey === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.idempotencyKey)
+      ? body.idempotencyKey
+      : null
+    if (!idempotencyKey) return NextResponse.json({ error: 'A stable idempotency key is required.', code: 'IDEMPOTENCY_REQUIRED' }, { status: 400 })
 
     const result = await buildWithdrawalQuote(auth.supabase, auth.user.id, tokenSymbol)
     if (!result.ok) return NextResponse.json(result.body, { status: result.status })
@@ -190,23 +193,30 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const transaction = await circleClient.createTransaction({
-      walletId: quote.agentWalletId,
-      tokenId: quote.tokenId,
-      destinationAddress: quote.destinationAddress,
-      amount: [amount.toString()],
-      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-      idempotencyKey: crypto.randomUUID(),
-    })
+    let transaction
+    try {
+      transaction = await circleClient.createTransaction({
+        walletId: quote.agentWalletId,
+        tokenId: quote.tokenId,
+        destinationAddress: quote.destinationAddress,
+        amount: [amount.toString()],
+        fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+        idempotencyKey,
+        refId: idempotencyKey,
+      })
+    } catch (error) {
+      console.warn('[agent/withdraw] Circle submission outcome is uncertain:', error)
+      return NextResponse.json({ success: false, accepted: true, status: 'pending', state: 'SUBMISSION_UNCERTAIN' }, { status: 202 })
+    }
     const txId = (transaction.data as { id?: string } | undefined)?.id
     if (!txId) {
-      return NextResponse.json({ error: 'Circle did not accept the withdrawal request.', code: 'TRANSACTION_NOT_ACCEPTED' }, { status: 502 })
+      return NextResponse.json({ success: false, accepted: true, status: 'pending', state: 'SUBMISSION_UNCERTAIN' }, { status: 202 })
     }
 
     let state = 'QUEUED'
     let txHash: string | null = null
     try {
-      const latest = await circleClient.getTransaction({ id: txId })
+      const latest = await circleClient.getTransaction({ id: txId, waitForState: 'COMPLETE', pollingInterval: 1500 })
       const tx = (latest.data as unknown as { transaction?: { state?: string; txHash?: string } })?.transaction
       state = tx?.state ?? state
       txHash = tx?.txHash ?? null
@@ -222,7 +232,7 @@ export async function POST(request: NextRequest) {
       }, { status: 502 })
     }
 
-    const sent = ['SENT', 'CONFIRMED', 'COMPLETE'].includes(state)
+    const sent = state === 'COMPLETE' && Boolean(txHash)
     return NextResponse.json({
       success: sent,
       accepted: true,

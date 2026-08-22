@@ -1,6 +1,7 @@
 import { createWalletClient, createPublicClient, http, parseAbi, keccak256, toBytes } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { circleClient } from './circle'
+import { stableCircleIdempotencyKey } from './agent-security'
 
 const ERC20_ALLOWANCE_ABI = parseAbi([
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -200,13 +201,20 @@ async function waitTerminal(txId: string, timeoutMs = 30_000): Promise<{ txHash:
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tx = (res.data as any)?.transaction
     const state = tx?.state
-    if (state === 'CONFIRMED' || state === 'COMPLETE') return { txHash: tx?.txHash ?? null, failed: false }
+    if (state === 'COMPLETE') return { txHash: tx?.txHash ?? null, failed: false }
     if (state === 'FAILED' || state === 'CANCELLED' || state === 'DENIED') {
       return { txHash: tx?.txHash ?? null, failed: true, errorReason: tx?.errorReason }
     }
     await new Promise(r => setTimeout(r, 1500))
   }
   throw new Error('Timed out waiting for transaction confirmation')
+}
+
+export class LaunchpadTerminalError extends Error {
+  constructor(readonly txId: string, message: string) {
+    super(message)
+    this.name = 'LaunchpadTerminalError'
+  }
 }
 
 /**
@@ -221,7 +229,12 @@ export async function contributeToSale(
   walletAddress: string,
   projectId: string,
   amountUsdc: number,
-): Promise<{ txHash: string | null }> {
+  options?: {
+    idempotencyKey?: string
+    onExternalAttempt?: () => void
+    onTransactionCreated?: (txId: string) => Promise<void>
+  },
+): Promise<{ txId: string; txHash: string | null }> {
   const contractAddress = getContractAddress()
   if (!contractAddress) throw new Error('IDO_LAUNCHPAD_CONTRACT not configured')
 
@@ -236,7 +249,8 @@ export async function contributeToSale(
       abiFunctionSignature: 'approve(address,uint256)',
       abiParameters: [contractAddress, MAX_UINT256],
       fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: options?.idempotencyKey ? stableCircleIdempotencyKey(options.idempotencyKey, 'launchpad-approve') : crypto.randomUUID(),
+      ...(options?.idempotencyKey ? { refId: `${options.idempotencyKey}:approve` } : {}),
     })
     const approveTxId = approveRes.data?.id
     if (approveTxId) {
@@ -245,27 +259,32 @@ export async function contributeToSale(
     }
   }
 
+  // Everything after this signal is an ambiguous external outcome until Circle
+  // proves otherwise. Callers must keep any spend reservation fail-closed.
+  options?.onExternalAttempt?.()
   const contributeRes = await circleClient.createContractExecutionTransaction({
     walletId,
     contractAddress,
     abiFunctionSignature: 'contribute(bytes32,uint256)',
     abiParameters: [saleId, amountAtomic.toString()],
     fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-    idempotencyKey: crypto.randomUUID(),
+    idempotencyKey: options?.idempotencyKey ? stableCircleIdempotencyKey(options.idempotencyKey, 'launchpad-contribute') : crypto.randomUUID(),
+    ...(options?.idempotencyKey ? { refId: options.idempotencyKey } : {}),
   })
   const contributeTxId = contributeRes.data?.id
   if (!contributeTxId) throw new Error('Contribute did not return a transaction ID')
+  await options?.onTransactionCreated?.(contributeTxId)
 
   const { txHash, failed, errorReason } = await waitTerminal(contributeTxId)
   if (failed) {
     const reason = errorReason ?? ''
-    if (reason.toLowerCase().includes('sale full')) throw new Error('Sale is full — try again later or pick another project')
-    if (reason.toLowerCase().includes('sale ended')) throw new Error('This sale has ended')
-    if (reason.toLowerCase().includes('exceeds per-wallet max')) throw new Error('This would exceed the per-wallet contribution limit')
-    throw new Error(reason || 'Contribution failed on-chain')
+    if (reason.toLowerCase().includes('sale full')) throw new LaunchpadTerminalError(contributeTxId, 'Sale is full — try again later or pick another project')
+    if (reason.toLowerCase().includes('sale ended')) throw new LaunchpadTerminalError(contributeTxId, 'This sale has ended')
+    if (reason.toLowerCase().includes('exceeds per-wallet max')) throw new LaunchpadTerminalError(contributeTxId, 'This would exceed the per-wallet contribution limit')
+    throw new LaunchpadTerminalError(contributeTxId, reason || 'Contribution failed on-chain')
   }
 
-  return { txHash }
+  return { txId: contributeTxId, txHash }
 }
 
 /**

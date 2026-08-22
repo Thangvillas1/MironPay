@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createWalletClient, createPublicClient, http, parseAbi, keccak256, toBytes } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { hasInternalAgentAuthorization } from '@/app/lib/agent-security'
+import { circleClient } from '@/app/lib/circle'
+import { parseAgentAmount } from '@/app/lib/agent-security'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 
 const arcTestnet = {
   id: 5042002,
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.network/'] } },
+  rpcUrls: { default: { http: [process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.io'] } },
 }
 
 const REPUTATION_REGISTRY = '0x8004B663056A597Dffe9eCcC1965A193B7388713' as `0x${string}`
@@ -26,6 +30,7 @@ const REPUTATION_ABI = parseAbi([
 
 export async function POST(request: NextRequest) {
   try {
+    if (!hasInternalAgentAuthorization(request)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -33,7 +38,28 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { actionType, success, txHash, amount, detail } = await request.json()
+    const { actionType, success, txId, txHash, amount: rawAmount, detail } = await request.json()
+    const amount = parseAgentAmount(rawAmount)
+    if (!new Set(['send', 'swap', 'gateway_deposit', 'gateway_withdraw', 'launchpad_contribute']).has(actionType) || amount === null) {
+      return NextResponse.json({ error: 'Invalid feedback payload.' }, { status: 400 })
+    }
+    if (!success || typeof txId !== 'string' || !txId) {
+      return NextResponse.json({ error: 'A completed Circle transaction proof is required.' }, { status: 400 })
+    }
+
+    const [{ data: profile }, transactionResponse] = await Promise.all([
+      supabase.from('profiles').select('circle_wallet_id, agent_wallet_id').eq('id', user.id).single(),
+      circleClient.getTransaction({ id: txId }),
+    ])
+    const circleTransaction = (transactionResponse.data as unknown as { transaction?: { id?: string; state?: string; txHash?: string; walletId?: string } }).transaction
+    const ownedWalletIds = new Set([profile?.circle_wallet_id, profile?.agent_wallet_id].filter(Boolean))
+    if (circleTransaction?.state !== 'COMPLETE'
+      || !circleTransaction.txHash
+      || circleTransaction.txHash.toLowerCase() !== String(txHash).toLowerCase()
+      || !circleTransaction.walletId
+      || !ownedWalletIds.has(circleTransaction.walletId)) {
+      return NextResponse.json({ error: 'Transaction proof is incomplete or is not owned by this user.' }, { status: 403 })
+    }
     // actionType: 'send' | 'swap' | 'chat'
     // success: boolean
     // txHash: string (bằng chứng)
@@ -45,6 +71,8 @@ export async function POST(request: NextRequest) {
 
     const { data: identity } = await supabase.from('miron_agent_identity').select('agent_id').single()
     if (!identity?.agent_id) return NextResponse.json({ error: 'Agent not registered on-chain' }, { status: 400 })
+    const { error: useError } = await createAdminSupabaseClient().from('agent_feedback_uses').insert({ tx_hash: circleTransaction.txHash.toLowerCase(), user_id: user.id })
+    if (useError) return NextResponse.json({ error: 'Feedback already recorded for this transaction.' }, { status: 409 })
 
     const validatorAccount = privateKeyToAccount(validatorKey as `0x${string}`)
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http() })

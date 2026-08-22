@@ -7,18 +7,15 @@ import { TOKEN_USD_PRICE } from '@/app/lib/types'
 import { VERIFIED_SYMBOLS, TOKEN_LOGOS } from '@/app/lib/token-meta'
 import { fetchSimplePrice } from '@/app/lib/coingecko'
 import type { Address } from 'viem'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import { levelCap as getLevelCap, resolveCanonicalAgentToken, stableCircleIdempotencyKey } from '@/app/lib/agent-security'
+import { reconcileAgentReservations } from '@/app/lib/agent-transaction-lifecycle'
 
 const MSG_COST = 0.01 // must match app/api/agent/chat/route.ts — this is what's actually charged per message
 
 // Level caps — maximum a user CAN set, not a forced value
-const LEVEL_CAPS: Record<string, number> = {
-  Newcomer: 5,
-  Builder: 10,
-  Trader: 20,
-  Elite: 50,
-}
-
 async function ensureAgentWallet(supabase: ReturnType<typeof createServerSupabaseClient>, userId: string) {
+  const admin = createAdminSupabaseClient()
   const { data: profile } = await supabase
     .from('profiles')
     .select('agent_wallet_id, agent_wallet_address')
@@ -38,16 +35,17 @@ async function ensureAgentWallet(supabase: ReturnType<typeof createServerSupabas
     blockchains: ['ARC-TESTNET'],
     count: 1,
     accountType: 'EOA',
-    idempotencyKey: crypto.randomUUID(),
+    idempotencyKey: stableCircleIdempotencyKey(userId, 'agent-wallet'),
   })
 
   const wallet = res.data?.wallets?.[0]
   if (!wallet?.address) throw new Error('Failed to create agent wallet')
 
-  await supabase.from('profiles').update({
+  const { error: saveError } = await admin.from('profiles').update({
     agent_wallet_id: wallet.id,
     agent_wallet_address: wallet.address,
   }).eq('id', userId)
+  if (saveError) throw new Error(`Failed to bind Agent Wallet: ${saveError.message}`)
 
   return { agentWalletId: wallet.id, agentWalletAddress: wallet.address }
 }
@@ -61,6 +59,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
+    const admin = createAdminSupabaseClient()
+    await reconcileAgentReservations(user.id).catch(error => console.warn('[agent/wallet] reconciliation deferred:', error))
     const { agentWalletId, agentWalletAddress } = await ensureAgentWallet(supabase, user.id)
 
     // Fetch balance and spending data in parallel
@@ -90,8 +90,9 @@ export async function GET(request: NextRequest) {
     // multiple entries per token (native precompile + ERC20) which would double-count
     const symbolMap = new Map<string, { name: string; amount: number; tokenAddress: string | null }>()
     for (const b of rawBalances) {
-      const symbol: string = b.token?.symbol ?? ''
+      const symbol: string = (b.token?.symbol ?? '').toUpperCase()
       if (!symbol) continue
+      if (symbol === 'USDC' || symbol === 'EURC') continue
       const amount = parseFloat(b.amount ?? '0')
       const existing = symbolMap.get(symbol)
       if (existing) {
@@ -103,6 +104,16 @@ export async function GET(request: NextRequest) {
           tokenAddress: (b.token?.tokenAddress as string | null) ?? null,
         })
       }
+    }
+
+    for (const symbol of ['USDC', 'EURC']) {
+      const canonical = resolveCanonicalAgentToken(rawBalances, symbol)
+      if (!canonical) continue
+      symbolMap.set(symbol, {
+        name: canonical.token?.name ?? symbol,
+        amount: Number(canonical.amount ?? 0),
+        tokenAddress: canonical.token?.tokenAddress ?? null,
+      })
     }
 
     const usdcAmount = symbolMap.get('USDC')?.amount ?? 0
@@ -173,20 +184,20 @@ export async function GET(request: NextRequest) {
     }))
 
     const today = new Date().toISOString().slice(0, 10)
-    const levelCap = LEVEL_CAPS[profileRow.data?.miron_level ?? 'Newcomer'] ?? 5
+    const levelCap = getLevelCap(profileRow.data?.miron_level)
 
     // On-chain limit is source of truth; fall back to Supabase, then level cap
-    const authoritative = onChainLimitRaw ?? agentWalletRow.data?.daily_limit ?? levelCap
+    const authoritative = Math.min(onChainLimitRaw ?? agentWalletRow.data?.daily_limit ?? levelCap, levelCap)
 
     let agentWallet = agentWalletRow.data
 
     if (!agentWallet) {
       // First time — initialize with on-chain limit or level cap
-      await supabase.from('agent_wallets').insert({ user_id: user.id, daily_limit: authoritative })
+      await admin.from('agent_wallets').upsert({ user_id: user.id, daily_limit: authoritative }, { onConflict: 'user_id', ignoreDuplicates: true })
       agentWallet = { daily_limit: authoritative, daily_spent: 0, daily_reset_date: today, session_expires_at: null }
     } else if (agentWallet.daily_reset_date !== today) {
       // New day — reset spent counter, sync limit from chain
-      await supabase.from('agent_wallets').update({
+      await admin.from('agent_wallets').update({
         daily_spent: 0,
         daily_reset_date: today,
         daily_limit: authoritative,
@@ -195,8 +206,8 @@ export async function GET(request: NextRequest) {
       agentWallet.daily_limit = authoritative
     } else if (onChainLimitRaw !== null && agentWallet.daily_limit !== onChainLimitRaw) {
       // Sync Supabase cache from chain if they diverged
-      await supabase.from('agent_wallets').update({ daily_limit: onChainLimitRaw }).eq('user_id', user.id)
-      agentWallet.daily_limit = onChainLimitRaw
+      await admin.from('agent_wallets').update({ daily_limit: authoritative }).eq('user_id', user.id)
+      agentWallet.daily_limit = authoritative
     }
 
     return NextResponse.json({

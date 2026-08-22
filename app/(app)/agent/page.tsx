@@ -76,6 +76,13 @@ interface Message {
   animate?: boolean
 }
 
+function persistedTx(content: string): { success: boolean; type: string; amountIn?: string; tokenIn?: string; projectId?: string; txHash?: string } | null {
+  try {
+    const parsed = JSON.parse(content)
+    return parsed?.__txResult ? parsed : null
+  } catch { return null }
+}
+
 const MSG_COST = 0.01 // must match app/api/agent/chat/route.ts — this is what's actually charged per message
 
 function formatUSDC(n: number) {
@@ -274,20 +281,23 @@ function ActionCard({ action, onConfirm, onCancel, done, error, executing, txRes
   )
 }
 
-interface DepositResult { transactionId?: string; deposited?: number; error?: string }
+interface DepositResult { transactionId?: string; deposited?: number; error?: string; processing?: boolean }
 
-function DepositModal({ onClose, onDeposit }: { onClose: () => void; onDeposit: (amount: string) => Promise<DepositResult> }) {
+function DepositModal({ onClose, onDeposit }: { onClose: () => void; onDeposit: (amount: string, pin: string, idempotencyKey: string) => Promise<DepositResult> }) {
   const [amount, setAmount] = useState('')
+  const [pin, setPin] = useState('')
+  const idempotencyKey = useRef(crypto.randomUUID())
   const [error, setError] = useState('')
   const [phase, setPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
   const [result, setResult] = useState<DepositResult | null>(null)
-  const canSubmit = parseFloat(amount || '0') > 0 && phase === 'form'
+  const canSubmit = parseFloat(amount || '0') > 0 && /^\d{6}$/.test(pin) && phase === 'form'
 
   async function handle() {
     if (!canSubmit) { setError('Enter a valid amount'); return }
     setPhase('pending'); setError('')
-    const res = await onDeposit(amount)
-    if (res.error) { setResult(res); setPhase('error') }
+    const res = await onDeposit(amount, pin, idempotencyKey.current)
+    if (res.processing) { setResult(res); setPhase('pending') }
+    else if (res.error) { setResult(res); setPhase('error') }
     else { setResult(res); setPhase('success') }
   }
 
@@ -396,6 +406,10 @@ function DepositModal({ onClose, onDeposit }: { onClose: () => void; onDeposit: 
                   </button>
                 ))}
               </div>
+              <input type="password" inputMode="numeric" maxLength={6} value={pin}
+                onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Main Wallet PIN (6 digits)"
+                className="w-full rounded-[10px] px-4 py-3 bg-white/5 border border-white/10 text-white outline-none" />
             </div>
 
             {/* Footer */}
@@ -472,9 +486,11 @@ interface LimitSaveResult {
 function LimitModal({ current, onClose, onSave }: {
   current: number
   onClose: () => void
-  onSave: (v: string) => Promise<LimitSaveResult>
+  onSave: (v: string, pin: string, key: string) => Promise<LimitSaveResult>
 }) {
   const [value, setValue] = useState(current.toString())
+  const [pin, setPin] = useState('')
+  const key = useRef(crypto.randomUUID())
   const [phase, setPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
   const [result, setResult] = useState<LimitSaveResult | null>(null)
 
@@ -483,7 +499,7 @@ function LimitModal({ current, onClose, onSave }: {
     if (isNaN(num) || num < 0.01) return
     setPhase('pending')
     try {
-      const res = await onSave(value)
+      const res = await onSave(value, pin, key.current)
       if (res.error) {
         setResult(res)
         setPhase('error')
@@ -524,7 +540,11 @@ function LimitModal({ current, onClose, onSave }: {
               autoFocus
               className="w-full bg-white/5 border border-white/15 rounded-[8px] px-3 py-3 text-sm text-mp-text focus:outline-none focus:ring-2 focus:ring-mp-primary/40"
             />
-            <button onClick={handle}
+            <input type="password" inputMode="numeric" maxLength={6} value={pin}
+              onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Main Wallet PIN (6 digits)"
+              className="w-full bg-white/5 border border-white/15 rounded-[8px] px-3 py-3 text-sm text-mp-text" />
+            <button onClick={handle} disabled={!/^\d{6}$/.test(pin)}
               className="w-full bg-mp-primary text-white rounded-[10px] py-3.5 text-sm font-semibold hover:bg-blue-600 transition-colors">
               Save on-chain
             </button>
@@ -832,16 +852,17 @@ export default function AgentPage() {
     }
   }
 
-  async function handleDeposit(amount: string): Promise<DepositResult> {
+  async function handleDeposit(amount: string, pin: string, idempotencyKey: string): Promise<DepositResult> {
     try {
       const res = await fetch('/api/agent/wallet/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ amount: parseFloat(amount) }),
+        body: JSON.stringify({ amount, pin, idempotencyKey }),
       })
       let data: Record<string, unknown> = {}
       try { data = await res.json() } catch { /* empty response */ }
       if (!res.ok) return { error: (data.error as string) ?? `Error ${res.status}` }
+      if (data.success !== true) return { processing: true, transactionId: data.transactionId as string | undefined }
       setTimeout(() => loadWallet(accessToken), 3000)
       return { transactionId: data.transactionId as string | undefined, deposited: data.deposited as number | undefined }
     } catch (e) {
@@ -868,6 +889,10 @@ export default function AgentPage() {
         setExecutingAction(false)
         return
       }
+      if (d.success !== true) {
+        setActionError(`Transaction accepted and processing${d.txId ? ` (${String(d.txId)})` : ''}. It will reconcile automatically; do not resend. [PROCESSING]`)
+        return
+      }
 
       addLocalTransaction({
         id: `lp_${crypto.randomUUID()}`,
@@ -885,6 +910,14 @@ export default function AgentPage() {
       })
       setTxResult({ txHash: d.txHash as string, transactionId: d.txId as string, amountOut: d.amountOut as string })
       setActionDone(true)
+      await supabase.from('agent_messages').insert({
+        user_id: userId,
+        role: 'assistant',
+        content: JSON.stringify({ __txResult: true, success: true, type: action.type, amountIn: action.amount,
+          tokenIn: action.tokenIn ?? action.token ?? 'USDC', tokenOut: action.tokenOut, to: action.to,
+          projectId: action.projectId, txHash: d.txHash, txId: d.txId, amountOut: d.amountOut }),
+        cost: 0,
+      })
     } catch (e) {
       console.error('[agent] transaction request failed:', e)
       setActionError('Connection lost before the final status was received. Check transaction history before sending again. [NETWORK_ERROR]')
@@ -893,11 +926,11 @@ export default function AgentPage() {
     }
   }
 
-  async function handleSaveLimit(value: string): Promise<LimitSaveResult> {
+  async function handleSaveLimit(value: string, pin: string, idempotencyKey: string): Promise<LimitSaveResult> {
     const res = await fetch('/api/agent/wallet/limit', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ daily_limit: parseFloat(value) }),
+      body: JSON.stringify({ daily_limit: value, pin, idempotencyKey }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -1104,7 +1137,14 @@ export default function AgentPage() {
 
             {messages.map((msg) => (
               <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
-                {msg.content && (
+                {persistedTx(msg.content) ? (() => {
+                  const result = persistedTx(msg.content)!
+                  return <div className="max-w-[80%] rounded-[12px] px-4 py-3 text-sm bg-mp-card border border-white/8 text-mp-text">
+                    <p className="font-semibold text-mp-success">{result.type === 'launchpad_contribute' ? 'Contribution successful' : 'Transaction successful'}</p>
+                    <p className="text-xs text-mp-muted mt-1">{result.amountIn} {result.tokenIn}{result.projectId ? ` → ${result.projectId}` : ''}</p>
+                    {result.txHash && <a className="text-xs text-mp-primary" href={`https://testnet.arcscan.app/tx/${result.txHash}`} target="_blank" rel="noopener noreferrer">View TX ↗</a>}
+                  </div>
+                })() : msg.content && (
                   <div className={`max-w-[80%] rounded-[12px] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                     msg.role === 'user'
                       ? 'bg-mp-primary text-white rounded-br-[4px]'

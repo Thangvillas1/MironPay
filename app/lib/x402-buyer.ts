@@ -4,10 +4,11 @@ import { x402Client, x402HTTPClient } from '@x402/core/client'
 import { BatchEvmScheme } from '@circle-fin/x402-batching/client'
 import { createCircleX402Signer } from './x402-signer'
 import { circleClient } from './circle'
+import { assertCircleWalletBinding, resolveCanonicalAgentToken } from './agent-security'
 
 export const ARC_TESTNET_NETWORK = 'eip155:5042002'
 
-const ARC_RPC = 'https://rpc.testnet.arc.network/'
+const ARC_RPC = process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.io'
 const GATEWAY_WALLET = '0x0077777d7eba4688bdef3e311b846f25870a19b9'
 // Same contract addresses & domain the official @circle-fin/x402-batching
 // GatewayClient uses internally for arcTestnet (TESTNET_GATEWAY_MINTER /
@@ -24,6 +25,27 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 // Placeholder thresholds for testnet — revisit both when moving to mainnet.
 const MIN_GATEWAY_BALANCE_USDC = 0.05
 const TOP_UP_AMOUNT_USDC = 1
+const X402_AUTHORIZED_MAX_USDC = 0.01
+
+type X402Requirement = { network: string; asset: string; amount: string }
+export function selectAuthorizedX402Requirement<T extends X402Requirement>(requirements: T[], maxUsdc = X402_AUTHORIZED_MAX_USDC): T | null {
+  return requirements.find((requirement) => {
+    if (requirement.network !== ARC_TESTNET_NETWORK || requirement.asset.toLowerCase() !== ARC_TESTNET_USDC.toLowerCase() || !/^\d+$/.test(requirement.amount)) return false
+    const fee = Number(BigInt(requirement.amount)) / 1e6
+    return Number.isFinite(fee) && fee > 0 && fee <= maxUsdc
+  }) ?? null
+}
+
+export class X402SettlementUncertainError extends Error {
+  readonly settlementUncertain = true
+  constructor(message: string, readonly txHash: string | null = null, readonly feeAmount: number | null = null) {
+    super(message)
+    this.name = 'X402SettlementUncertainError'
+  }
+}
+export function isX402SettlementUncertain(error: unknown): boolean {
+  return error instanceof X402SettlementUncertainError
+}
 // Same-chain (Arc -> Arc) withdrawals are "instant" per Circle's docs, so the
 // real fee should be near-zero — this is just the cap the signature allows to
 // be deducted, not the amount actually charged. Testnet placeholder, revisit
@@ -58,10 +80,14 @@ async function getAllowance(owner: Address): Promise<bigint> {
   return BigInt(json.result)
 }
 
-async function waitConfirmed(txId: string): Promise<string | null> {
-  const res = await circleClient.getTransaction({ id: txId, waitForState: 'CONFIRMED', pollingInterval: 1500 })
+async function waitComplete(txId: string): Promise<string> {
+  const res = await circleClient.getTransaction({ id: txId, waitForState: 'COMPLETE', pollingInterval: 1500 })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (res.data as any)?.transaction?.txHash ?? null
+  const transaction = (res.data as any)?.transaction
+  if (transaction?.state !== 'COMPLETE' || !transaction.txHash) {
+    throw new Error(`Circle transaction ${txId} is not COMPLETE (${transaction?.state ?? 'UNKNOWN'})`)
+  }
+  return transaction.txHash
 }
 
 /**
@@ -70,9 +96,10 @@ async function waitConfirmed(txId: string): Promise<string | null> {
  * (`ensureGatewayFunded`) and for an explicit user/agent-initiated deposit.
  */
 export async function depositToGateway(walletId: string, walletAddress: Address, amountUsdc: number): Promise<{ txHash: string | null }> {
+  await assertCircleWalletBinding(walletId, walletAddress)
   const balRes = await circleClient.getWalletTokenBalance({ id: walletId })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const usdc = ((balRes.data?.tokenBalances ?? []) as any[]).find((b) => b.token?.symbol === 'USDC')
+  const usdc = resolveCanonicalAgentToken((balRes.data?.tokenBalances ?? []) as any[], 'USDC')
   const onChainBalance = parseFloat(usdc?.amount ?? '0')
   if (onChainBalance < amountUsdc) {
     throw new Error(`Cannot fund Gateway: wallet only has ${onChainBalance} USDC on-chain, need ${amountUsdc}`)
@@ -91,7 +118,8 @@ export async function depositToGateway(walletId: string, walletAddress: Address,
       idempotencyKey: crypto.randomUUID(),
     })
     const approveTxId = approveRes.data?.id
-    if (approveTxId) await waitConfirmed(approveTxId)
+    if (!approveTxId) throw new Error('Gateway approval did not return a transaction ID')
+    await waitComplete(approveTxId)
   }
 
   const depositRes = await circleClient.createContractExecutionTransaction({
@@ -104,7 +132,7 @@ export async function depositToGateway(walletId: string, walletAddress: Address,
   })
   const depositTxId = depositRes.data?.id
   if (!depositTxId) throw new Error('Gateway deposit did not return a transaction ID')
-  const txHash = await waitConfirmed(depositTxId)
+  const txHash = await waitComplete(depositTxId)
   return { txHash }
 }
 
@@ -137,6 +165,7 @@ export async function withdrawFromGateway(
   walletAddress: Address,
   amountUsdc: number,
 ): Promise<{ txHash: string | null }> {
+  await assertCircleWalletBinding(walletId, walletAddress)
   const available = await getGatewayAvailableBalance(walletAddress)
   if (amountUsdc > available) {
     throw new Error(`Cannot withdraw ${amountUsdc} USDC — only ${available} USDC available in Gateway`)
@@ -227,7 +256,7 @@ export async function withdrawFromGateway(
   })
   const mintTxId = mintRes.data?.id
   if (!mintTxId) throw new Error('Gateway mint did not return a transaction ID')
-  const txHash = await waitConfirmed(mintTxId)
+  const txHash = await waitComplete(mintTxId)
 
   return { txHash }
 }
@@ -242,9 +271,7 @@ export async function payX402<T = unknown>(
   url: string,
   walletId: string,
   walletAddress: Address,
-): Promise<{ data: T; txHash: string | null; network: string }> {
-  await ensureGatewayFunded(walletId, walletAddress)
-
+): Promise<{ data: T; txHash: string | null; network: string; feeAmount: number }> {
   const signer = createCircleX402Signer(walletId, walletAddress)
   const scheme = new BatchEvmScheme(signer)
 
@@ -257,7 +284,7 @@ export async function payX402<T = unknown>(
 
   const initialRes = await fetch(url)
   if (initialRes.status !== 402) {
-    return { data: (await initialRes.json()) as T, txHash: null, network: ARC_TESTNET_NETWORK }
+    return { data: (await initialRes.json()) as T, txHash: null, network: ARC_TESTNET_NETWORK, feeAmount: 0 }
   }
 
   const body = await initialRes.json().catch(() => undefined)
@@ -265,24 +292,49 @@ export async function payX402<T = unknown>(
     (name) => initialRes.headers.get(name),
     body,
   )
-  const paymentPayload = await httpClient.createPaymentPayload(paymentRequired)
+  const accepted = selectAuthorizedX402Requirement(paymentRequired.accepts)
+  if (!accepted) throw new Error('x402 server did not offer a trusted ARC USDC payment requirement')
+  const feeAmount = Number(BigInt(accepted.amount)) / 1e6
+  if (!Number.isFinite(feeAmount) || feeAmount <= 0 || feeAmount > X402_AUTHORIZED_MAX_USDC) {
+    throw new Error(`x402 requested ${feeAmount} USDC, above the authorized maximum`)
+  }
+  // Funding is an external side effect. It happens only after the server's
+  // actual 402 requirements have been parsed and bounded, and before signing.
+  await ensureGatewayFunded(walletId, walletAddress)
+  const boundedPaymentRequired = { ...paymentRequired, accepts: [accepted] }
+  const paymentPayload = await httpClient.createPaymentPayload(boundedPaymentRequired)
   const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload)
 
-  const paidRes = await fetch(url, { headers: paymentHeaders })
-  const { settleResponse } = await httpClient.processPaymentResult(
-    paymentPayload,
-    (name) => paidRes.headers.get(name),
-    paidRes.status,
-  )
+  let paidRes: Response
+  try {
+    paidRes = await fetch(url, { headers: paymentHeaders })
+  } catch (error) {
+    throw new X402SettlementUncertainError(`x402 paid request outcome is unknown: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  let settleResponse
+  try {
+    ;({ settleResponse } = await httpClient.processPaymentResult(paymentPayload, (name) => paidRes.headers.get(name), paidRes.status))
+  } catch (error) {
+    throw new X402SettlementUncertainError(`x402 settlement outcome is unknown: ${error instanceof Error ? error.message : String(error)}`)
+  }
 
   if (!paidRes.ok) {
     const bodyText = await paidRes.clone().text().catch(() => '')
+    if (settleResponse?.transaction) {
+      throw new X402SettlementUncertainError(
+        `x402 paid response failed after settlement: ${settleResponse.errorReason ?? paidRes.status}${bodyText ? ` — ${bodyText.slice(0, 300)}` : ''}`,
+        settleResponse.transaction,
+        feeAmount,
+      )
+    }
     throw new Error(`x402 payment failed: ${settleResponse?.errorReason ?? paidRes.status}${bodyText ? ` — ${bodyText.slice(0, 300)}` : ''}`)
   }
+  if (!settleResponse?.transaction) throw new X402SettlementUncertainError('x402 response succeeded without a settlement transaction hash')
 
   return {
     data: (await paidRes.json()) as T,
     txHash: settleResponse?.transaction ?? null,
     network: ARC_TESTNET_NETWORK,
+    feeAmount,
   }
 }

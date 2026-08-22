@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { startPinRecovery } from '@/app/lib/pin-recovery-client'
 
-export function AgentPinModal({ onSuccess, onCancel }: { onSuccess: (pin: string) => void; onCancel: () => void }) {
+export function AgentPinModal({ onSuccess, onCancel, title = 'Confirm PIN', description = 'Enter PIN to confirm transaction from Main Wallet' }: { onSuccess: (pin: string) => void; onCancel: () => void; title?: string; description?: string }) {
   const pinRef = useRef('')
   const submittedRef = useRef(false)
   const [dots, setDots] = useState(0)
@@ -36,8 +36,8 @@ export function AgentPinModal({ onSuccess, onCancel }: { onSuccess: (pin: string
           <svg className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><rect x="3" y="11" width="18" height="11" rx="2"/><path strokeLinecap="round" d="M7 11V7a5 5 0 0110 0v4"/></svg>
         </div>
         <div className="text-center">
-          <h2 className="text-base font-semibold text-mp-text">Confirm PIN</h2>
-          <p className="text-xs text-mp-muted mt-1">Enter PIN to confirm transaction from Main Wallet</p>
+          <h2 className="text-base font-semibold text-mp-text">{title}</h2>
+          <p className="text-xs text-mp-muted mt-1">{description}</p>
         </div>
         <div className="flex gap-3">
           {Array.from({ length: 6 }).map((_, i) => (

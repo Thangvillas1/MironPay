@@ -48,7 +48,7 @@ interface AgentWalletData {
 
 interface TxResult {
   success: boolean
-  type: 'send' | 'swap' | 'gateway_deposit' | 'gateway_withdraw'
+  type: 'send' | 'swap' | 'gateway_deposit' | 'gateway_withdraw' | 'launchpad_contribute'
   amountIn?: string
   tokenIn?: string
   amountOut?: string
@@ -62,6 +62,7 @@ interface TxResult {
   error?: string
   code?: string
   limitExceeded?: boolean
+  processing?: boolean
 }
 
 interface ChatMessage {
@@ -217,6 +218,7 @@ export default function DashboardPage() {
   const [chatError, setChatError] = useState('')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [pendingMainAction, setPendingMainAction] = useState<{ action: any; token: string } | null>(null)
+  const [approvingAgentSession, setApprovingAgentSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // SRS Modal (Send / Receive / Swap)
@@ -232,7 +234,12 @@ export default function DashboardPage() {
   const [reputationChecked, setReputationChecked] = useState(false)
   const [agentStats, setAgentStats] = useState<{ replyCount: number; txSuccessCount: number } | null>(null)
   const [modalAmount, setModalAmount] = useState('')
+  const [fundPin, setFundPin] = useState('')
+  const fundIdempotencyKey = useRef(crypto.randomUUID())
+  const withdrawIdempotencyKey = useRef(crypto.randomUUID())
   const [modalLimit, setModalLimit] = useState('')
+  const [limitPin, setLimitPin] = useState('')
+  const limitIdempotencyKey = useRef(crypto.randomUUID())
   const [modalError, setModalError] = useState('')
   const [limitPhase, setLimitPhase] = useState<'form' | 'pending' | 'success' | 'error'>('form')
   const [limitResult, setLimitResult] = useState<{ daily_limit: number; onChain: boolean; txHash?: string | null; error?: string } | null>(null)
@@ -275,12 +282,16 @@ export default function DashboardPage() {
       const res = await fetch('/api/agent/wallet/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ amount: amt }),
+        body: JSON.stringify({ amount: modalAmount, pin: fundPin, idempotencyKey: fundIdempotencyKey.current }),
       })
       const d = await res.json()
       if (!res.ok) {
         setFundResult({ amount: amt, error: d.error ?? 'Deposit failed' })
         setFundPhase('error'); return
+      }
+      if (d.success !== true) {
+        setFundResult({ amount: amt, transactionId: d.transactionId, error: 'Deposit is processing. Do not submit it again.' })
+        setFundPhase('pending'); return
       }
       const deposited = d.deposited ?? amt
       setFundResult({ amount: deposited, transactionId: d.transactionId })
@@ -293,7 +304,7 @@ export default function DashboardPage() {
   }
 
   function closeFundModal() {
-    setShowFund(false); setModalAmount(''); setModalError('')
+    setShowFund(false); setModalAmount(''); setFundPin(''); fundIdempotencyKey.current = crypto.randomUUID(); setModalError('')
     setFundPhase('form'); setFundResult(null)
   }
 
@@ -305,7 +316,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/agent/wallet/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ amount: amt, token: withdrawToken, max: withdrawMaxSelected }),
+        body: JSON.stringify({ amount: amt, token: withdrawToken, max: withdrawMaxSelected, idempotencyKey: withdrawIdempotencyKey.current }),
       })
       const d = await res.json()
       if (!res.ok) {
@@ -321,7 +332,7 @@ export default function DashboardPage() {
         estimatedFee: d.estimatedFee,
         feeReserve: d.feeReserve,
       })
-      setWithdrawPhase('success')
+      setWithdrawPhase(d.success === true ? 'success' : 'pending')
       setTimeout(() => { refreshAgentWallet(accessToken); refreshMainWallet(accessToken) }, 3000)
     } catch (e) {
       setWithdrawResult({ amount: amt, error: e instanceof Error ? e.message : 'Connection error' })
@@ -367,6 +378,7 @@ export default function DashboardPage() {
     setWithdrawPhase('form'); setWithdrawResult(null)
     setWithdrawToken('USDC'); setWithdrawTokenStep('form')
     setWithdrawMaxSelected(false); setWithdrawMaxLoading(false); setWithdrawQuote(null)
+    withdrawIdempotencyKey.current = crypto.randomUUID()
   }
 
   async function handleSetLimit() {
@@ -377,7 +389,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/agent/wallet/limit', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ daily_limit: lmt }),
+        body: JSON.stringify({ daily_limit: modalLimit, pin: limitPin, idempotencyKey: limitIdempotencyKey.current }),
       })
       const d = await res.json()
       if (!res.ok) {
@@ -396,6 +408,8 @@ export default function DashboardPage() {
 
   function closeLimitModal() {
     setShowLimit(false)
+    setLimitPin('')
+    limitIdempotencyKey.current = crypto.randomUUID()
     setModalLimit('')
     setModalError('')
     setLimitPhase('form')
@@ -421,13 +435,20 @@ export default function DashboardPage() {
     if (res.ok) setAgentWallet(await res.json())
   }
 
-  async function approveAgentSession(minutes = 30) {
+  async function approveAgentSession(pin: string, minutes = 30): Promise<boolean> {
     const res = await fetch('/api/agent/wallet/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ minutes }),
+      body: JSON.stringify({ minutes, pin }),
     })
-    if (res.ok) refreshAgentWallet(accessToken)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setChatError(data.error ?? 'Could not enable Agent session.')
+      return false
+    }
+    setChatError('')
+    await refreshAgentWallet(accessToken)
+    return true
   }
 
   async function revokeAgentSession() {
@@ -592,7 +613,9 @@ export default function DashboardPage() {
     const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     const nowISO = new Date().toISOString()
 
-    const txResult: TxResult = !execRes.ok ? {
+    const isComplete = execRes.ok && execData.success === true
+    const isProcessing = execRes.ok && execData.success !== true
+    const txResult: TxResult = !isComplete ? {
       success: false,
       type: action.type,
       amountIn: action.amount,
@@ -602,8 +625,9 @@ export default function DashboardPage() {
       projectId: action.projectId,
       sym: action.sym,
       tokensEstimate: action.tokensEstimate,
-      error: execData.error ?? 'Unknown error',
-      code: execData.code,
+      error: isProcessing ? 'Transaction accepted and processing. It will reconcile automatically; do not resend.' : (execData.error ?? 'Unknown error'),
+      code: isProcessing ? 'PROCESSING' : execData.code,
+      processing: isProcessing,
       limitExceeded: execData.limitExceeded,
     } : {
       success: true,
@@ -727,6 +751,7 @@ export default function DashboardPage() {
   const combinedTokenBreakdown = combineSpendableTokenBreakdowns(mainTokenBreakdown, agentTokenBreakdown)
   const msgCost = agentWallet?.msg_cost ?? 0.005
   const spentPct = agentWallet ? Math.min(100, (agentWallet.daily_spent / agentWallet.daily_limit) * 100) : 0
+  const sessionActive = Boolean(agentWallet?.session_expires_at && Date.parse(agentWallet.session_expires_at) > sessionNow)
 
   // Most recent successful swap/send — powers the personalized suggestion
   // chips below the chat instead of a hardcoded "Swap USDC → EURC".
@@ -875,7 +900,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div style={{ fontSize: 11.5, color: 'var(--mpm-muted)', fontWeight: 600 }}>Agent Wallet</div>
                 <span className="inline-flex items-center gap-1" style={{ fontSize: 10, fontWeight: 600, color: 'var(--mpm-success)' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--mpm-success)' }} />Active
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: sessionActive ? 'var(--mpm-success)' : 'var(--mpm-muted)' }} />{sessionActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
               <div style={{ fontSize: 26, fontWeight: 600, color: 'var(--mpm-text)', marginTop: 6, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>${formatUSD(agentTotalUsd)}</div>
@@ -1048,12 +1073,12 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-.005em', color: 'var(--c-muted)' }}>Agent Wallet</div>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#2dd4bf' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2dd4bf', boxShadow: '0 0 6px #2dd4bf', display: 'inline-block' }} />Active
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: sessionActive ? '#2dd4bf' : 'var(--c-muted)', boxShadow: sessionActive ? '0 0 6px #2dd4bf' : 'none', display: 'inline-block' }} />{sessionActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--c-text)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em', marginTop: 8 }}>${formatUSD(agentTotalUsd)}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--c-muted2)', marginTop: 3 }}>{formatSpendableTokenBreakdown(agentTokenBreakdown)}</div>
-                <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 3 }}>Auto-pilot on</div>
+                <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 3 }}>{sessionActive ? 'Auto-pilot on' : 'Auto-pilot off'}</div>
                 <div style={{ height: 46, marginTop: 10 }}>
                   <SparklineChart values={agentChartValues} color="#8b8aff" id="spk-agent" />
                 </div>
@@ -1079,7 +1104,7 @@ export default function DashboardPage() {
                     Agent status
                   </span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#2dd4bf' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2dd4bf', display: 'inline-block' }} />Online
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: sessionActive ? '#2dd4bf' : 'var(--c-muted)', display: 'inline-block' }} />{sessionActive ? 'Online' : 'Offline'}
                   </span>
                 </div>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.09em', color: 'var(--c-muted2)', textTransform: 'uppercase' as const }}>Used today</div>
@@ -1117,7 +1142,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
-                      Online · on-chain verified
+                      {sessionActive ? 'Online · on-chain verified' : 'Offline · session approval required'}
                     </div>
                   </div>
                 </div>
@@ -1142,8 +1167,8 @@ export default function DashboardPage() {
                             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={msg.txResult.success ? '#2dd4bf' : '#fb6f84'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d={msg.txResult.success ? 'm8.5 12 2.5 2.5L16 9' : 'M15 9l-6 6M9 9l6 6'} /></svg>
                             <span style={{ fontSize: 13.5, fontWeight: 700, color: msg.txResult.success ? '#2dd4bf' : '#fb6f84' }}>
                               {msg.txResult.success
-                                ? (msg.txResult.type === 'swap' ? 'Swap successful' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit successful' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal successful' : 'Transfer successful')
-                                : (msg.txResult.type === 'swap' ? 'Swap failed' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit failed' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal failed' : 'Transfer failed')}
+                                ? (msg.txResult.type === 'swap' ? 'Swap successful' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit successful' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal successful' : msg.txResult.type === 'launchpad_contribute' ? 'Contribution successful' : 'Transfer successful')
+                                : (msg.txResult.processing ? 'Transaction processing' : msg.txResult.type === 'swap' ? 'Swap failed' : msg.txResult.type === 'gateway_deposit' ? 'X402 deposit failed' : msg.txResult.type === 'gateway_withdraw' ? 'X402 withdrawal failed' : msg.txResult.type === 'launchpad_contribute' ? 'Contribution failed' : 'Transfer failed')}
                             </span>
                           </div>
                           <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--c-panel-2)' }}>
@@ -1161,6 +1186,11 @@ export default function DashboardPage() {
                                       {msg.txResult.type === 'gateway_deposit' ? '−' : '+'}{msg.txResult.amountIn} USDC
                                     </span>
                                   </div>
+                                ) : msg.txResult.type === 'launchpad_contribute' ? (
+                                  <>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Contribution</span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>−{msg.txResult.amountIn} USDC</span></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Project</span><span style={{ fontSize: 12, color: 'var(--c-text)' }}>{msg.txResult.projectId}</span></div>
+                                  </>
                                 ) : (
                                   <>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>Amount</span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>−{msg.txResult.amountIn} {msg.txResult.tokenIn}</span></div>
@@ -1319,7 +1349,7 @@ export default function DashboardPage() {
                         <button onClick={revokeAgentSession} style={{ background: 'none', border: 'none', color: '#fb6f84', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, padding: 0 }}>revoke</button>
                       </span>
                     ) : (
-                      <button onClick={() => approveAgentSession(30)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#fb6f84', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: 0 }}>
+                      <button onClick={() => setApprovingAgentSession(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#fb6f84', textDecoration: 'underline', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: 0 }}>
                         ⚠️ Enable agent (30 min)
                       </button>
                     )
@@ -1484,6 +1514,17 @@ export default function DashboardPage() {
           onCancel={() => setPendingMainAction(null)}
         />
       )}
+      {approvingAgentSession && (
+        <AgentPinModal
+          title="Enable Agent session"
+          description="Enter your PIN once to authorize autonomous Agent actions for 30 minutes."
+          onCancel={() => setApprovingAgentSession(false)}
+          onSuccess={async (pin) => {
+            await approveAgentSession(pin, 30)
+            setApprovingAgentSession(false)
+          }}
+        />
+      )}
 
       {srsMode && <SRSModal
         mode={srsMode}
@@ -1545,8 +1586,13 @@ export default function DashboardPage() {
                       <button key={label as string} onClick={() => setModalAmount((mainUsdcBalance * (pct as number)).toFixed(4).replace(/\.?0+$/, ''))} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{label}</button>
                     ))}
                   </div>
+                  <input type="password" inputMode="numeric" maxLength={6} value={fundPin}
+                    onChange={e => setFundPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Main Wallet PIN (6 digits)"
+                    style={{ width: '100%', height: 46, borderRadius: 10, padding: '0 14px', background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.14)', color: 'var(--c-text)', outline: 'none' }} />
                   <button
                     onClick={handleFund}
+                    disabled={!/^\d{6}$/.test(fundPin)}
                     style={{ width: '100%', height: 52, borderRadius: 14, border: 'none', background: parseFloat(modalAmount) > 0 ? 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)' : 'rgba(var(--c-fg-rgb),.07)', boxShadow: parseFloat(modalAmount) > 0 ? '0 8px 30px rgba(99,102,241,.42)' : 'none', color: parseFloat(modalAmount) > 0 ? '#fff' : 'var(--c-muted2)', fontSize: 15, fontWeight: 600, cursor: parseFloat(modalAmount) > 0 ? 'pointer' : 'not-allowed', marginTop: 4, transition: 'all .15s' }}
                   >
                     Deposit USDC
@@ -1859,8 +1905,13 @@ export default function DashboardPage() {
                       <button key={v} onClick={() => setModalLimit(v)} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{v}</button>
                     ))}
                   </div>
+                  <input type="password" inputMode="numeric" maxLength={6} value={limitPin}
+                    onChange={e => setLimitPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Main Wallet PIN (6 digits)"
+                    style={{ width: '100%', height: 46, borderRadius: 10, padding: '0 14px', background: 'rgba(var(--c-fg-rgb),.05)', border: '1px solid rgba(var(--c-fg-rgb),.14)', color: 'var(--c-text)', outline: 'none' }} />
                   <button
                     onClick={handleSetLimit}
+                    disabled={!/^\d{6}$/.test(limitPin)}
                     style={{ width: '100%', height: 52, borderRadius: 14, border: 'none', background: parseFloat(modalLimit) > 0 ? 'linear-gradient(135deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)' : 'rgba(var(--c-fg-rgb),.07)', boxShadow: parseFloat(modalLimit) > 0 ? '0 8px 30px rgba(99,102,241,.42)' : 'none', color: parseFloat(modalLimit) > 0 ? '#fff' : 'var(--c-muted2)', fontSize: 15, fontWeight: 600, cursor: parseFloat(modalLimit) > 0 ? 'pointer' : 'not-allowed', marginTop: 4, transition: 'all .15s' }}
                   >
                     Save on-chain

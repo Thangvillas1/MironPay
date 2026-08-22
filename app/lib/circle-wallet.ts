@@ -1,5 +1,6 @@
 import { circleClient } from '@/app/lib/circle'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 
 /**
  * Get the user's circle_wallet_id from profiles.
@@ -32,10 +33,11 @@ export async function resolveCircleWalletId(
   if (!match?.id) return null
 
   // Save it for next time
-  await supabase
+  const { error: saveError } = await createAdminSupabaseClient()
     .from('profiles')
     .update({ circle_wallet_id: match.id })
     .eq('id', userId)
+  if (saveError) throw new Error(`Could not securely backfill Circle wallet ID: ${saveError.message}`)
 
   return { circleWalletId: match.id, walletAddress: profile.wallet_address }
 }

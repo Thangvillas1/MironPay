@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { circleClient } from '@/app/lib/circle'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
+import { stableCircleIdempotencyKey } from '@/app/lib/agent-security'
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -9,12 +11,13 @@ export async function POST(request: NextRequest) {
   const supabase = createServerSupabaseClient(token)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const admin = createAdminSupabaseClient()
 
   // Idempotent: if this user already has wallets on file, hand those back
   // instead of minting new ones. Onboarding can be retried after a
   // mid-flow failure (F5, network drop) — retrying must never orphan a
   // wallet that was already created on-chain for this user.
-  const { data: existing } = await supabase
+  const { data: existing } = await admin
     .from('profiles')
     .select('wallet_address, circle_wallet_id, agent_wallet_address, agent_wallet_id')
     .eq('id', user.id)
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest) {
     blockchains: ['ARC-TESTNET'],
     count: 1,
     accountType: 'EOA',
-    idempotencyKey: crypto.randomUUID(),
+    idempotencyKey: stableCircleIdempotencyKey(user.id, 'main-wallet'),
   })
 
   const mainWallet = mainRes.data?.wallets?.[0]
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
     blockchains: ['ARC-TESTNET'],
     count: 1,
     accountType: 'EOA',
-    idempotencyKey: crypto.randomUUID(),
+    idempotencyKey: stableCircleIdempotencyKey(user.id, 'agent-wallet'),
   })
 
   const agentWallet = agentRes.data?.wallets?.[0]
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   // Persist immediately, server-side — a client crash/refresh right after
   // this response must not lose track of wallets that already exist on-chain.
-  const { error: saveError } = await supabase
+  const { error: saveError } = await admin
     .from('profiles')
     .update({
       wallet_address: mainWallet.address,
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: saveError.message }, { status: 500 })
   }
 
-  await supabase
+  await admin
     .from('wallets')
     .upsert({ user_id: user.id, balance: 0, currency: 'USD' }, { onConflict: 'user_id', ignoreDuplicates: true })
 
