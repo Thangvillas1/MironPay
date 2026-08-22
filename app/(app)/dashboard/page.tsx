@@ -629,15 +629,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, sending, agentActionProgress])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function runExecuteAction(action: any, token: string, pin?: string) {
     const progressLabel = action.type === 'swap'
-      ? 'Đang thực hiện swap…'
+      ? 'Miron Agent đang xác nhận swap…'
       : action.type === 'send'
-        ? 'Đang gửi giao dịch…'
-        : 'Đang thực hiện giao dịch…'
+        ? 'Miron Agent đang xác nhận giao dịch gửi tiền…'
+        : 'Miron Agent đang xác nhận giao dịch…'
     setAgentActionProgress(progressLabel)
     try {
       const execRes = await fetch('/api/agent/execute', {
@@ -1329,9 +1329,12 @@ export default function DashboardPage() {
                     </div>
                   ))
                 )}
-                {sending && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ padding: '11px 14px', borderRadius: 14, borderBottomLeftRadius: 5, background: 'var(--c-panel-2)', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
+                {(sending || agentActionProgress) && (
+                  <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 14px', borderRadius: 14, borderBottomLeftRadius: 5, background: 'var(--c-panel-2)', border: '1px solid rgba(var(--c-fg-rgb),.07)' }}>
+                      {agentActionProgress && (
+                        <span style={{ fontSize: 12.5, color: 'var(--c-muted)' }}>{agentActionProgress}</span>
+                      )}
                       <div style={{ display: 'flex', gap: 4 }}>
                         {[0, 150, 300].map(d => <span key={d} className="animate-bounce" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--c-muted)', animationDelay: `${d}ms`, display: 'inline-block' }} />)}
                       </div>
@@ -1550,7 +1553,7 @@ export default function DashboardPage() {
         <TransactionDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
       )}
 
-      {(agentSessionUpdating || agentActionProgress) && (
+      {agentSessionUpdating && (
         <div
           role="status"
           aria-live="polite"
@@ -1563,10 +1566,10 @@ export default function DashboardPage() {
           </svg>
           <div>
             <div className="text-sm font-semibold">
-              {agentActionProgress ?? (agentSessionUpdating === 'enable' ? 'Đang bật Agent…' : 'Đang tắt Agent…')}
+              {agentSessionUpdating === 'enable' ? 'Đang bật Agent…' : 'Đang tắt Agent…'}
             </div>
             <div className="mt-0.5 text-[11px] text-white/60">
-              {agentActionProgress ? 'Đang chờ mạng xác nhận, vui lòng không gửi lại lệnh.' : 'Vui lòng chờ hệ thống xác nhận.'}
+              Vui lòng chờ hệ thống xác nhận.
             </div>
           </div>
         </div>
