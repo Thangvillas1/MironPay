@@ -125,11 +125,13 @@ function patchRealData(doc: Document, data: RealData) {
 export default function MobileAppPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [realData, setRealData] = useState<RealData | null>(null)
+  const [authToken, setAuthToken] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       const token = data.session?.access_token
       if (!token) return
+      setAuthToken(token)
       const res = await fetch('/api/wallet', { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) return
       const d = await res.json()
@@ -142,6 +144,26 @@ export default function MobileAppPage() {
       })
     })
   }, [])
+
+  // Bridges the Supabase access token into the sandboxed demo iframe so its
+  // Store/POS screens can call the real /api/merchant/* endpoints directly
+  // (same-origin fetch, no CORS) instead of the mock's simulated state.
+  useEffect(() => {
+    if (!authToken) return
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const send = () => iframe.contentWindow?.postMessage({ type: 'mironpay:auth', token: authToken, apiBase: '' }, '*')
+    function onReady(e: MessageEvent) {
+      if (e.source === iframe?.contentWindow && e.data?.type === 'mironpay:ready') send()
+    }
+    window.addEventListener('message', onReady)
+    iframe.addEventListener('load', send)
+    if (iframe.contentDocument?.readyState === 'complete') send()
+    return () => {
+      window.removeEventListener('message', onReady)
+      iframe.removeEventListener('load', send)
+    }
+  }, [authToken])
 
   useEffect(() => {
     if (!realData) return

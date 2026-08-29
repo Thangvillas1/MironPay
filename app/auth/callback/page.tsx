@@ -36,6 +36,7 @@ function CallbackHandler() {
     async function handleCallback() {
       const requestedNext = searchParams.get('next')
       const recoveryRequested = requestedNext === PIN_RECOVERY_NEXT
+      const mobileRequested = requestedNext === '/m'
 
       // OAuth errors arrive as ?error=...&error_description=...
       const errorParam = searchParams.get('error')
@@ -61,6 +62,7 @@ function CallbackHandler() {
             sessionStorage.removeItem(PIN_RECOVERY_USER_KEY)
           }
           setUser(data.session.user)
+          if (mobileRequested) { router.replace('/m'); return }
           const defaultRoute = await resolvePostLoginRoute(data.session.user.id)
           router.replace(recoveryRequested && defaultRoute === '/dashboard' ? PIN_RECOVERY_NEXT : defaultRoute)
         } else {
@@ -86,6 +88,7 @@ function CallbackHandler() {
         }
         sessionStorage.removeItem(PIN_RECOVERY_USER_KEY)
       }
+      if (mobileRequested) { router.replace('/m'); return }
       const defaultRoute = await resolvePostLoginRoute(data.session.user.id)
       router.replace(recoveryRequested && defaultRoute === '/dashboard' ? PIN_RECOVERY_NEXT : defaultRoute)
     }
