@@ -152,6 +152,16 @@ export default function HomePage() {
   const [checkingSession, setCheckingSession] = useState(isSupabaseConfigured)
   const [hasSession, setHasSession] = useState(false)
 
+  // Phones get the dedicated mobile app experience instead of this
+  // desktop-styled login card — /m handles its own real sign-in, onboarding,
+  // and Store/POS, and carries its own installable-PWA manifest (start_url
+  // /m) so "Add to Home Screen" from here opens straight into the app
+  // rather than this login screen.
+  useEffect(() => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (isMobile) router.replace('/m')
+  }, [router])
+
   // Detect standalone (installed PWA) launch — matchMedia covers Android/
   // desktop installs, navigator.standalone covers iOS Safari's older API.
   useEffect(() => {
