@@ -45,6 +45,10 @@ export default function MPage() {
     async function onMessage(e: MessageEvent) {
       if (e.source !== iframe?.contentWindow) return
       if (e.data?.type === 'mironpay:ready') { send(); return }
+      if (e.data?.type === 'mironpay:theme' && typeof e.data.color === 'string') {
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', e.data.color)
+        return
+      }
       if (e.data?.type === 'mironpay:signin') {
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
