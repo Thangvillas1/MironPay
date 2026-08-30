@@ -70,7 +70,12 @@ export default function MPage() {
     <div style={{ position: 'fixed', inset: 0, background: '#faf9f5' }}>
       <iframe
         ref={iframeRef}
-        src="/demo/mobile-app.html"
+        // ?device=1 tells the mock this is a real phone (not the admin's
+        // boxed /mobile-app preview) so it hides its fake status-bar clock
+        // and notch pill — a URL param instead of sessionStorage because
+        // sessionStorage is shared per-origin and would leak this flag into
+        // /mobile-app's iframe too if both are visited in the same tab.
+        src="/demo/mobile-app.html?device=1"
         title="MironPay"
         style={{ width: '100%', height: '100%', border: 'none' }}
       />

@@ -6,7 +6,11 @@ export const metadata: Metadata = {
   manifest: '/manifest-m.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    // 'default' reserves real space for iOS's own status bar instead of
+    // letting page content draw underneath it — the mock's fake "9:41"
+    // status bar (hidden on real devices, see mp-real CSS) was only ever
+    // needed to fill that space when the bar was translucent/overlaid.
+    statusBarStyle: 'default',
     title: 'MironPay',
   },
 }
