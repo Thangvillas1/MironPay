@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PATHS = new Set(['/', '/auth/callback', '/leaderboard', '/mobile-app', '/m'])
 
 function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.has(pathname) || pathname.startsWith('/invoice/')
+  return PUBLIC_PATHS.has(pathname) || pathname.startsWith('/invoice/') || pathname.startsWith('/m/')
 }
 
 const MOBILE_UA = /Android|iPhone|iPad|iPod/i
