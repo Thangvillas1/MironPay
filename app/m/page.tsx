@@ -3,27 +3,37 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
 
+const DEFAULT_BG = '#f5f4f2' // mock's thm-light --bg
+
 export default function MPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
   const [token, setToken] = useState<string | null>(null)
+  const [bg, setBg] = useState(DEFAULT_BG)
 
   // Locks the outer page against iOS Safari's rubber-band overscroll — a
-  // fixed 100vh page with a scrollable <body> still bounces past its edges
-  // on a pull-down gesture and briefly reveals the WebView's default black
-  // canvas underneath before snapping back. The iframe's own document
-  // (the mock's real content) gets the same lock via its `.mp-real` CSS.
+  // fixed page with a scrollable <body> still bounces past its edges on a
+  // pull gesture, briefly revealing whatever's behind it before snapping
+  // back. The iframe's own document (the mock's real content) gets the
+  // same lock via its `.mp-real` CSS.
+  //
+  // Also repaints the site's global html/body background (globals.css sets
+  // it near-black — var(--c-page), meant for the desktop dashboard) to the
+  // mock's actual current theme color, since ANY gap here — the bounce
+  // above, a rounding sliver from a dynamic-toolbar resize, whatever —
+  // would otherwise show that near-black site default instead of the
+  // app's own background, reading as a stray black bar.
   useEffect(() => {
     const html = document.documentElement
     const prevHtml = html.style.cssText
     const prevBody = document.body.style.cssText
-    html.style.cssText += 'overscroll-behavior:none;height:100%;overflow:hidden'
-    document.body.style.cssText += 'overscroll-behavior:none;height:100%;overflow:hidden'
+    html.style.cssText += `overscroll-behavior:none;height:100dvh;overflow:hidden;background:${bg}`
+    document.body.style.cssText += `overscroll-behavior:none;height:100dvh;overflow:hidden;background:${bg}`
     return () => {
       html.style.cssText = prevHtml
       document.body.style.cssText = prevBody
     }
-  }, [])
+  }, [bg])
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -64,6 +74,7 @@ export default function MPage() {
       if (e.data?.type === 'mironpay:ready') { send(); return }
       if (e.data?.type === 'mironpay:theme' && typeof e.data.color === 'string') {
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', e.data.color)
+        setBg(e.data.color)
         return
       }
       if (e.data?.type === 'mironpay:signin') {
@@ -84,11 +95,11 @@ export default function MPage() {
   }, [ready, token])
 
   if (!ready) {
-    return <div style={{ position: 'fixed', inset: 0, background: '#faf9f5' }} />
+    return <div style={{ position: 'fixed', inset: 0, background: bg }} />
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#faf9f5' }}>
+    <div style={{ position: 'fixed', inset: 0, background: bg }}>
       <iframe
         ref={iframeRef}
         // ?device=1 tells the mock this is a real phone (not the admin's
