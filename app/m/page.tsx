@@ -8,6 +8,23 @@ export default function MPage() {
   const [ready, setReady] = useState(false)
   const [token, setToken] = useState<string | null>(null)
 
+  // Locks the outer page against iOS Safari's rubber-band overscroll — a
+  // fixed 100vh page with a scrollable <body> still bounces past its edges
+  // on a pull-down gesture and briefly reveals the WebView's default black
+  // canvas underneath before snapping back. The iframe's own document
+  // (the mock's real content) gets the same lock via its `.mp-real` CSS.
+  useEffect(() => {
+    const html = document.documentElement
+    const prevHtml = html.style.cssText
+    const prevBody = document.body.style.cssText
+    html.style.cssText += 'overscroll-behavior:none;height:100%;overflow:hidden'
+    document.body.style.cssText += 'overscroll-behavior:none;height:100%;overflow:hidden'
+    return () => {
+      html.style.cssText = prevHtml
+      document.body.style.cssText = prevBody
+    }
+  }, [])
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       const session = data.session
