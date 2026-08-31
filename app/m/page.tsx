@@ -10,6 +10,23 @@ export default function MPage() {
   const [ready, setReady] = useState(false)
   const [token, setToken] = useState<string | null>(null)
   const [bg, setBg] = useState(DEFAULT_BG)
+  const [safeArea, setSafeArea] = useState<{ top: number; bottom: number } | null>(null)
+
+  // env(safe-area-inset-*) only resolves for the TOP-LEVEL document — a
+  // nested <iframe> (where the mock's actual content lives) always reads 0
+  // for it on iOS, regardless of the device's real notch/home-indicator, so
+  // padding computed with env() *inside* the iframe is a no-op. Measuring
+  // it here (where it works) with a probe element and forwarding the
+  // resolved pixel values into the iframe via the URL is the only way the
+  // mock can size around the real safe area.
+  useEffect(() => {
+    const probe = document.createElement('div')
+    probe.style.cssText = 'position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)'
+    document.body.appendChild(probe)
+    const cs = getComputedStyle(probe)
+    setSafeArea({ top: parseFloat(cs.paddingTop) || 0, bottom: parseFloat(cs.paddingBottom) || 0 })
+    probe.remove()
+  }, [])
 
   // Locks the outer page against iOS Safari's rubber-band overscroll — a
   // fixed page with a scrollable <body> still bounces past its edges on a
@@ -94,7 +111,7 @@ export default function MPage() {
     }
   }, [ready, token])
 
-  if (!ready) {
+  if (!ready || !safeArea) {
     return <div style={{ position: 'fixed', inset: 0, background: bg }} />
   }
 
@@ -107,7 +124,10 @@ export default function MPage() {
         // and notch pill — a URL param instead of sessionStorage because
         // sessionStorage is shared per-origin and would leak this flag into
         // /mobile-app's iframe too if both are visited in the same tab.
-        src="/demo/mobile-app.html?device=1"
+        // ?sat/?sab carry the REAL safe-area-inset px values measured above
+        // — env(safe-area-inset-*) always reads 0 inside a nested iframe on
+        // iOS, so the mock can't measure this itself.
+        src={`/demo/mobile-app.html?device=1&sat=${safeArea.top}&sab=${safeArea.bottom}`}
         title="MironPay"
         style={{ width: '100%', height: '100%', border: 'none' }}
       />
