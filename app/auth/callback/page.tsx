@@ -71,13 +71,23 @@ function CallbackHandler() {
         return
       }
 
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-
-      if (error) {
-        setErrorMessage(error.message)
-        return
+      // The @supabase/ssr browser client runs with detectSessionInUrl, so it
+      // already exchanges ?code= on init and consumes the PKCE verifier. A
+      // second manual exchange would then fail ("code verifier not found")
+      // even though sign-in succeeded — reuse that session instead.
+      // getSession() awaits client initialization, so it sees that result.
+      const { data: existing } = await supabase.auth.getSession()
+      let session = existing.session
+      if (!session) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          setErrorMessage(error.message)
+          return
+        }
+        session = data.session
       }
 
+      const data = { session }
       setUser(data.session.user)
       if (recoveryRequested) {
         const expectedUserId = sessionStorage.getItem(PIN_RECOVERY_USER_KEY)
