@@ -6,6 +6,7 @@ import { TOKEN_USD_PRICE } from '@/app/lib/types'
 import { cachedSimplePrice } from '@/app/lib/price-cache'
 import { VERIFIED_SYMBOLS, TOKEN_LOGOS, priceLookupSymbol } from '@/app/lib/token-meta'
 import { ARC_MEMO_CONTRACT, readArcTransactionMemo } from '@/app/lib/arc-transaction-memo'
+import { walletBalanceEvents } from '@/app/lib/wallet-balance-events'
 
 
 export async function GET(request: NextRequest) {
@@ -129,6 +130,20 @@ export async function GET(request: NextRequest) {
     return tx.transactionType === 'INBOUND'
       || String(tx.destinationAddress ?? '').toLowerCase() === ARC_MEMO_CONTRACT.toLowerCase()
   }).slice(0, 20)
+  // Exact per-tx balance changes (transfers + gas, read from receipts) for the
+  // dashboard's 7-day sparkline — see wallet-balance-events for why Circle's
+  // own amounts aren't enough. 8 days covers the 7 local-day buckets in any
+  // timezone. Runs alongside the memo reads; null means "fall back".
+  const balanceTokens = new Map<string, { symbol: string; decimals: number }>()
+  for (const b of tokenBalances) {
+    const address = b.token?.tokenAddress as string | undefined
+    if (address && b.token?.symbol) {
+      balanceTokens.set(address.toLowerCase(), { symbol: b.token.symbol, decimals: Number(b.token.decimals ?? 6) })
+    }
+  }
+  const balanceEventsJob = walletBalanceEvents(allTxs, walletAddress, balanceTokens, Date.now() - 8 * 24 * 60 * 60 * 1000)
+    .catch(() => null)
+
   const onchainResults = await Promise.allSettled(
     onchainCandidates.map((tx) => readArcTransactionMemo(tx.txHash, walletAddress))
   )
@@ -198,5 +213,6 @@ export async function GET(request: NextRequest) {
     walletAddress,
     tokenList,
     transactions,
+    balanceEvents: await balanceEventsJob,
   })
 }

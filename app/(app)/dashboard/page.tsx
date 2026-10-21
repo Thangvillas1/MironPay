@@ -421,6 +421,9 @@ export default function DashboardPage() {
   }
 
   const mainWalletRefreshInFlightRef = useRef(false)
+  // Exact per-tx balance changes (transfers + gas) for the 7-day sparkline;
+  // null until loaded or if the API couldn't read every receipt.
+  const [balanceEvents, setBalanceEvents] = useState<Array<{ created_at: string; change: Record<string, number> }> | null>(null)
 
   // ── Helper: refresh main wallet from Circle ──────────────────────────────────
   async function refreshMainWallet(token: string) {
@@ -435,6 +438,7 @@ export default function DashboardPage() {
       setWallet({ id: d.circleWalletId, balance: d.balance, currency: d.currency })
       setTransactions(mergeWithLocalTransactions((d.transactions ?? []) as Transaction[]))
       setTokenList(d.tokenList ?? [])
+      setBalanceEvents(Array.isArray(d.balanceEvents) ? d.balanceEvents : null)
       storeSetWalletAddress(d.walletAddress)
       setWalletAddress(d.walletAddress)
       setLastFetched(Date.now())
@@ -830,13 +834,26 @@ export default function DashboardPage() {
   })
   function txUsd(t: Transaction) {
     if (t.tokenSymbol === 'USDC' || t.tokenSymbol === 'USDT') return t.amount
-    return priceBySymbol[t.tokenSymbol] != null ? t.amount * priceBySymbol[t.tokenSymbol] : t.amount
+    return priceBySymbol[t.tokenSymbol] != null ? t.amount * priceBySymbol[t.tokenSymbol] : 0
   }
 
+  // Signed USD effect of each wallet movement. Prefer the receipt-derived
+  // events: Circle reports contract calls (payroll approve/payBatch, …) as
+  // amount 0 and never includes gas, so rebuilding history from the
+  // transaction list alone drew moves that didn't happen.
+  const usdOf = (symbol: string, amount: number) =>
+    symbol === 'USDC' || symbol === 'USDT' ? amount : amount * (priceBySymbol[symbol] ?? 0)
+  const balanceFlows: Array<{ at: Date; usd: number }> = balanceEvents
+    ? balanceEvents.map(e => ({
+        at: new Date(e.created_at),
+        usd: Object.entries(e.change).reduce((sum, [symbol, amount]) => sum + usdOf(symbol, amount), 0),
+      }))
+    : transactions.map(t => ({ at: new Date(t.created_at), usd: t.type === 'credit' ? txUsd(t) : -txUsd(t) }))
+
   const cutoff24h = new Date(now - 24 * 60 * 60 * 1000)
-  const mainDelta24h = transactions
-    .filter(t => new Date(t.created_at) > cutoff24h)
-    .reduce((s, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0)
+  const mainDelta24h = balanceFlows
+    .filter(f => f.at > cutoff24h)
+    .reduce((s, f) => s + f.usd, 0)
   const mainBalanceBefore24h = totalUsd - mainDelta24h
   const mainDeltaPct = mainBalanceBefore24h !== 0 ? (mainDelta24h / Math.abs(mainBalanceBefore24h)) * 100 : 0
 
@@ -848,9 +865,9 @@ export default function DashboardPage() {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - (6 - i))
     cutoff.setHours(23, 59, 59, 999)
-    const futureNet = transactions
-      .filter(t => new Date(t.created_at) > cutoff)
-      .reduce((s: number, t) => t.type === 'credit' ? s + txUsd(t) : s - txUsd(t), 0 as number)
+    const futureNet = balanceFlows
+      .filter(f => f.at > cutoff)
+      .reduce((s, f) => s + f.usd, 0)
     return Math.max(0, totalUsd - futureNet)
   })
 
