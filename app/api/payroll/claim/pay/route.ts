@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
@@ -257,52 +257,57 @@ export async function POST(request: NextRequest) {
     await supabase.from('payroll_claim_runs').update({ status: 'paid', tx_hash: txHash, paid_at: new Date().toISOString() }).eq('id', run.id)
     await supabase.from('payroll_claim_items').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('run_id', run.id)
 
-    // Best-effort: write each recipient's note on-chain via the existing
-    // Memo contract, attached to their own precomputed box address (the
-    // funds already sitting there). Fire-and-forget, same pattern as
-    // app/api/wallet/transfer/route.ts — a memo failing to attach must
-    // never affect the payroll result the company already sees as paid.
-    items.forEach((item, i) => {
-      if (!item.note?.trim()) return
-      void circleClient.createContractExecutionTransaction({
-        walletId: wallet.circleWalletId,
-        contractAddress: MEMO_CONTRACT,
-        abiFunctionSignature: 'attachMemo(address,bytes,string)',
-        abiParameters: [boxAddresses[i], '0x', item.note.trim()],
-        fee: { type: 'level', config: { feeLevel: 'LOW' } },
-        idempotencyKey: crypto.randomUUID(),
-      }).catch((e) => console.error('[payroll memo] attachMemo failed:', e))
-    })
+    // Memos and recipient emails run in after(): they must not delay or
+    // affect the paid result the company already sees, but on serverless a
+    // bare `void promise` is not guaranteed to finish once the response is
+    // sent (the instance can be frozen), so recipients could silently never
+    // get their "money is waiting" email. after() keeps the function alive
+    // for them, within this route's maxDuration.
+    after(async () => {
+      // Best-effort: write each recipient's note on-chain via the existing
+      // Memo contract, attached to their own precomputed box address (the
+      // funds already sitting there).
+      const memoJobs = items.map((item, i) => {
+        if (!item.note?.trim()) return Promise.resolve()
+        return circleClient.createContractExecutionTransaction({
+          walletId: wallet.circleWalletId,
+          contractAddress: MEMO_CONTRACT,
+          abiFunctionSignature: 'attachMemo(address,bytes,string)',
+          abiParameters: [boxAddresses[i], '0x', item.note.trim()],
+          fee: { type: 'level', config: { feeLevel: 'LOW' } },
+          idempotencyKey: crypto.randomUUID(),
+        }).then(() => undefined, (e) => console.error('[payroll memo] attachMemo failed:', e))
+      })
 
-    // Best-effort notification: recipients need to know money is waiting,
-    // but a failed send must never affect the payroll result the company
-    // already sees as paid — same fire-and-forget contract as the memo above.
-    // Company identity for the email's "Paid by {name}" line: legal_name once
-    // verified (that's the name that was actually reviewed), otherwise the
-    // account username — falling back to a generic label rather than failing
-    // the whole payroll if this lookup errors.
-    const { data: companyProfile } = await supabase
-      .from('company_profiles')
-      .select('legal_name, verification_status')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    const companyVerified = companyProfile?.verification_status === 'verified'
-    let companyName = companyVerified ? companyProfile?.legal_name : null
-    if (!companyName) {
-      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()
-      companyName = profile?.username ?? null
-    }
+      // Company identity for the email's "Paid by {name}" line: legal_name once
+      // verified (that's the name that was actually reviewed), otherwise the
+      // account username — falling back to a generic label rather than failing
+      // the whole payroll if this lookup errors.
+      const { data: companyProfile } = await supabase
+        .from('company_profiles')
+        .select('legal_name, verification_status')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      const companyVerified = companyProfile?.verification_status === 'verified'
+      let companyName = companyVerified ? companyProfile?.legal_name : null
+      if (!companyName) {
+        const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()
+        companyName = profile?.username ?? null
+      }
 
-    items.forEach((item, i) => {
-      void sendPayrollClaimEmail({
-        to: item.email.trim().toLowerCase(),
-        amount: item.amount,
-        period,
-        note: item.note,
-        companyName,
-        companyVerified,
-        referenceCode: referenceCodes[i],
-      }).catch((e) => console.error('[payroll email] sendPayrollClaimEmail failed:', item.email, e))
+      const emailJobs = items.map((item, i) =>
+        sendPayrollClaimEmail({
+          to: item.email.trim().toLowerCase(),
+          amount: item.amount,
+          period,
+          note: item.note,
+          companyName,
+          companyVerified,
+          referenceCode: referenceCodes[i],
+        }).catch((e) => console.error('[payroll email] sendPayrollClaimEmail failed:', item.email, e))
+      )
+
+      await Promise.allSettled([...memoJobs, ...emailJobs])
     })
 
     const { data: finalRun } = await supabase.from('payroll_claim_runs').select('*').eq('id', run.id).single()
