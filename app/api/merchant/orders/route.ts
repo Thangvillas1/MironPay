@@ -117,8 +117,16 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
 
   if (range === 'today') {
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
+    // "Today" is the merchant's local day, not the server's: the function runs
+    // in UTC, so a server-side midnight would start a Vietnam shop's day at
+    // 07:00 and file its early-morning sales under yesterday. The client sends
+    // its own local midnight as `since`; accept it only within the last ~day
+    // (any timezone's midnight falls in that window), else fall back to UTC.
+    const since = Date.parse(request.nextUrl.searchParams.get('since') ?? '')
+    const now = Date.now()
+    const startOfDay = Number.isFinite(since) && since <= now && now - since <= 50 * 60 * 60 * 1000
+      ? new Date(since)
+      : new Date(new Date().setUTCHours(0, 0, 0, 0))
     query = query.gte('created_at', startOfDay.toISOString())
   }
 

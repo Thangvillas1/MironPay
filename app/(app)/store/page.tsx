@@ -22,7 +22,9 @@ export default function StorePage() {
   const [recentOrders, setRecentOrders] = useState<OrderSummary[]>([])
 
   const loadSummary = useCallback(async (token: string) => {
-    const res = await fetch('/api/merchant/orders?range=today', { headers: { Authorization: `Bearer ${token}` } })
+    // Local midnight, so "Today" follows the merchant's own day (see the API).
+    const since = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+    const res = await fetch(`/api/merchant/orders?range=today&since=${encodeURIComponent(since)}`, { headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) return
     const d = await res.json()
     setTotalToday(d.totalPaid ?? 0)
