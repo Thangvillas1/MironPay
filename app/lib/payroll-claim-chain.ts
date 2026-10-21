@@ -1,5 +1,6 @@
 import { createPublicClient, createWalletClient, http, keccak256, toBytes, type Address, type Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { ARC_RPC_URL } from './arc-rpc'
 
 export const USDC = '0x3600000000000000000000000000000000000000' as const
 
@@ -8,7 +9,7 @@ export const arcTestnet = {
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.network/'] } },
+  rpcUrls: { default: { http: [ARC_RPC_URL] } },
 } as const
 
 export const PAYROLL_CLAIM_ABI = [

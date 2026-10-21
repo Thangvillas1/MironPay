@@ -1,4 +1,5 @@
 import { createPublicClient, http, parseAbiItem, type PublicClient } from 'viem'
+import { ARC_RPC_URL } from './arc-rpc'
 
 // Config chain ARC Testnet dùng chung cho các file mới của tính năng ARC leaderboard.
 // Các route cũ (register-onchain, reputation, validate, feedback) tự định nghĩa riêng,
@@ -8,7 +9,7 @@ export const arcTestnet = {
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.network/'] } },
+  rpcUrls: { default: { http: [ARC_RPC_URL] } },
 }
 
 export const IDENTITY_REGISTRY = '0x8004A818BFB912233c491871b3d84c89A494BD9e' as const

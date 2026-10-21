@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient, http, parseAbi } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { ARC_RPC_URL } from '@/app/lib/arc-rpc'
 
 const arcTestnet = {
   id: 5042002,
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.network/'] } },
+  rpcUrls: { default: { http: [ARC_RPC_URL] } },
 }
 
 const REPUTATION_REGISTRY = '0x8004B663056A597Dffe9eCcC1965A193B7388713' as `0x${string}`

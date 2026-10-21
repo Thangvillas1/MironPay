@@ -3,6 +3,7 @@ import { createPublicClient, http, encodeFunctionData, decodeEventLog, parseAbi,
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { circleClient } from '@/app/lib/circle'
+import { ARC_RPC_URL } from '@/app/lib/arc-rpc'
 
 const USDC = '0x3600000000000000000000000000000000000000'
 const MULTICALL3_FROM = '0x522fAf9A91c41c443c66765030741e4AaCe147D0'
@@ -18,7 +19,7 @@ const arcTestnet = {
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.network/'] } },
+  rpcUrls: { default: { http: [ARC_RPC_URL] } },
 }
 
 const publicClient = createPublicClient({ chain: arcTestnet, transport: http() })

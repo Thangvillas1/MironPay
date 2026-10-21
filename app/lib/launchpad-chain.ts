@@ -2,6 +2,7 @@ import { createWalletClient, createPublicClient, http, parseAbi, keccak256, toBy
 import { privateKeyToAccount } from 'viem/accounts'
 import { circleClient } from './circle'
 import { stableCircleIdempotencyKey } from './agent-security'
+import { ARC_RPC_URL } from './arc-rpc'
 
 const ERC20_ALLOWANCE_ABI = parseAbi([
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -16,7 +17,7 @@ const arcTestnet = {
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.network/'] } },
+  rpcUrls: { default: { http: [ARC_RPC_URL] } },
 } as const
 
 const ABI = parseAbi([

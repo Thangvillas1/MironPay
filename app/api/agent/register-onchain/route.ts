@@ -4,6 +4,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { hasInternalAgentAuthorization } from '@/app/lib/agent-security'
+import { ARC_RPC_URL } from '@/app/lib/arc-rpc'
 
 // ── ARC Testnet config ────────────────────────────────────────────────────────
 const arcTestnet = {
@@ -11,7 +12,7 @@ const arcTestnet = {
   name: 'Arc Testnet',
   network: 'arc-testnet',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 6 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.network/'] } },
+  rpcUrls: { default: { http: [ARC_RPC_URL] } },
 }
 
 // ── Contract addresses ────────────────────────────────────────────────────────
