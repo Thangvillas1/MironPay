@@ -107,6 +107,15 @@ export default function TokenDetailPage({ params }: { params: Promise<{ symbol: 
       .catch(() => {})
   }
 
+  // Balance and history come from the shared wallet store, which only the
+  // dashboard/wallet pages filled — opening this page directly showed
+  // "0" and "No transactions yet". Load the wallet once the session is known.
+  useEffect(() => {
+    if (!accessToken) return
+    refreshWallet()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken])
+
   useEffect(() => {
     const controller = new AbortController()
     const frame = requestAnimationFrame(() => setLoadingMeta(true))

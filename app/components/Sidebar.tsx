@@ -87,9 +87,8 @@ const NAV_ITEMS: NavItem[] = [
       },
       {
         label: 'Store',
-        href: '#',
-        activeOn: [],
-        disabled: true,
+        href: '/store',
+        activeOn: ['/store'],
         icon: null,
       },
       {
@@ -151,6 +150,17 @@ export default function Sidebar() {
     const frame = requestAnimationFrame(() => setIsDark(localStorage.getItem('theme') !== 'light'))
     return () => cancelAnimationFrame(frame)
   }, [])
+
+  // The auth store was only filled by the dashboard, wallet and settings
+  // pages, so opening any other page directly (reload, bookmark, shared
+  // link) left the sidebar showing a generic "User". Hydrate it from the
+  // session here, since the sidebar is on every signed-in page.
+  useEffect(() => {
+    if (user) return
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) setUser(data.session.user)
+    })
+  }, [user, setUser])
 
   useEffect(() => {
     if (!user?.id) return
