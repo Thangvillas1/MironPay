@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 import { circleClient } from '@/app/lib/circle'
-import { sendPayrollClaimEmail } from '@/app/lib/email'
+import { boxesFunded, reconcileInterruptedRuns, sendRunClaimEmails } from '@/app/lib/payroll-claim-reconcile'
 import {
   USDC,
   publicClient,
@@ -135,16 +135,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Preflight failed: could not verify company wallet balance' }, { status: 400 })
   }
 
-  // A run stuck in 'draft' means a previous request crashed before it could
-  // reach 'paid'/'failed' (server restart, uncaught exception). Auto-expire
-  // anything older than 5 minutes so it doesn't permanently block this user
-  // from starting a new run (see the one-draft-per-user unique index).
-  await supabase
-    .from('payroll_claim_runs')
-    .update({ status: 'failed', error_message: 'Stale draft auto-expired' })
-    .eq('user_id', user.id)
-    .eq('status', 'draft')
-    .lt('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+  // A run stuck in 'draft' means a previous request died before it could
+  // reach 'paid'/'failed' — typically killed at maxDuration while waiting on
+  // payBatch(), which may have landed on-chain anyway. Settle those from the
+  // contract (paid if their boxes exist, else failed) so they neither block
+  // this user's next run (one-draft-per-user unique index) nor get reported
+  // as failed while the money already sits in the Claim Boxes.
+  const recovered = await reconcileInterruptedRuns(supabase, user.id)
+  if (recovered.length > 0) {
+    after(() => Promise.allSettled(recovered.map((r) => sendRunClaimEmails(supabase, user.id, r.period, r.items))))
+  }
 
   // ── Create the DB run first — its id feeds into boxId derivation below,
   //    so the same recipient gets a fresh, distinct Claim Box every run
@@ -230,6 +230,7 @@ export async function POST(request: NextRequest) {
 
   // ── Broadcast: approve() then payBatch() via the company's Circle wallet ──
   let approved = false
+  let paySubmitted = false
   try {
     const approveTx = await circleClient.createContractExecutionTransaction({
       walletId: wallet.circleWalletId,
@@ -251,6 +252,7 @@ export async function POST(request: NextRequest) {
       fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
       idempotencyKey: crypto.randomUUID(),
     })
+    paySubmitted = true
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const txHash = await waitForCircleTx((payTx.data as any)?.id)
 
@@ -279,41 +281,42 @@ export async function POST(request: NextRequest) {
         }).then(() => undefined, (e) => console.error('[payroll memo] attachMemo failed:', e))
       })
 
-      // Company identity for the email's "Paid by {name}" line: legal_name once
-      // verified (that's the name that was actually reviewed), otherwise the
-      // account username — falling back to a generic label rather than failing
-      // the whole payroll if this lookup errors.
-      const { data: companyProfile } = await supabase
-        .from('company_profiles')
-        .select('legal_name, verification_status')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      const companyVerified = companyProfile?.verification_status === 'verified'
-      let companyName = companyVerified ? companyProfile?.legal_name : null
-      if (!companyName) {
-        const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()
-        companyName = profile?.username ?? null
-      }
-
-      const emailJobs = items.map((item, i) =>
-        sendPayrollClaimEmail({
-          to: item.email.trim().toLowerCase(),
-          amount: item.amount,
-          period,
-          note: item.note,
-          companyName,
-          companyVerified,
-          referenceCode: referenceCodes[i],
-        }).catch((e) => console.error('[payroll email] sendPayrollClaimEmail failed:', item.email, e))
+      const emailJob = sendRunClaimEmails(
+        supabase,
+        user.id,
+        period,
+        items.map((item, i) => ({ email: item.email, amount: item.amount, note: item.note, referenceCode: referenceCodes[i] }))
       )
 
-      await Promise.allSettled([...memoJobs, ...emailJobs])
+      await Promise.allSettled([...memoJobs, emailJob])
     })
 
     const { data: finalRun } = await supabase.from('payroll_claim_runs').select('*').eq('id', run.id).single()
     return NextResponse.json({ run: finalRun, txHash })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Batch payment failed'
+    // payBatch() was submitted but waiting on it failed (Circle polling error
+    // etc.) — the payment may still have landed. Never report a run as failed
+    // while its money sits on-chain: check the boxes first.
+    if (paySubmitted) {
+      const funded = await boxesFunded(boxIds).catch(() => null)
+      if (funded !== false) {
+        // funded === null: chain unreadable right now — leave the run in
+        // 'draft' so reconcileInterruptedRuns settles it on the next load.
+        if (funded) {
+          await supabase.from('payroll_claim_runs').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', run.id)
+          await supabase.from('payroll_claim_items').update({ status: 'paid', updated_at: new Date().toISOString() }).eq('run_id', run.id)
+          after(() => sendRunClaimEmails(
+            supabase,
+            user.id,
+            period,
+            items.map((item, i) => ({ email: item.email, amount: item.amount, note: item.note, referenceCode: referenceCodes[i] }))
+          ))
+        }
+        const { data: currentRun } = await supabase.from('payroll_claim_runs').select('*').eq('id', run.id).single()
+        return NextResponse.json({ run: currentRun, txHash: null, pendingConfirmation: !funded })
+      }
+    }
     // approve() succeeded but payBatch() didn't reach the chain — revoke the
     // leftover allowance so it doesn't sit on the contract indefinitely.
     // Best-effort only: never let a revoke failure mask the real error above.

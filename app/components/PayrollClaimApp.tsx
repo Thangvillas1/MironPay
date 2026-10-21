@@ -333,8 +333,12 @@ function CompanyRunPayroll({ tabs }: { tabs: React.ReactNode }) {
       setRun(data.run)
       setShowPin(false)
     } catch {
+      // No readable response — usually the request was cut off while
+      // payBatch() was still confirming, so the payment may have gone
+      // through. Retrying is safe (same idempotencyKey returns the existing
+      // run instead of paying twice); history settles it from the chain.
       clearInterval(stageTimer)
-      setError('Network error')
+      setError('No response from the server — the payment may still be confirming on-chain. Check Payroll history in a couple of minutes before trying again.')
       setShowPin(false)
       submittedRef.current = false
     }

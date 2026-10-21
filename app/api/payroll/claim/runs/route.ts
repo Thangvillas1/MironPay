@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { reconcileInterruptedRuns, sendRunClaimEmails } from '@/app/lib/payroll-claim-reconcile'
 
 // Read-only: lists a company's own past payroll runs (most recent first) so
 // "New payroll run" can show a real history — who was sent, how much, and
@@ -13,6 +14,13 @@ export async function GET(request: NextRequest) {
   const supabase = createServerSupabaseClient(token)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Settle runs whose pay request was cut off mid-flight before listing, so
+  // history shows what actually happened on-chain (see payroll-claim-reconcile).
+  const recovered = await reconcileInterruptedRuns(supabase, user.id).catch(() => [])
+  if (recovered.length > 0) {
+    after(() => Promise.allSettled(recovered.map((r) => sendRunClaimEmails(supabase, user.id, r.period, r.items))))
+  }
 
   const { data: runs, error: runsErr } = await supabase
     .from('payroll_claim_runs')
