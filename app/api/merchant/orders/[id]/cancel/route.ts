@@ -11,9 +11,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // select('*') rather than naming the Circle-managed columns: until the
+  // 20260815_circle_managed_payments migration is applied they don't exist,
+  // and naming them made this query fail → every cancel returned 400.
   const { data: existing } = await supabase
     .from('merchant_orders')
-    .select('id, status, payment_provider, provider_payment_intent_id')
+    .select('*')
     .eq('id', id)
     .eq('merchant_user_id', user.id)
     .maybeSingle()

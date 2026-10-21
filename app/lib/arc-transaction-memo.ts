@@ -22,6 +22,8 @@ export interface ArcTransactionMemo {
   senderAddress: string
   recipientAddress: string
   tokenAddress: string
+  /** Raw ERC-20 transfer value (smallest unit) of the transfer this memo was matched to. */
+  amountRaw: bigint
 }
 
 // Wallet history is requested often. Cache both hits and misses per warm
@@ -63,7 +65,7 @@ async function fetchArcTransactionMemo(
   const receipt = await arcPublicClient().getTransactionReceipt({ hash: txHash as Hash })
   if (receipt.status !== 'success') return null
 
-  const transfers: Array<{ token: string; from: string; to: string }> = []
+  const transfers: Array<{ token: string; from: string; to: string; value: bigint }> = []
   for (const log of receipt.logs) {
     try {
       const decoded = decodeEventLog({
@@ -72,9 +74,9 @@ async function fetchArcTransactionMemo(
         topics: log.topics,
         strict: true,
       })
-      const args = decoded.args as { from: string; to: string }
+      const args = decoded.args as { from: string; to: string; value: bigint }
       if (sameAddress(args.to, recipientAddress)) {
-        transfers.push({ token: log.address, from: args.from, to: args.to })
+        transfers.push({ token: log.address, from: args.from, to: args.to, value: args.value })
       }
     } catch {
       // Not an ERC-20 Transfer log.
@@ -106,6 +108,7 @@ async function fetchArcTransactionMemo(
         senderAddress: args.sender,
         recipientAddress: matchingTransfers[0].to,
         tokenAddress: args.target,
+        amountRaw: matchingTransfers[0].value,
       })
     } catch {
       // Not a Memo event emitted by the official predeploy.

@@ -125,8 +125,24 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const paidOrders = (data ?? []).filter((o) => o.status === 'paid')
+  // Nothing flips a pending order to 'expired' once its window lapses, so the
+  // list kept showing long-dead charges as PENDING. Report them as expired
+  // (same rule /api/pay applies) and persist it, so the row stops lingering.
+  const now = Date.now()
+  const lapsedIds: string[] = []
+  const orders = (data ?? []).map((o) => {
+    if (o.status === 'pending' && new Date(o.expires_at).getTime() < now) {
+      lapsedIds.push(o.id)
+      return { ...o, status: 'expired' }
+    }
+    return o
+  })
+  if (lapsedIds.length > 0) {
+    await supabase.from('merchant_orders').update({ status: 'expired' }).in('id', lapsedIds).eq('status', 'pending')
+  }
+
+  const paidOrders = orders.filter((o) => o.status === 'paid')
   const totalToday = paidOrders.reduce((sum, o) => sum + parseFloat(o.paid_amount ?? o.amount), 0)
 
-  return NextResponse.json({ orders: data ?? [], totalPaid: totalToday, paidCount: paidOrders.length })
+  return NextResponse.json({ orders, totalPaid: totalToday, paidCount: paidOrders.length })
 }

@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
-import {
-  circleManagedPaymentsEnabled,
-  getPaymentIntent,
-  paymentIntentSnapshot,
-  publicOrder,
-} from '@/app/lib/circle-managed-payments'
+import { publicOrder } from '@/app/lib/circle-managed-payments'
+import { syncMerchantOrderStatus } from '@/app/lib/merchant-orders'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -22,37 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   let order = foundOrder
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
-  const staleSync = !order.provider_synced_at || Date.now() - new Date(order.provider_synced_at).getTime() > 5_000
-  if (
-    circleManagedPaymentsEnabled()
-    && order.payment_provider === 'circle_managed_payments'
-    && order.provider_payment_intent_id
-    && order.status === 'pending'
-    && (!order.provider_deposit_address || staleSync)
-  ) {
-    try {
-      const intent = await getPaymentIntent(order.provider_payment_intent_id)
-      const snapshot = paymentIntentSnapshot(intent)
-      const update: Record<string, unknown> = {
-        provider_status: snapshot.providerStatus,
-        provider_deposit_address: snapshot.depositAddress ?? order.provider_deposit_address,
-        provider_chain: snapshot.chain ?? order.provider_chain,
-        provider_amount_paid: snapshot.amountPaid ?? order.provider_amount_paid,
-        provider_synced_at: new Date().toISOString(),
-      }
-      if (snapshot.providerStatus === 'complete') {
-        update.paid_amount = snapshot.amountPaid
-        update.status = Number(snapshot.amountPaid ?? 0) >= Number(order.amount) ? 'paid' : 'underpaid'
-        if (update.status === 'paid') update.paid_at = new Date().toISOString()
-      } else if (snapshot.providerStatus === 'expired') update.status = 'expired'
-      else if (snapshot.providerStatus === 'failed') update.status = 'cancelled'
-      const { data: synced } = await admin.from('merchant_orders').update(update).eq('id', id).select().single()
-      if (synced) order = synced
-    } catch {
-      // Webhooks remain the primary source. A temporary polling failure must
-      // not turn a valid payment page into an error.
-    }
-  }
+  order = await syncMerchantOrderStatus(admin, order)
 
   // Merchant display info (store name, verified badge, receive address) is
   // needed by a customer who isn't the merchant themselves — merchant_profiles
