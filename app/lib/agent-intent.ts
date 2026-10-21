@@ -33,6 +33,8 @@ const NON_RECIPIENT_WORDS = new Set([
 
 function normalizeIntentText(value: string): string {
   return value
+    // Arrow glyphs ("USDC → EURC", "=>") state a direction exactly like "to".
+    .replace(/\s*(?:->|=>|[\u2192\u21D2\u279C\u27A1\u2794])\s*/g, ' to ')
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .replace(/đ/gi, match => match === 'Đ' ? 'D' : 'd')
@@ -47,17 +49,25 @@ function normalizeIntentText(value: string): string {
  */
 export function parseDirectSwapIntent(sourceMessage: string): AgentAction | null {
   const normalized = normalizeIntentText(sourceMessage)
-  const match = normalized.match(
-    /^(?:please\s+)?(?:swap|exchange|convert|doi|hoan doi)\s+(\d+(?:\.\d{1,6})?)\s+(usdc|eurc)\s+(?:to|into|for|sang|thanh|->)\s+(usdc|eurc)(?:\s+(?:from\s+)?(main wallet|my wallet|vi chinh|vi cua toi|agent wallet|vi agent))?$/i,
-  )
-  if (!match) return null
+  const source = '(?:\\s+(?:from\\s+)?(main wallet|my wallet|vi chinh|vi cua toi|agent wallet|vi agent))?$'
+  const amountFirst = normalized.match(new RegExp(
+    '^(?:please\\s+)?(?:swap|exchange|convert|doi|hoan doi)\\s+(\\d+(?:\\.\\d{1,6})?)\\s+(usdc|eurc)\\s+(?:to|into|for|sang|thanh)\\s+(usdc|eurc)' + source, 'i',
+  ))
+  // "swap USDC to EURC 1" — same command with the amount after the pair.
+  const amountLast = amountFirst ? null : normalized.match(new RegExp(
+    '^(?:please\\s+)?(?:swap|exchange|convert|doi|hoan doi)\\s+(usdc|eurc)\\s+(?:to|into|for|sang|thanh)\\s+(usdc|eurc)\\s+(\\d+(?:\\.\\d{1,6})?)' + source, 'i',
+  ))
+  if (!amountFirst && !amountLast) return null
+  const [amount, tokenIn, tokenOut, wallet] = amountFirst
+    ? [amountFirst[1], amountFirst[2], amountFirst[3], amountFirst[4]]
+    : [amountLast![3], amountLast![1], amountLast![2], amountLast![4]]
 
   const candidate: AgentAction = {
     type: 'swap',
-    amount: match[1],
-    tokenIn: match[2].toUpperCase(),
-    tokenOut: match[3].toUpperCase(),
-    walletSource: /^(?:main wallet|my wallet|vi chinh|vi cua toi)$/i.test(match[4] ?? '') ? 'main' : 'agent',
+    amount,
+    tokenIn: tokenIn.toUpperCase(),
+    tokenOut: tokenOut.toUpperCase(),
+    walletSource: /^(?:main wallet|my wallet|vi chinh|vi cua toi)$/i.test(wallet ?? '') ? 'main' : 'agent',
   }
   const validation = validateAgentIntent(sourceMessage, candidate)
   return validation.ok ? validation.action : null
