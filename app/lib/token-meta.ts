@@ -17,6 +17,23 @@ export const VERIFIED_SYMBOLS = new Set([
   'DOT', 'ATOM', 'NEAR', 'APT', 'INJ', 'TIA', 'PYTH',
 ])
 
+// Arc-native wrapped assets that track a listed asset 1:1 — priced as that asset.
+const PRICE_ALIASES: Record<string, string> = {
+  cirBTC: 'BTC',
+}
+
+/**
+ * Symbol to look up a market price for, or null when the token must not get
+ * one. Price lookups match by ticker only, so an arbitrary testnet token
+ * (e.g. the Launchpad's "VP") would otherwise inherit the price of whatever
+ * unrelated listed coin shares its ticker — that once valued 50,000 test VP
+ * at $53,250 and inflated the wallet total.
+ */
+export function priceLookupSymbol(symbol: string): string | null {
+  if (PRICE_ALIASES[symbol]) return PRICE_ALIASES[symbol]
+  return VERIFIED_SYMBOLS.has(symbol) ? symbol : null
+}
+
 export const TOKEN_LOGOS: Record<string, string> = {
   USDC: 'https://assets.coingecko.com/coins/images/6319/small/usdc.png',
   EURC: 'https://assets.coingecko.com/coins/images/26045/small/euro-coin.png',
