@@ -7,6 +7,7 @@ import { validateUsernameFormat } from '@/app/lib/username'
 import type { TokenBalance } from '@/app/lib/types'
 import { startPinRecovery } from '@/app/lib/pin-recovery-client'
 import { isSelfTransferAddress } from '@/app/lib/self-transfer'
+import { maxSpendable } from '@/app/lib/max-amount'
 
 export type ModalMode = 'send' | 'receive' | 'swap' | null
 type Step = 'amount' | 'token' | 'confirm' | 'setup_pin' | 'confirm_pin' | 'pin' | 'progress' | 'success' | 'error' | 'form' | 'receive'
@@ -655,7 +656,7 @@ export default function SRSModal({
 
               <div style={{ display: 'flex', gap: 8 }}>
                 {['10', '25', '50', 'Max'].map(c => (
-                  <button key={c} onClick={() => setSendAmount(c === 'Max' ? sendBal.toString() : c)} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{c}</button>
+                  <button key={c} onClick={() => setSendAmount(c === 'Max' ? maxSpendable(sendTok?.amount, sendTok?.symbol) : c)} style={{ flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(var(--c-fg-rgb),.14)', background: 'rgba(var(--c-fg-rgb),.05)', color: 'var(--c-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{c}</button>
                 ))}
               </div>
 
@@ -912,7 +913,7 @@ export default function SRSModal({
                     </div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                       {[25, 50, 75, 100].map(pct => (
-                        <button key={pct} onClick={() => { setSwapAmount((swapInBal * pct / 100).toFixed(6)); setSwapQuote(null) }} style={{ flex: 1, height: 28, borderRadius: 7, border: '1px solid rgba(var(--c-fg-rgb),.1)', background: 'rgba(var(--c-fg-rgb),.04)', color: 'var(--c-muted)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>{pct === 100 ? 'Max' : `${pct}%`}</button>
+                        <button key={pct} onClick={() => { setSwapAmount(pct === 100 ? maxSpendable(swapIn?.amount, swapIn?.symbol) : (Math.floor(swapInBal * pct / 100 * 1e6) / 1e6).toString()); setSwapQuote(null) }} style={{ flex: 1, height: 28, borderRadius: 7, border: '1px solid rgba(var(--c-fg-rgb),.1)', background: 'rgba(var(--c-fg-rgb),.04)', color: 'var(--c-muted)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>{pct === 100 ? 'Max' : `${pct}%`}</button>
                       ))}
                     </div>
                   </div>
