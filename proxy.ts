@@ -37,10 +37,15 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  // getUser verifies the JWT with Supabase; getSession alone must not be used
-  // as an authorization decision in middleware.
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user && !isPublicPath(request.nextUrl.pathname)) {
+  // getSession alone must not be used as an authorization decision here.
+  // getClaims verifies the JWT's signature + expiry (refreshing the session
+  // first if it is about to expire). This project signs with an asymmetric
+  // key (ES256), so that check runs locally against the cached JWKS instead
+  // of getUser()'s round trip to Supabase Auth — which ran before every page
+  // and every client-side tab switch.
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const signedIn = !claimsError && !!claimsData?.claims?.sub
+  if (!signedIn && !isPublicPath(request.nextUrl.pathname)) {
     const redirect = request.nextUrl.clone()
     redirect.pathname = '/'
     redirect.searchParams.set('next', request.nextUrl.pathname)
