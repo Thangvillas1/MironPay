@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
-    activeOn: ['/dashboard', '/token', '/agent'],
+    activeOn: ['/dashboard', '/agent'],
     icon: (
       <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 10.5 12 4l9 6.5" /><path d="M5 9.5V20h14V9.5" /><path d="M9.5 20v-5h5v5" />
@@ -43,7 +43,8 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Wallet',
     href: '/wallet',
-    activeOn: ['/wallet'],
+    // A token page is one wallet asset's balance + history, so it belongs here.
+    activeOn: ['/wallet', '/token'],
     icon: (
       <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18" /><circle cx="17" cy="14.5" r="1.2" />
