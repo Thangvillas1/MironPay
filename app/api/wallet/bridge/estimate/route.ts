@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { bridgeKit, circleBridgeAdapter, getRelayerAdapter, ARC_TESTNET, resolveExternalChain, bridgeErrorMessage, jsonSafe } from '@/app/lib/circle-bridge-kit'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { fetchSimplePrice } from '@/app/lib/coingecko'
+import { cachedSimplePrice } from '@/app/lib/price-cache'
 
 // USD-pegged stablecoins: skip the price lookup (saves an API call and a
 // rate-limit risk) and just treat 1 unit as $1.
@@ -11,7 +11,7 @@ const STABLE_USD = new Set(['USDC', 'USDT'])
 async function usdPrice(symbol: string): Promise<number | null> {
   if (STABLE_USD.has(symbol.toUpperCase())) return 1
   try {
-    const price = await fetchSimplePrice(symbol)
+    const price = await cachedSimplePrice(symbol)
     return price?.priceUsd ?? null
   } catch {
     return null

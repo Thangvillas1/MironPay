@@ -3,7 +3,7 @@ import { circleClient } from '@/app/lib/circle'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { TOKEN_USD_PRICE } from '@/app/lib/types'
-import { fetchSimplePrice } from '@/app/lib/coingecko'
+import { cachedSimplePrice } from '@/app/lib/price-cache'
 import { VERIFIED_SYMBOLS, TOKEN_LOGOS, priceLookupSymbol } from '@/app/lib/token-meta'
 import { ARC_MEMO_CONTRACT, readArcTransactionMemo } from '@/app/lib/arc-transaction-memo'
 
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     Array.from(symbolMap.entries()).map(async ([symbol, info]) => {
       const fixedPrice = TOKEN_USD_PRICE[symbol] ?? null
       const lookup = fixedPrice === null ? priceLookupSymbol(symbol) : null
-      const live = lookup ? await fetchSimplePrice(lookup) : null
+      const live = lookup ? await cachedSimplePrice(lookup) : null
       const price = fixedPrice ?? live?.priceUsd ?? null
       return {
         symbol,

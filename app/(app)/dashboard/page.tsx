@@ -420,17 +420,27 @@ export default function DashboardPage() {
     setLimitResult(null)
   }
 
+  const mainWalletRefreshInFlightRef = useRef(false)
+
   // ── Helper: refresh main wallet from Circle ──────────────────────────────────
   async function refreshMainWallet(token: string) {
-    const res = await fetch('/api/wallet', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) return
-    const d = await res.json()
-    setWallet({ id: d.circleWalletId, balance: d.balance, currency: d.currency })
-    setTransactions(mergeWithLocalTransactions((d.transactions ?? []) as Transaction[]))
-    setTokenList(d.tokenList ?? [])
-    storeSetWalletAddress(d.walletAddress)
-    setWalletAddress(d.walletAddress)
-    setLastFetched(Date.now())
+    // /api/wallet takes seconds; never let a slow response stack a second
+    // (third…) overlapping request on top of it.
+    if (mainWalletRefreshInFlightRef.current) return
+    mainWalletRefreshInFlightRef.current = true
+    try {
+      const res = await fetch('/api/wallet', { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) return
+      const d = await res.json()
+      setWallet({ id: d.circleWalletId, balance: d.balance, currency: d.currency })
+      setTransactions(mergeWithLocalTransactions((d.transactions ?? []) as Transaction[]))
+      setTokenList(d.tokenList ?? [])
+      storeSetWalletAddress(d.walletAddress)
+      setWalletAddress(d.walletAddress)
+      setLastFetched(Date.now())
+    } finally {
+      mainWalletRefreshInFlightRef.current = false
+    }
   }
 
   // ── Helper: refresh agent wallet ────────────────────────────────────────────
@@ -509,13 +519,13 @@ export default function DashboardPage() {
         setUsername(p?.username ?? null); setHasPIN(!!p?.pin_hash)
         setLoading(false)
       } else {
-        const [profileRes] = await Promise.all([
-          supabase.from('profiles').select('username, pin_hash').eq('id', session.user.id).single(),
-          refreshMainWallet(session.access_token),
-        ])
+        // Don't hold the agent panel hostage to the (slow) main wallet call:
+        // start it, then carry on loading the agent side in parallel.
+        const walletLoad = refreshMainWallet(session.access_token)
+        const profileRes = await supabase.from('profiles').select('username, pin_hash').eq('id', session.user.id).single()
         setUsername(profileRes.data?.username ?? null)
         setHasPIN(!!profileRes.data?.pin_hash)
-        setLoading(false)
+        void walletLoad.finally(() => setLoading(false))
       }
 
       // Load agent on-chain identity
@@ -565,8 +575,16 @@ export default function DashboardPage() {
   // ── Polling: Main Wallet every 30s ───────────────────────────────────────────
   useEffect(() => {
     if (!accessToken) return
-    const id = setInterval(() => refreshMainWallet(accessToken), 10_000)
-    return () => clearInterval(id)
+    // Hidden tabs don't poll; coming back to the tab refreshes right away.
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshMainWallet(accessToken)
+    }
+    const id = setInterval(refreshWhenVisible, 30_000)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken])
 
