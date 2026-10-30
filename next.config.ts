@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: '/login', destination: '/', permanent: true },
+      // Store is temporarily off while Store v2 is rebuilt — remove these two to bring it back.
+      { source: '/store', destination: '/dashboard', permanent: false },
+      { source: '/store/:path*', destination: '/dashboard', permanent: false },
     ];
   },
 };

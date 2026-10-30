@@ -90,6 +90,7 @@ const NAV_ITEMS: NavItem[] = [
         label: 'Store',
         href: '/store',
         activeOn: ['/store'],
+        disabled: true, // temporarily off while Store v2 is rebuilt — remove to bring it back
         icon: null,
       },
       {
