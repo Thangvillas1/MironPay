@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/app/lib/supabase'
+import { loadMockWallet, resolveUsername } from '@/app/lib/mobile-wallet'
 
 const DEFAULT_BG = '#f5f4f2' // mock's thm-light --bg
 
@@ -85,10 +86,35 @@ export default function MPage() {
     if (!ready) return
     const iframe = iframeRef.current
     if (!iframe) return
-    const send = () => { if (token) iframe.contentWindow?.postMessage({ type: 'mironpay:auth', token, apiBase: '' }, '*') }
+    const origin = window.location.origin
+    const post = (msg: unknown) => iframe.contentWindow?.postMessage(msg, origin)
+    // The access token expires after an hour, but a home-screen app stays
+    // open far longer — always hand the iframe the current (auto-refreshed)
+    // session's token, never the one captured at boot.
+    let liveToken = token
+    const send = () => { if (liveToken) post({ type: 'mironpay:auth', token: liveToken, apiBase: '' }) }
+    // Real balances + history for the app's wallet screens. Re-run after
+    // every send/swap/bridge (the app asks with 'mironpay:refresh-wallet').
+    const pushWallet = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (!data.session) return
+      liveToken = data.session.access_token
+      send()
+      const wallet = await loadMockWallet(data.session).catch(() => null)
+      if (wallet) post({ type: 'mironpay:wallet', wallet })
+    }
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token && session.access_token !== liveToken) { liveToken = session.access_token; send() }
+    })
     async function onMessage(e: MessageEvent) {
       if (e.source !== iframe?.contentWindow) return
-      if (e.data?.type === 'mironpay:ready') { send(); return }
+      if (e.data?.type === 'mironpay:ready') { send(); if (token) pushWallet(); return }
+      if (e.data?.type === 'mironpay:refresh-wallet') { pushWallet(); return }
+      if (e.data?.type === 'mironpay:resolve' && typeof e.data.username === 'string') {
+        const address = await resolveUsername(e.data.username).catch(() => null)
+        post({ type: 'mironpay:resolved', username: e.data.username, address })
+        return
+      }
       if (e.data?.type === 'mironpay:theme' && typeof e.data.color === 'string') {
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', e.data.color)
         setBg(e.data.color)
@@ -104,10 +130,11 @@ export default function MPage() {
     }
     window.addEventListener('message', onMessage)
     iframe.addEventListener('load', send)
-    if (iframe.contentDocument?.readyState === 'complete') send()
+    if (iframe.contentDocument?.readyState === 'complete') { send(); if (token) pushWallet() }
     return () => {
       window.removeEventListener('message', onMessage)
       iframe.removeEventListener('load', send)
+      authSub.subscription.unsubscribe()
     }
   }, [ready, token])
 
