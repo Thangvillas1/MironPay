@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { circleClient } from '@/app/lib/circle'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
-import { TOKEN_USD_PRICE } from '@/app/lib/types'
-import { cachedSimplePrice } from '@/app/lib/price-cache'
-import { VERIFIED_SYMBOLS, TOKEN_LOGOS, priceLookupSymbol } from '@/app/lib/token-meta'
+import { fetchRegistryPrices, resolveRegistryToken, type RegistryToken } from '@/app/lib/arc-token-registry'
 import { ARC_MEMO_CONTRACT, readArcTransactionMemo } from '@/app/lib/arc-transaction-memo'
 import { walletBalanceEvents } from '@/app/lib/wallet-balance-events'
 
@@ -39,49 +37,56 @@ export async function GET(request: NextRequest) {
     if (b.token?.id) txTokenMap[b.token.id] = b.token.symbol ?? 'USDC'
   }
 
-  // Dedup by symbol — Circle returns multiple entries for the same token on ARC
-  // (native precompile + ERC20 contract, same underlying balance). Use MAX not SUM.
-  const symbolMap = new Map<string, { name: string; amount: number; tokenAddress: string | null }>()
+  // Group balances by CONTRACT ADDRESS via the verified Arc token registry —
+  // never by ticker (anyone can deploy a contract named "USDC"). Circle
+  // returns USDC twice on Arc (native gas token + the 0x3600… ERC-20, same
+  // underlying balance), so duplicates take the MAX, never the SUM.
+  // Unregistered tokens are still returned, flagged isVerified:false and
+  // never priced, so the app can tuck them away as "unverified".
+  const prices = await fetchRegistryPrices()
+  type Holding = { symbol: string; name: string; amount: string; amountNum: number; decimals: number | null; tokenAddress: string | null; registry: RegistryToken | null }
+  const holdings = new Map<string, Holding>()
   for (const b of tokenBalances) {
-    const symbol: string = b.token?.symbol ?? ''
-    if (!symbol) continue
-    const amount = parseFloat(b.amount ?? '0')
-    const existing = symbolMap.get(symbol)
-    if (existing) {
-      existing.amount = Math.max(existing.amount, amount)
-    } else {
-      symbolMap.set(symbol, {
-        name: (b.token?.name as string) ?? symbol,
-        amount,
-        tokenAddress: (b.token?.tokenAddress as string | null) ?? null,
-      })
-    }
+    const registry = resolveRegistryToken(b.token)
+    const tokenAddress: string | null = registry?.address ?? (b.token?.tokenAddress as string | undefined)?.toLowerCase() ?? null
+    const key = registry ? `reg:${registry.address}` : `raw:${tokenAddress ?? b.token?.id ?? b.token?.symbol}`
+    const amount: string = b.amount ?? '0'
+    const amountNum = Number(amount)
+    const existing = holdings.get(key)
+    if (existing && existing.amountNum >= amountNum) continue
+    holdings.set(key, {
+      symbol: registry?.symbol ?? (b.token?.symbol as string) ?? '?',
+      name: registry?.name ?? (b.token?.name as string) ?? (b.token?.symbol as string) ?? 'Unknown token',
+      amount,
+      amountNum,
+      decimals: registry?.decimals ?? (typeof b.token?.decimals === 'number' ? b.token.decimals : null),
+      tokenAddress,
+      registry,
+    })
   }
 
-  // Stablecoins use the fixed peg price; verified tokens (and Arc wrappers of
-  // them) get a real live price + 24h change from CoinGecko (free lookup, not
-  // the paid x402 tool). Anything else stays unpriced — see priceLookupSymbol.
-  const tokenList = (await Promise.all(
-    Array.from(symbolMap.entries()).map(async ([symbol, info]) => {
-      const fixedPrice = TOKEN_USD_PRICE[symbol] ?? null
-      const lookup = fixedPrice === null ? priceLookupSymbol(symbol) : null
-      const live = lookup ? await cachedSimplePrice(lookup) : null
-      const price = fixedPrice ?? live?.priceUsd ?? null
+  const tokenList = Array.from(holdings.values())
+    .map((h) => {
+      const price = h.registry ? prices[h.registry.coingeckoId] ?? null : null
       return {
-        symbol,
-        name: info.name,
-        amount: info.amount.toString(),
-        usdValue: price !== null ? info.amount * price : null,
-        change24hPct: live?.change24hPct ?? null,
-        logoUrl: TOKEN_LOGOS[symbol] ?? null,
-        isVerified: VERIFIED_SYMBOLS.has(symbol),
-        tokenAddress: info.tokenAddress,
+        symbol: h.symbol,
+        name: h.name,
+        // Exact decimal string as Circle reports it — the app formats it, so
+        // tiny balances (e.g. 0.00006 cirBTC) are never rounded to "0".
+        amount: h.amount,
+        decimals: h.decimals,
+        priceUsd: price?.priceUsd ?? null,
+        usdValue: price ? h.amountNum * price.priceUsd : null,
+        change24hPct: price?.change24hPct ?? null,
+        logoUrl: h.registry?.logoUrl ?? null,
+        isVerified: !!h.registry,
+        tokenAddress: h.tokenAddress,
       }
     })
-  )).sort((a, b) => {
-    if (a.isVerified !== b.isVerified) return a.isVerified ? -1 : 1
-    return (b.usdValue ?? 0) - (a.usdValue ?? 0)
-  })
+    .sort((a, b) => {
+      if (a.isVerified !== b.isVerified) return a.isVerified ? -1 : 1
+      return (b.usdValue ?? 0) - (a.usdValue ?? 0)
+    })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allTxs = (txRes.data?.transactions as any[]) ?? []
