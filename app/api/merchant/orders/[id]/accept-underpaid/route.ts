@@ -10,6 +10,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // On-chain orders: status is read from the router, so "accept underpaid"
+  // means collecting what arrived — use /settle instead.
+  const { data: existing } = await supabase.from('merchant_orders').select('payment_provider').eq('id', id).maybeSingle()
+  if (existing?.payment_provider === 'mironpay_router') {
+    return NextResponse.json({ error: 'Use collect (settle) for on-chain orders' }, { status: 409 })
+  }
+
   const { data, error } = await supabase
     .from('merchant_orders')
     .update({ status: 'paid', paid_at: new Date().toISOString() })

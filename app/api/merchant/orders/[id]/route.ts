@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { publicOrder } from '@/app/lib/circle-managed-payments'
 import { syncMerchantOrderStatus } from '@/app/lib/merchant-orders'
+import { isRouterOrder, routerPayload, syncRouterOrders, type RouterOrderView } from '@/app/lib/payment-router'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -18,7 +19,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   let order = foundOrder
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
-  order = await syncMerchantOrderStatus(admin, order)
+  // On-chain orders: status comes from the router (and new funds trigger the
+  // merchant's settle); the others keep the Circle-managed sync.
+  let routerView: RouterOrderView | undefined
+  if (isRouterOrder(order)) {
+    const { rows, views } = await syncRouterOrders(admin, [order])
+    order = rows[0]
+    routerView = views.get(order.id)
+  } else {
+    order = await syncMerchantOrderStatus(admin, order)
+  }
 
   // Merchant display info (store name, verified badge, receive address) is
   // needed by a customer who isn't the merchant themselves — merchant_profiles
@@ -32,17 +42,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .maybeSingle()
 
   const now = Date.now()
-  const status = order.status === 'pending' && new Date(order.expires_at).getTime() < now ? 'expired' : order.status
+  const status = !isRouterOrder(order) && order.status === 'pending' && new Date(order.expires_at).getTime() < now
+    ? 'expired'
+    : order.status
 
   return NextResponse.json({
-    order: publicOrder({ ...order, status }),
+    order: isRouterOrder(order)
+      ? { ...publicOrder({ ...order, status }), paymentAddress: order.deposit_address, routerOrder: routerPayload(order, routerView) }
+      : publicOrder({ ...order, status }),
     merchant: merchant
       ? {
           storeName: merchant.store_name,
           verified: merchant.verification_status === 'verified',
-          receiveAddress: order.payment_provider === 'circle_managed_payments'
-            ? order.provider_deposit_address
-            : merchant.receive_address,
+          receiveAddress: isRouterOrder(order)
+            ? order.deposit_address
+            : order.payment_provider === 'circle_managed_payments'
+              ? order.provider_deposit_address
+              : merchant.receive_address,
         }
       : null,
   })

@@ -27,6 +27,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const admin = createAdminSupabaseClient()
   const { data: order } = await admin.from('merchant_orders').select('*').eq('id', id).maybeSingle()
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+  if (order.payment_provider === 'mironpay_router') {
+    return NextResponse.json(
+      { error: 'On-chain orders are confirmed from the router contract, not reported' },
+      { status: 409 },
+    )
+  }
   if (order.payment_provider === 'circle_managed_payments') {
     return NextResponse.json(
       { error: 'Payment confirmation is handled by Circle webhooks for this order' },
