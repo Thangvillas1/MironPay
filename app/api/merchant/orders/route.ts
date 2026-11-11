@@ -203,6 +203,10 @@ export async function GET(request: NextRequest) {
     query = query.gte('created_at', startOfDay.toISOString())
   }
 
+  // The Store order grid asks for the latest N orders across days.
+  const limit = Number(request.nextUrl.searchParams.get('limit'))
+  if (Number.isInteger(limit) && limit > 0) query = query.limit(Math.min(limit, 200))
+
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
