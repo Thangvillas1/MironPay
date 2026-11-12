@@ -6,6 +6,10 @@
 -- cache plus the order terms a client needs to recompute the address and
 -- call the router. Additive: legacy and Circle-managed rows are untouched.
 
+-- Safe even if 20260815_circle_managed_payments was never applied.
+alter table public.merchant_orders
+  add column if not exists payment_provider text not null default 'legacy';
+
 alter table public.merchant_orders
   drop constraint if exists merchant_orders_payment_provider_check;
 alter table public.merchant_orders
