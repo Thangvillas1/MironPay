@@ -19,7 +19,9 @@ import {
   syncRouterOrders,
 } from '@/app/lib/payment-router'
 import { USDC_TOKEN } from '@/app/lib/arc-chain'
-import { isAddress, parseUnits, type Address } from 'viem'
+import { isAddress, parseUnits, type Address, type Hex } from 'viem'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 // On-chain orders (MironPaymentRouter) are the default. PAYMENT_ROUTER_ENABLED=false
 // falls back to the previous Circle-managed / legacy flows below.
@@ -68,9 +70,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Wallet not ready' }, { status: 400 })
     }
 
-    const routerExpiresAt = new Date(Date.now() + ROUTER_ORDER_WINDOW_SECONDS * 1000)
-    const expiryUnix = Math.floor(routerExpiresAt.getTime() / 1000)
-    const orderId = newRouterOrderId()
+    // Instant QR: the merchant's app may build the order itself (row id,
+    // random bytes32 orderId, expiry) and show the QR before this request
+    // returns — the deposit address is pure CREATE2 math. We accept those
+    // terms only within tight bounds, and always recompute the address here
+    // with THIS user's own wallet as merchant, so a client can never register
+    // an order that pays anyone else.
+    const nowSec = Math.floor(Date.now() / 1000)
+    const client = body.client && typeof body.client === 'object' ? body.client : null
+    let rowId: string | undefined
+    let orderId: Hex = newRouterOrderId()
+    let expiryUnix = nowSec + ROUTER_ORDER_WINDOW_SECONDS
+    if (client) {
+      if (typeof client.id !== 'string' || !UUID_RE.test(client.id)) {
+        return NextResponse.json({ error: 'Invalid order id', code: 'INVALID_CLIENT_ORDER' }, { status: 400 })
+      }
+      if (typeof client.orderId !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(client.orderId)) {
+        return NextResponse.json({ error: 'Invalid order id', code: 'INVALID_CLIENT_ORDER' }, { status: 400 })
+      }
+      const exp = Number(client.expiry)
+      // 15 min window, with 2 min of slack for the phone's clock and retries.
+      if (!Number.isInteger(exp) || exp < nowSec + 60 || exp > nowSec + ROUTER_ORDER_WINDOW_SECONDS + 120) {
+        return NextResponse.json({ error: 'Order expiry is out of range — check the phone clock', code: 'INVALID_CLIENT_ORDER' }, { status: 400 })
+      }
+      rowId = client.id
+      orderId = client.orderId.toLowerCase() as Hex
+      expiryUnix = exp
+    }
+    const routerExpiresAt = new Date(expiryUnix * 1000)
     const depositAddress = computeDepositAddress({
       orderId,
       merchant: walletProfile.wallet_address as Address,
@@ -78,10 +105,15 @@ export async function POST(request: NextRequest) {
       amount: amountUnits,
       expiry: BigInt(expiryUnix),
     })
+    if (client && (typeof client.depositAddress !== 'string' || client.depositAddress.toLowerCase() !== depositAddress.toLowerCase())) {
+      return NextResponse.json({ error: 'Payment address check failed', code: 'ADDRESS_MISMATCH' }, { status: 409 })
+    }
 
-    const { data, error } = await createAdminSupabaseClient()
+    const admin = createAdminSupabaseClient()
+    const { data, error } = await admin
       .from('merchant_orders')
       .insert({
+        ...(rowId ? { id: rowId } : {}),
         merchant_user_id: user.id,
         amount: amountStr,
         label: label || null,
@@ -96,7 +128,24 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      // A retry of a request that already went through (the app retries on
+      // network errors): return the same order instead of failing.
+      if (error.code === '23505' && rowId) {
+        const { data: existing } = await admin
+          .from('merchant_orders')
+          .select('*')
+          .eq('id', rowId)
+          .eq('merchant_user_id', user.id)
+          .eq('router_order_id', orderId)
+          .maybeSingle()
+        if (existing) {
+          return NextResponse.json({ order: { ...publicOrder(existing), paymentAddress: existing.deposit_address, routerOrder: routerPayload(existing) } })
+        }
+        return NextResponse.json({ error: 'Order id already used', code: 'DUPLICATE_ORDER' }, { status: 409 })
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
     return NextResponse.json({ order: { ...publicOrder(data), paymentAddress: depositAddress, routerOrder: routerPayload(data) } }, { status: 201 })
   }
 
