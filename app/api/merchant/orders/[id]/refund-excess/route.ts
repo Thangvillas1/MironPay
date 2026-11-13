@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAddress, getAddress, parseUnits, type Address } from 'viem'
+import { isAddress, getAddress, parseAbiItem, parseUnits, type Address } from 'viem'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { circleClient } from '@/app/lib/circle'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 import { arcPublicClient, USDC_TOKEN } from '@/app/lib/arc-chain'
-import { getAddressTransactions, getTokenTransfers } from '@/app/lib/arc-explorer'
+import { getTokenTransfers } from '@/app/lib/arc-explorer'
 import {
   PAYMENT_ROUTER_ADDRESS,
   ROUTER_ABI,
@@ -61,52 +61,139 @@ async function excessHeld(order: MerchantOrderRow): Promise<bigint> {
   return state[1]
 }
 
-// GET — refundable excess plus the addresses that sent money to this order's
-// deposit address (read from the explorer), so the merchant can pick the payer.
-// Exchange hot wallets show up here too, so the app warns before refunding.
+// Arc logs every USDC movement — native sends and ERC-20 transfer() alike —
+// as a Transfer event from this system address, in 18-decimal native units
+// (verified 2026-11-13 on a real external-wallet payment, which emits no
+// 0x3600 log at all). Using only this source avoids double counting.
+const ARC_NATIVE_TRANSFER_LOGGER = '0xfffffffffffffffffffffffffffffffffffffffe' as const
+const NATIVE_SCALE = BigInt(10) ** BigInt(12)
+
+// Senders are read straight from chain logs (fast) — USDC Transfer events
+// into the deposit box, plus Paid events (pay() forwards from the router, so
+// the real payer is in Paid). eth_getLogs is capped at 10,000 blocks per call
+// (~1.4 h on Arc), so look back two windows; older orders fall back to the
+// explorer, which answers in ~4 s.
+const LOG_WINDOW = BigInt(9_999)
+const TRANSFER_EVENT = parseAbiItem('event Transfer(address indexed from, address indexed to, uint256 value)')
+const PAID_EVENT = parseAbiItem('event Paid(bytes32 indexed orderKey, bytes32 indexed orderId, address indexed payer, uint256 units)')
+
+type Sender = { address: string; isContract: boolean | null; total: bigint }
+
+async function sendersFromChain(order: MerchantOrderRow): Promise<Map<string, Sender> | null> {
+  const client = arcPublicClient()
+  const box = getAddress(order.deposit_address)
+  const head = await client.getBlockNumber()
+  const createdAgoSec = (Date.now() - Date.parse(order.created_at)) / 1000
+  // ~0.5 s blocks; older than the two windows → let the explorer answer.
+  if (createdAgoSec > 2.5 * 60 * 60) return null
+  const senders = new Map<string, Sender>()
+  const router = PAYMENT_ROUTER_ADDRESS.toLowerCase()
+  const key = routerOrderKey(routerOrderFromRow(order))
+  for (let w = 0; w < 2; w++) {
+    const toBlock = head - BigInt(w) * (LOG_WINDOW + BigInt(1))
+    if (toBlock <= BigInt(0)) break
+    const fromBlock = toBlock > LOG_WINDOW ? toBlock - LOG_WINDOW : BigInt(0)
+    const [transfers, paid] = await Promise.all([
+      client.getLogs({ address: ARC_NATIVE_TRANSFER_LOGGER, event: TRANSFER_EVENT, args: { to: box }, fromBlock, toBlock }),
+      client.getLogs({ address: PAYMENT_ROUTER_ADDRESS, event: PAID_EVENT, args: { orderKey: key }, fromBlock, toBlock }),
+    ])
+    for (const l of transfers) {
+      const from = String(l.args.from)
+      if (from.toLowerCase() === router) continue // pay(): the payer comes from Paid
+      const prev = senders.get(from.toLowerCase())
+      senders.set(from.toLowerCase(), { address: from, isContract: null, total: (prev?.total ?? BigInt(0)) + (l.args.value ?? BigInt(0)) / NATIVE_SCALE })
+    }
+    for (const l of paid) {
+      const payer = String(l.args.payer)
+      const prev = senders.get(payer.toLowerCase())
+      senders.set(payer.toLowerCase(), { address: payer, isContract: null, total: (prev?.total ?? BigInt(0)) + (l.args.units ?? BigInt(0)) })
+    }
+    if (fromBlock === BigInt(0)) break
+  }
+  // Contract wallets (often exchanges/smart accounts) get a warning in the app.
+  await Promise.all([...senders.values()].map(async (s) => {
+    try {
+      const code = await client.getCode({ address: s.address as Address })
+      s.isContract = !!code && code !== '0x'
+    } catch {
+      s.isContract = null
+    }
+  }))
+  return senders
+}
+
+async function sendersFromExplorer(order: MerchantOrderRow): Promise<Map<string, Sender>> {
+  const senders = new Map<string, Sender>()
+  const ignore = new Set([PAYMENT_ROUTER_ADDRESS.toLowerCase(), String(order.deposit_address).toLowerCase()])
+  const transfers = await getTokenTransfers(order.deposit_address, null)
+  for (const t of transfers.items) {
+    if (t.to.hash.toLowerCase() !== String(order.deposit_address).toLowerCase()) continue
+    if (t.token.address_hash.toLowerCase() !== USDC_TOKEN.toLowerCase()) continue
+    const from = t.from.hash.toLowerCase()
+    if (ignore.has(from)) continue
+    const prev = senders.get(from)
+    senders.set(from, { address: t.from.hash, isContract: t.from.is_contract, total: (prev?.total ?? BigInt(0)) + BigInt(t.total.value) })
+  }
+  return senders
+}
+
+// GET — refundable excess, straight from the chain (~0.3 s). If extra money
+// sits in the box but isn't recorded yet (it arrived after the order was
+// already settled — auto-settle skips excess-only funds on purpose), opening
+// this screen means the merchant wants to deal with it, so record it now
+// (settle from the merchant's wallet) and report `settling` until it lands.
+// GET ?senders=1 — who sent money to the order, loaded separately so it
+// never holds up the refund button.
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const loaded = await loadMerchantOrder(request, id)
   if (loaded instanceof NextResponse) return loaded
   const { order } = loaded
 
-  const [view] = await readRouterStatuses([routerOrderFromRow(order)])
-  const held = await excessHeld(order)
-
-  const senders = new Map<string, { address: string; isContract: boolean; total: bigint }>()
-  const ignore = new Set([PAYMENT_ROUTER_ADDRESS.toLowerCase(), String(order.deposit_address).toLowerCase()])
-  try {
-    const [transfers, txs] = await Promise.all([
-      getTokenTransfers(order.deposit_address, null),
-      getAddressTransactions(order.deposit_address),
-    ])
-    for (const t of transfers.items) {
-      if (t.to.hash.toLowerCase() !== String(order.deposit_address).toLowerCase()) continue
-      if (t.token.address_hash.toLowerCase() !== USDC_TOKEN.toLowerCase()) continue
-      const from = t.from.hash.toLowerCase()
-      if (ignore.has(from)) continue
-      const prev = senders.get(from)
-      senders.set(from, { address: t.from.hash, isContract: t.from.is_contract, total: (prev?.total ?? BigInt(0)) + BigInt(t.total.value) })
+  if (request.nextUrl.searchParams.get('senders') === '1') {
+    let senders: Map<string, Sender> | null = null
+    try {
+      senders = await sendersFromChain(order)
+    } catch (error) {
+      console.error('[refund-excess] chain sender lookup failed:', error)
     }
-    for (const t of txs.items) {
-      const from = t.from.hash.toLowerCase()
-      if (!ignore.has(from) && !senders.has(from) && t.status === 'ok') {
-        senders.set(from, { address: t.from.hash, isContract: t.from.is_contract, total: BigInt(0) })
+    if (!senders || senders.size === 0) {
+      try {
+        senders = await sendersFromExplorer(order)
+      } catch (error) {
+        console.error('[refund-excess] explorer lookup failed:', error)
       }
     }
-  } catch (error) {
-    console.error('[refund-excess] explorer lookup failed:', error)
+    return NextResponse.json({
+      senders: [...(senders?.values() ?? [])].map((s) => ({
+        address: s.address,
+        isContract: s.isContract === true,
+        sent: s.total > BigInt(0) ? unitsToDecimal(s.total) : null,
+      })),
+    })
+  }
+
+  const [[view], held] = await Promise.all([
+    readRouterStatuses([routerOrderFromRow(order)]),
+    excessHeld(order),
+  ])
+  const needsSettle = view.excess > held
+  let settling = false
+  if (needsSettle) {
+    try {
+      await requestSettle(createAdminSupabaseClient(), order)
+    } catch (error) {
+      console.error('[refund-excess] settle failed:', error)
+    }
+    // Throttled or just sent — either way a settle is in flight.
+    settling = true
   }
 
   return NextResponse.json({
     excess: unitsToDecimal(view.excess),
     refundable: unitsToDecimal(held),
-    needsSettle: view.excess > held,
-    senders: [...senders.values()].map((s) => ({
-      address: s.address,
-      isContract: s.isContract,
-      sent: s.total > BigInt(0) ? unitsToDecimal(s.total) : null,
-    })),
+    needsSettle,
+    settling,
   })
 }
 
