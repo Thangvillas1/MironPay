@@ -6,6 +6,7 @@ import {
   getContractAddress,
   keccak256,
   toHex,
+  type Abi,
   type Address,
   type Hex,
 } from 'viem'
@@ -106,6 +107,29 @@ function toView(raw: any): RouterOrderView {
   }
 }
 
+// Multicall3 is deployed on Arc Testnet at the standard address (checked
+// with eth_getCode 2026-11-11).
+const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as Address
+
+/**
+ * Cumulative excess refunded per order, straight from the router's
+ * `orders(orderKey)` storage (field 4, excessRefunded) — one multicall.
+ */
+export async function readRefundedTotals(orders: RouterOrder[]): Promise<bigint[]> {
+  if (orders.length === 0) return []
+  const results = await arcPublicClient().multicall({
+    multicallAddress: MULTICALL3,
+    allowFailure: false,
+    contracts: orders.map((o) => ({
+      address: PAYMENT_ROUTER_ADDRESS,
+      abi: ROUTER_ABI as Abi,
+      functionName: 'orders',
+      args: [routerOrderKey(o)],
+    })),
+  })
+  return (results as unknown as (readonly [bigint, bigint, bigint, bigint, bigint, boolean])[]).map((r) => r[3])
+}
+
 /** One eth_call for all orders (getOrderStatuses). */
 export async function readRouterStatuses(orders: RouterOrder[]): Promise<RouterOrderView[]> {
   if (orders.length === 0) return []
@@ -165,6 +189,7 @@ export function routerPayload(row: MerchantOrderRow, v?: RouterOrderView | null)
           expired: v.expired,
         }
       : null,
+    refunded: unitsToDecimal(BigInt(row.refunded_units ?? '0')),
   }
 }
 
@@ -253,6 +278,20 @@ export async function syncRouterOrders(
     return { rows, views }
   }
 
+  // Refunded totals only matter for orders that ever held excess (plus a
+  // one-time backfill of rows never checked: refunded_units is null); a failed
+  // read keeps the cached value rather than blanking it.
+  const refundCandidates = routerRows
+    .map((row, i) => ({ row, i }))
+    .filter(({ row, i }) => row.refunded_units == null || read[i].excess > BigInt(0) || (row.excess_units && row.excess_units !== '0') || row.status === 'overpaid')
+  const refundedBy = new Map<string, bigint>()
+  try {
+    const totals = await readRefundedTotals(refundCandidates.map(({ row }) => routerOrderFromRow(row)))
+    refundCandidates.forEach(({ row }, k) => refundedBy.set(row.id, totals[k]))
+  } catch (error) {
+    console.error('[payment-router] refunded totals read failed:', error)
+  }
+
   const updated = new Map<string, MerchantOrderRow>()
   await Promise.all(routerRows.map(async (row, i) => {
     const v = read[i]
@@ -270,12 +309,15 @@ export async function syncRouterOrders(
       paid_amount: unitsToDecimal(credited),
       chain_synced_at: new Date().toISOString(),
     }
+    const refunded = refundedBy.get(row.id)
+    if (refunded != null) patch.refunded_units = refunded.toString()
     if ((status === 'paid' || status === 'overpaid') && !row.paid_at) patch.paid_at = new Date().toISOString()
     const changed = status !== row.status
       || patch.credited_units !== row.credited_units
       || patch.pending_units !== row.pending_units
       || patch.excess_units !== row.excess_units
       || v.late !== row.is_late
+      || (patch.refunded_units != null && patch.refunded_units !== row.refunded_units)
     if (changed) {
       const { data } = await admin.from('merchant_orders').update(patch).eq('id', row.id).select().single()
       if (data) updated.set(row.id, data)

@@ -271,6 +271,8 @@ export async function GET(request: NextRequest) {
     ['pending', 'underpaid', 'overpaid'].includes(o.status)
     || (o.status === 'expired' && now - new Date(o.expires_at).getTime() < 24 * 60 * 60 * 1000)
     || o.pending_units && o.pending_units !== '0'
+    // one-time backfill of the refunded total for orders settled before it was tracked
+    || (o.status === 'paid' && o.refunded_units == null)
   )).slice(0, 50)
   const { rows: synced, views } = await syncRouterOrders(createAdminSupabaseClient(), toSync)
   const syncedById = new Map(synced.map((o) => [o.id, o]))
