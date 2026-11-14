@@ -3,6 +3,11 @@ import { createServerSupabaseClient } from '@/app/lib/supabase-server'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { ARC_TESTNET_TOKENS } from '@/app/lib/arc-token-registry'
+import { arcPublicClient } from '@/app/lib/arc-chain'
+import { PAYMENT_ROUTER_ADDRESS } from '@/app/lib/payment-router'
+import { decodeEventLog, getAddress, isAddress, parseAbiItem, type Hash } from 'viem'
+
+const PAID_EVENT = parseAbiItem('event Paid(bytes32 indexed orderKey, bytes32 indexed orderId, address indexed payer, uint256 units)')
 import {
   decodeCursor,
   encodeCursor,
@@ -116,12 +121,58 @@ export async function GET(request: NextRequest) {
     if (p.username && p.wallet_address) usernameByAddr.set(p.wallet_address.toLowerCase(), p.username)
   }
   const orders = (ordersRes.data ?? []) as { id: string; tx_hash: string; merchant_user_id: string }[]
+
+  // On-chain Store orders (MironPaymentRouter). Their transfers never carry
+  // an order tx_hash, so recognise them from the chain itself:
+  //  - money coming from an order's deposit box: the merchant's sale, or an
+  //    overpayment refund (anyone else receiving from that box);
+  //  - a pay() from this wallet: the router forwards it, and the tx's Paid
+  //    event names the order.
+  type RouterOrderRef = { id: string; merchant_user_id: string; deposit_address: string; router_order_id: string }
+  const router = PAYMENT_ROUTER_ADDRESS.toLowerCase()
+  const boxCandidates = Array.from(counterparties).filter((a) => a.toLowerCase() !== router && isAddress(a))
+  const routerOrders: RouterOrderRef[] = []
+  if (boxCandidates.length) {
+    const forms = Array.from(new Set(boxCandidates.flatMap((a) => [a, a.toLowerCase(), getAddress(a)])))
+    const { data } = await admin
+      .from('merchant_orders')
+      .select('id, merchant_user_id, deposit_address, router_order_id')
+      .in('deposit_address', forms)
+    routerOrders.push(...((data ?? []) as RouterOrderRef[]))
+  }
+  const routerOrderByBox = new Map(routerOrders.map((o) => [o.deposit_address.toLowerCase(), o]))
+  const payTxs = hashes.filter((h) => byTx.get(h)!.some((t) => t.from.hash.toLowerCase() === me && t.to.hash.toLowerCase() === router))
+  const paidOrderIdByTx = new Map<string, string>()
+  await Promise.all(payTxs.map(async (h) => {
+    try {
+      const receipt = await arcPublicClient().getTransactionReceipt({ hash: h as Hash })
+      for (const log of receipt.logs) {
+        if (log.address.toLowerCase() !== router) continue
+        try {
+          const ev = decodeEventLog({ abi: [PAID_EVENT], data: log.data, topics: log.topics })
+          paidOrderIdByTx.set(h, String(ev.args.orderId).toLowerCase())
+        } catch { /* not a Paid log */ }
+      }
+    } catch (error) {
+      console.error('[activity] receipt read failed:', error)
+    }
+  }))
+  if (paidOrderIdByTx.size) {
+    const { data } = await admin
+      .from('merchant_orders')
+      .select('id, merchant_user_id, deposit_address, router_order_id')
+      .in('router_order_id', Array.from(new Set(paidOrderIdByTx.values())))
+    routerOrders.push(...((data ?? []) as RouterOrderRef[]))
+  }
+  const routerOrderById = new Map(routerOrders.map((o) => [o.router_order_id, o]))
+
   const storeByUser = new Map<string, string>()
-  if (orders.length) {
+  const storeUsers = new Set([...orders.map((o) => o.merchant_user_id), ...routerOrders.map((o) => o.merchant_user_id)])
+  if (storeUsers.size) {
     const { data: stores } = await admin
       .from('merchant_profiles')
       .select('user_id, store_name')
-      .in('user_id', Array.from(new Set(orders.map((o) => o.merchant_user_id))))
+      .in('user_id', Array.from(storeUsers))
     for (const s of (stores ?? []) as { user_id: string; store_name: string }[]) storeByUser.set(s.user_id, s.store_name)
   }
   const orderByTx = new Map(orders.map((o) => [o.tx_hash, { id: o.id, store: storeByUser.get(o.merchant_user_id) ?? null, merchantUserId: o.merchant_user_id }]))
@@ -155,17 +206,28 @@ export async function GET(request: NextRequest) {
     const counterpartyAddress = counterpartyRef.hash
     const username = usernameByAddr.get(counterpartyAddress.toLowerCase()) ?? null
     const isMerchantSide = order ? order.merchantUserId === user.id : false
+    // Router order this transfer belongs to (box → me, or my pay() → router).
+    const routerOrder = direction === 'credit'
+      ? routerOrderByBox.get(counterpartyRef.hash.toLowerCase()) ?? null
+      : paidOrderIdByTx.has(hash) ? routerOrderById.get(paidOrderIdByTx.get(hash)!) ?? null : null
+    const routerStore = routerOrder ? storeByUser.get(routerOrder.merchant_user_id) ?? null : null
+    const routerShort = routerOrder ? `#${routerOrder.id.slice(0, 8).toUpperCase()}` : null
     const counterpartyName =
       (order && !isMerchantSide && order.store) ||
+      (routerOrder && routerStore) ||
       (username ? `@${username}` : null) ||
       displayContractName(counterpartyRef.name) ||
       null
 
-    let kind: 'send' | 'receive' | 'swap' | 'bridge' | 'payroll' | 'payment' | 'sale' = direction === 'debit' ? 'send' : 'receive'
+    let kind: 'send' | 'receive' | 'swap' | 'bridge' | 'payroll' | 'payment' | 'sale' | 'refund' = direction === 'debit' ? 'send' : 'receive'
     if (isSwap) kind = 'swap'
     else if (kindTag === 'bridge_out' || kindTag === 'bridge_in') kind = 'bridge'
     else if (kindTag === 'payroll_claim') kind = 'payroll'
     else if (order) kind = isMerchantSide ? 'sale' : 'payment'
+    else if (routerOrder) {
+      if (direction === 'debit') kind = 'payment'
+      else kind = routerOrder.merchant_user_id === user.id ? 'sale' : 'refund'
+    }
 
     const main = leg(primary)
     const swapIn = isSwap ? ins[0] : undefined
@@ -174,8 +236,9 @@ export async function GET(request: NextRequest) {
       kind === 'swap' ? (swapIn ? `Swap ${main.symbol} → ${leg(swapIn).symbol}` : 'Swap')
       : kind === 'bridge' ? 'Bridge'
       : kind === 'payroll' ? 'Payroll'
-      : kind === 'payment' ? `Paid ${who}`
-      : kind === 'sale' ? `Sale · Order #${order!.id.slice(0, 8).toUpperCase()}`
+      : kind === 'payment' ? `Paid ${who}${routerShort ? ` · ${routerShort}` : ''}`
+      : kind === 'sale' ? `Sale · Order ${routerShort ?? `#${order!.id.slice(0, 8).toUpperCase()}`}`
+      : kind === 'refund' ? `Refund from ${who}${routerShort ? ` · ${routerShort}` : ''}`
       : direction === 'credit' ? `Received from ${who}` : `Sent to ${who}`
 
     return {
