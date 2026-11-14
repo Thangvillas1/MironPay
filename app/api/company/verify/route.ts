@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 
 async function getUser(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
@@ -29,7 +30,7 @@ const AUTO_APPROVE = true
 export async function POST(request: NextRequest) {
   const ctx = await getUser(request)
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { supabase, user } = ctx
+  const { user } = ctx
 
   const body = await request.json().catch(() => null)
   const legalName = (body?.legalName as string | undefined)?.trim()
@@ -47,7 +48,10 @@ export async function POST(request: NextRequest) {
   // A company already 'verified' resubmitting (e.g. legal name changed)
   // would normally drop back to 'pending' until re-reviewed — skipped here
   // only because AUTO_APPROVE is on for testnet.
-  const { data, error } = await supabase
+  // Written with the service role: since 20261114_lock_verification_status
+  // only the backend may set 'verified'/verified_at (a user's own JWT can't),
+  // so the badge can't be self-granted through the REST API.
+  const { data, error } = await createAdminSupabaseClient()
     .from('company_profiles')
     .upsert(
       {
