@@ -102,7 +102,8 @@ export async function GET(request: NextRequest) {
     counterparties.add(t.from.hash.toLowerCase() === me ? t.to.hash : t.from.hash)
   }
   const admin = createAdminSupabaseClient()
-  const [kindsRes, memosRes, ordersRes, profilesRes] = hashes.length
+  const hashVariants = hashes.flatMap((h) => [h, h.toLowerCase()])
+  const [kindsRes, memosRes, ordersRes, profilesRes, wcRes] = hashes.length
     ? await Promise.all([
         supabase.from('transaction_kinds').select('tx_hash, kind').in('tx_hash', hashes),
         supabase.from('transaction_memos').select('tx_hash, memo').in('tx_hash', hashes),
@@ -111,14 +112,21 @@ export async function GET(request: NextRequest) {
           'wallet_address',
           Array.from(counterparties).flatMap((a) => [a, a.toLowerCase()]),
         ),
+        // Transactions this wallet sent for a dapp over WalletConnect.
+        admin.from('wc_requests').select('result, dapp_name, dapp_url')
+          .eq('user_id', user.id).eq('status', 'sent').in('result', hashVariants),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }]
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }]
 
   const kindMap = new Map<string, string>((kindsRes.data ?? []).map((k: { tx_hash: string; kind: string }) => [k.tx_hash, k.kind]))
   const memoMap = new Map<string, string>((memosRes.data ?? []).map((m: { tx_hash: string; memo: string }) => [m.tx_hash, m.memo]))
   const usernameByAddr = new Map<string, string>()
   for (const p of (profilesRes.data ?? []) as { username: string | null; wallet_address: string | null }[]) {
     if (p.username && p.wallet_address) usernameByAddr.set(p.wallet_address.toLowerCase(), p.username)
+  }
+  const dappByTx = new Map<string, { name: string; url: string | null }>()
+  for (const w of (wcRes.data ?? []) as { result: string | null; dapp_name: string | null; dapp_url: string | null }[]) {
+    if (w.result) dappByTx.set(w.result.toLowerCase(), { name: w.dapp_name || 'Dapp', url: w.dapp_url })
   }
   const orders = (ordersRes.data ?? []) as { id: string; tx_hash: string; merchant_user_id: string }[]
 
@@ -212,14 +220,16 @@ export async function GET(request: NextRequest) {
       : paidOrderIdByTx.has(hash) ? routerOrderById.get(paidOrderIdByTx.get(hash)!) ?? null : null
     const routerStore = routerOrder ? storeByUser.get(routerOrder.merchant_user_id) ?? null : null
     const routerShort = routerOrder ? `#${routerOrder.id.slice(0, 8).toUpperCase()}` : null
+    const dapp = dappByTx.get(hash.toLowerCase()) ?? null
     const counterpartyName =
+      (dapp && dapp.name) ||
       (order && !isMerchantSide && order.store) ||
       (routerOrder && routerStore) ||
       (username ? `@${username}` : null) ||
       displayContractName(counterpartyRef.name) ||
       null
 
-    let kind: 'send' | 'receive' | 'swap' | 'bridge' | 'payroll' | 'payment' | 'sale' | 'refund' = direction === 'debit' ? 'send' : 'receive'
+    let kind: 'send' | 'receive' | 'swap' | 'bridge' | 'payroll' | 'payment' | 'sale' | 'refund' | 'dapp' = direction === 'debit' ? 'send' : 'receive'
     if (isSwap) kind = 'swap'
     else if (kindTag === 'bridge_out' || kindTag === 'bridge_in') kind = 'bridge'
     else if (kindTag === 'payroll_claim') kind = 'payroll'
@@ -228,6 +238,8 @@ export async function GET(request: NextRequest) {
       if (direction === 'debit') kind = 'payment'
       else kind = routerOrder.merchant_user_id === user.id ? 'sale' : 'refund'
     }
+    // A plain send made for a dapp; a swap done on a dapp stays a swap (with `dapp` set).
+    else if (dapp && kind === 'send') kind = 'dapp'
 
     const main = leg(primary)
     const swapIn = isSwap ? ins[0] : undefined
@@ -239,6 +251,7 @@ export async function GET(request: NextRequest) {
       : kind === 'payment' ? `Paid ${who}${routerShort ? ` · ${routerShort}` : ''}`
       : kind === 'sale' ? `Sale · Order ${routerShort ?? `#${order!.id.slice(0, 8).toUpperCase()}`}`
       : kind === 'refund' ? `Refund from ${who}${routerShort ? ` · ${routerShort}` : ''}`
+      : kind === 'dapp' ? `${who} (dapp)`
       : direction === 'credit' ? `Received from ${who}` : `Sent to ${who}`
 
     return {
@@ -266,6 +279,7 @@ export async function GET(request: NextRequest) {
       counterpartyUsername: username,
       feeToken: 'USDC',
       swap: swapIn ? { from: main, to: leg(swapIn) } : null,
+      dapp,
       blockNumber: head.block_number,
     }
   })
