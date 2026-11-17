@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
     '@circle-fin/adapter-circle-wallets',
     '@circle-fin/swap-kit',
   ],
+  // The PWA (public/app, an Expo web export) is a single-page app: every
+  // /app/<route> that isn't a real file falls back to its index.html.
+  // (Plain-array rewrites run after static files, so assets still win.)
+  async rewrites() {
+    return [
+      { source: '/app', destination: '/app/index.html' },
+      { source: '/app/:path*', destination: '/app/index.html' },
+    ];
+  },
   async redirects() {
     return [
       { source: '/login', destination: '/', permanent: true },
