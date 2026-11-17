@@ -42,7 +42,11 @@ export async function verifyPin(
     return { ok: false, error: 'PIN must be exactly 6 digits', code: 'INVALID_PIN' }
   }
 
-  const { data: limitRows, error: limitError } = await supabase.rpc('check_pin_rate_limit', { p_user_id: userId })
+  // Rate-limit check and stored hash are independent reads — fetch both at once.
+  const [{ data: limitRows, error: limitError }, { data: profile }] = await Promise.all([
+    supabase.rpc('check_pin_rate_limit', { p_user_id: userId }),
+    supabase.from('profiles').select('pin_hash').eq('id', userId).single(),
+  ])
   if (limitError) return { ok: false, error: 'PIN verification is temporarily unavailable', code: 'PIN_UNAVAILABLE' }
   const limit = (limitRows as RateLimitRow[] | null)?.[0]
   if (limit && !limit.allowed) {
@@ -53,12 +57,6 @@ export async function verifyPin(
       retryAfterSeconds: limit.retry_after_seconds,
     }
   }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('pin_hash')
-    .eq('id', userId)
-    .single()
 
   if (!profile?.pin_hash) return { ok: false, error: 'PIN not set', code: 'PIN_NOT_SET' }
   if (!(await matchesPin(userId, pin, profile.pin_hash))) {

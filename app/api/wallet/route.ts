@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { circleClient } from '@/app/lib/circle'
-import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createServerSupabaseClient, getAuthUser } from '@/app/lib/supabase-server'
 import { resolveCircleWalletId } from '@/app/lib/circle-wallet'
 import { fetchRegistryPrices, resolveRegistryToken, type RegistryToken } from '@/app/lib/arc-token-registry'
 import { ARC_MEMO_CONTRACT, readArcTransactionMemo } from '@/app/lib/arc-transaction-memo'
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = createServerSupabaseClient(token)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase, token)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const wallet = await resolveCircleWalletId(supabase, user.id)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createServerSupabaseClient, getAuthUser } from '@/app/lib/supabase-server'
 import { createAdminSupabaseClient } from '@/app/lib/supabase-admin'
 import { arcPublicClient, USDC_TOKEN } from '@/app/lib/arc-chain'
 import { syncRouterEvents } from '@/app/lib/router-index'
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = createServerSupabaseClient(token)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase, token)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const from = Date.parse(request.nextUrl.searchParams.get('from') ?? '')

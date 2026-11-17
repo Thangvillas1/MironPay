@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createServerSupabaseClient, getAuthUser } from '@/app/lib/supabase-server'
 import {
   CIRCLE_MANAGED_PROVIDER,
   circleManagedPaymentsEnabled,
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = createServerSupabaseClient(token)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase, token)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase.from('merchant_profiles').select('user_id').eq('user_id', user.id).maybeSingle()
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = createServerSupabaseClient(token)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase, token)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const range = request.nextUrl.searchParams.get('range')

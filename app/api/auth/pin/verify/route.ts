@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/app/lib/supabase-server'
+import { createServerSupabaseClient, getAuthUser } from '@/app/lib/supabase-server'
 import { pinFailureHttp, verifyPin } from '@/app/lib/pin'
 
 export async function POST(request: NextRequest) {
@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const supabase = createServerSupabaseClient(token)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase, token)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { pin } = await request.json()

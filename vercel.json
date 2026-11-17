@@ -1,9 +1,24 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/cron/agent-index", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/invoice-index", "schedule": "15 0 * * *" },
-    { "path": "/api/cron/invoice-overdue", "schedule": "30 0 * * *" },
-    { "path": "/api/cron/router-settle", "schedule": "45 0 * * *" }
+    {
+      "path": "/api/cron/agent-index",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/invoice-index",
+      "schedule": "15 0 * * *"
+    },
+    {
+      "path": "/api/cron/invoice-overdue",
+      "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/cron/router-settle",
+      "schedule": "45 0 * * *"
+    }
+  ],
+  "regions": [
+    "sin1"
   ]
 }
