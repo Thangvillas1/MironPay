@@ -32,6 +32,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="MironPay" />
     <link rel="apple-touch-icon" href="/app/icons/apple-touch-icon.png" />
+    <style>
+      /* Feel like an app, not a web page: taps register at once (no
+         double-tap-zoom wait), no grey flash on tap, no focus ring around
+         sheets, no text-selection callout on long press. */
+      html, body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+      body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      input, textarea { -webkit-user-select: text; user-select: text; }
+      *:focus { outline: none; }
+    </style>
     <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }))</script>
 </head>
 
@@ -40,6 +49,6 @@
     <noscript> You need to enable JavaScript to run this app. </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/app/_expo/static/js/web/__expo-metro-runtime-8c088df87a31e4e6accd81c554ec290d.js" defer></script><script src="/app/_expo/static/js/web/__common-71c8dda087f102eeb6e182435dd14453.js" defer></script><script src="/app/_expo/static/js/web/entry-a6c36076e0471ed7cf559322a315294e.js" defer></script>
+  <script src="/app/_expo/static/js/web/__expo-metro-runtime-8c088df87a31e4e6accd81c554ec290d.js" defer></script><script src="/app/_expo/static/js/web/__common-deab5ebaa4808017ab3a2dbe89679451.js" defer></script><script src="/app/_expo/static/js/web/entry-1143cd11edec8d64211c55f6f4b569d6.js" defer></script>
 </body>
 </html>
