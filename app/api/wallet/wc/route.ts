@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const txId = (created.data as any)?.id as string | undefined
     if (!txId) throw new Error('Circle did not accept the transaction')
-    const sent = await circleClient.getTransaction({ id: txId, waitForState: 'SENT', pollingInterval: 1500 })
+    const sent = await circleClient.getTransaction({ id: txId, waitForState: 'SENT', pollingInterval: 500 })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const txHash = (sent.data as any)?.transaction?.txHash as string | undefined
     if (!txHash) throw new Error('Transaction was not broadcast in time')

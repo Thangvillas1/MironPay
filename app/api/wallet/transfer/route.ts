@@ -37,13 +37,17 @@ export async function POST(request: NextRequest) {
     }, { status: 400 })
   }
 
-  const pinResult = await verifyPin(supabase, user.id, pin)
+  // PIN check and balance read are independent — run them together. The
+  // balance is only used once the PIN has passed.
+  const [pinResult, balanceRes] = await Promise.all([
+    verifyPin(supabase, user.id, pin),
+    circleClient.getWalletTokenBalance({ id: wallet.circleWalletId }),
+  ])
   if (!pinResult.ok) {
     const response = pinFailureHttp(pinResult)
     return NextResponse.json({ error: pinResult.error, code: pinResult.code }, response)
   }
 
-  const balanceRes = await circleClient.getWalletTokenBalance({ id: wallet.circleWalletId })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const balances = (balanceRes.data?.tokenBalances as any[]) ?? []
   const matchingTokens = balances.filter((b) => b.token?.symbol === tokenSymbol)
@@ -125,7 +129,7 @@ export async function POST(request: NextRequest) {
       const confirmed = await circleClient.getTransaction({
         id: txId,
         waitForState: 'SENT',
-        pollingInterval: 1500,
+        pollingInterval: 500,
       })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       txHash = (confirmed.data as any)?.transaction?.txHash ?? null

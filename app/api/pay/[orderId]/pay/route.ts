@@ -88,7 +88,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   let txHash: string | null = null
   if (txId) {
     try {
-      const sent = await circleClient.getTransaction({ id: txId, waitForState: 'SENT', pollingInterval: 1500 })
+      const sent = await circleClient.getTransaction({ id: txId, waitForState: 'SENT', pollingInterval: 500 })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       txHash = (sent.data as any)?.transaction?.txHash ?? null
     } catch {
