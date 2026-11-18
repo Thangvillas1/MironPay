@@ -19,3 +19,10 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
+
+// Warm-up: the PIN screen pings this as soon as it appears, so the function
+// is already running when the user finishes typing (a cold start here was
+// ~3 s of "Verifying…"). No auth, no data, nothing to learn from it.
+export function GET() {
+  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } })
+}
