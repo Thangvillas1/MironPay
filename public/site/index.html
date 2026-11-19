@@ -16,7 +16,61 @@
 <style>
 *{box-sizing:border-box}
 img{max-width:100%}
-@media (max-width: 760px){.tx-in{left:-8px !important;bottom:64px !important}}
+
+/* hero motion */
+.hero-stage{position:relative;padding:20px 0 40px}
+.glow{position:absolute;left:50%;top:46%;width:560px;height:560px;max-width:120vw;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(201,163,95,.34),rgba(201,163,95,0) 70%);filter:blur(10px);animation:breathe 6s ease-in-out infinite;pointer-events:none}
+.glow.sm{width:460px;height:460px;opacity:.75}
+@keyframes breathe{0%,100%{opacity:.65;transform:translate(-50%,-50%) scale(.94)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}}
+.tilt{transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.float{animation:phoneIn 1000ms cubic-bezier(.2,.8,.2,1) 260ms both, float 7s ease-in-out 1.3s infinite}
+@keyframes float{0%,100%{translate:0 0}50%{translate:0 -14px}}
+.toasts{position:absolute;left:-84px;bottom:120px;width:290px;height:70px}
+.toast{position:absolute;inset:0;display:flex;align-items:center;gap:12px;padding:12px 16px 12px 12px;border-radius:18px;border:1px solid #26262e;background:rgba(23,23,28,.92);backdrop-filter:blur(8px);box-shadow:0 20px 50px -10px rgba(0,0,0,.7);opacity:0;transform:translateY(16px) scale(.96);transition:opacity .5s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
+.toast.show{opacity:1;transform:none}
+.toast.out{opacity:0;transform:translateY(-14px) scale(.97)}
+.toast div{display:flex;flex-direction:column;flex:1;min-width:0}
+.toast b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast small{font-size:10.5px;color:#8b8b94}
+.toast em{font-style:normal;font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.toast em.up{color:#34c98e}
+.toast .ic{flex:none;width:34px;height:34px;border-radius:999px;border:1px solid #26262e;display:flex;align-items:center;justify-content:center}
+.toast .ic.in{color:#34c98e}.toast .ic.sw{color:#c9a35f}
+/* how it works */
+.howgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center}
+.steps{display:flex;flex-direction:column;gap:10px}
+.stp{all:unset;position:relative;cursor:pointer;display:flex;gap:18px;padding:22px 24px;border:1px solid #1e1e25;border-radius:18px;background:transparent;transition:background .3s,border-color .3s;overflow:hidden}
+.stp:hover{border-color:#26262e}
+.stp:focus-visible{outline:2px solid #c9a35f;outline-offset:3px}
+.stp .num{font-size:12px;font-weight:700;color:#5b5b63;font-variant-numeric:tabular-nums;padding-top:4px;transition:color .3s}
+.stp .txt{display:flex;flex-direction:column;gap:6px}
+.stp .txt b{font-size:20px;color:#8b8b94;transition:color .3s}
+.stp .txt span{font-size:14px;line-height:1.55;color:#8b8b94;max-height:0;opacity:0;overflow:hidden;transition:max-height .5s ease,opacity .4s ease}
+.stp.on{background:#17171c;border-color:#26262e}
+.stp.on .num{color:#c9a35f}.stp.on .txt b{color:#f2f2f4}
+.stp.on .txt span{max-height:80px;opacity:1}
+.stp .bar{position:absolute;left:24px;right:24px;bottom:0;height:2px;background:transparent}
+.stp.on .bar{background:#26262e}
+.stp .bar i{display:block;height:100%;width:0;background:#c9a35f}
+.stp.on .bar i{animation:fill var(--dur,4.5s) linear forwards}
+.steps.paused .stp.on .bar i{animation-play-state:paused}
+@keyframes fill{to{width:100%}}
+.howphone{position:relative;display:flex;justify-content:center}
+.screens .scr{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:translateY(18px) scale(1.02);transition:opacity .55s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.screens .scr.on{opacity:1;transform:none}
+.par{will-change:transform}
+/* reveal fallback (Safari / iPhone): scripts add .in */
+.js .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1)}
+.js .reveal.in{opacity:1;transform:none}
+@media (max-width: 860px){
+  .howgrid{grid-template-columns:1fr;gap:36px}
+  .howphone{order:-1}
+  .toasts{left:-6px;bottom:84px;width:270px}
+}
+@media (prefers-reduced-motion: reduce){
+  .float,.glow{animation:none!important}
+  .js .reveal{opacity:1;transform:none}
+}
 
 body{margin:0;background:#101014}
 a{color:#c9a35f;text-decoration:none}a:hover{color:#e0bf80}
@@ -33,7 +87,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 .phone-in{animation:phoneIn 1000ms cubic-bezier(.2,.8,.2,1) 260ms both}
 .tx-in{animation:rowin 420ms cubic-bezier(.2,.8,.2,1) 1500ms both}
 .live{animation:live 1.6s ease-out infinite}
-@supports (animation-timeline: view()){.reveal{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 38%}}
+
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -78,11 +132,18 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 
 <!-- phone: the real MironPay wallet screen -->
 <div style="flex: 1 1 320px; display: flex; justify-content: center">
-<div style="position: relative">
-<div class="phone-in" style="position: relative; width: 320px; max-width: 82vw; padding: 10px; border-radius: 48px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 50px 120px -30px rgba(201,163,95,0.22)">
-<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/home.jpg" alt="The MironPay wallet screen: total assets $2,658.33 in USDC, EURC and cirBTC" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+<div class="hero-stage">
+<div class="glow" aria-hidden="true"></div>
+<div class="tilt" id="tilt">
+<div class="phone-in float" style="position: relative; width: 320px; max-width: 78vw; padding: 10px; border-radius: 48px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 60px 120px -30px rgba(201,163,95,0.28), 0 30px 60px -20px rgba(0,0,0,.7)">
+<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/home.jpg" alt="The MironPay wallet: total assets $2,658.33 in USDC, EURC and cirBTC" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
 </div>
-<div class="tx-in" role="img" aria-label="Payment received notification" style="position: absolute; left: -64px; bottom: 96px; display: flex; align-items: center; gap: 12px; padding: 12px 16px 12px 12px; border-radius: 18px; border: 1px solid #26262e; background: #17171c; box-shadow: 0 20px 50px -10px rgba(0,0,0,0.6)"><span style="width: 34px; height: 34px; border-radius: 999px; border: 1px solid #26262e; display: flex; align-items: center; justify-content: center; color: #34c98e"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 7 7 17"></path><path d="M16 17H7V8"></path></svg></span><div style="display: flex; flex-direction: column"><span style="font-size: 13.5px; font-weight: 700">@linh</span><span style="font-size: 10.5px; color: #8b8b94">just now · Received</span></div><span class="tnum" style="margin-left: 8px; font-size: 13.5px; font-weight: 700; color: #34c98e">+40 USDC</span></div>
+</div>
+<div class="toasts" aria-hidden="true">
+<div class="toast"><span class="ic in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"></path><path d="M16 17H7V8"></path></svg></span><div><b>@linh</b><small>just now · Received</small></div><em class="up">+40 USDC</em></div>
+<div class="toast"><span class="ic in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"></path><path d="M16 17H7V8"></path></svg></span><div><b>Sale · #8F2C41A7</b><small>just now · Paid in store</small></div><em class="up">+12.50 USDC</em></div>
+<div class="toast"><span class="ic sw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"></path><path d="M3 6h18"></path><path d="m7 22-4-4 4-4"></path><path d="M21 18H3"></path></svg></span><div><b>USDC → EURC</b><small>just now · Converted</small></div><em class="up">+90.71 EURC</em></div>
+</div>
 </div>
 </div>
 </div>
@@ -111,50 +172,31 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 
 <!-- HOW IT WORKS -->
 <section id="how" style="max-width: 1200px; margin: 0 auto; padding: 120px 24px 40px">
-<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 48px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 56px">
 <div style="display: flex; flex-direction: column; gap: 14px">
 <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: #c9a35f">HOW IT WORKS</span>
 <h2 class="reveal" style="margin: 0; font-size: clamp(36px, 4.5vw, 56px); line-height: 1.02; font-weight: 700; letter-spacing: -1.8px">Four steps.<br><em style="color: #8b8b94">Seconds on Arc.</em></h2>
 </div>
 <p style="margin: 0; max-width: 380px; font-size: 15px; line-height: 1.55; color: #8b8b94">Every payment follows the same path, so there is nothing new to learn when you send, swap or pay a shop.</p>
 </div>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
-
-<article class="reveal" style="display: flex; flex-direction: column; border: 1px solid #26262e; border-radius: 16px; background: #17171c; overflow: hidden">
-<div style="height: 200px; background: #0c0c10; border-bottom: 1px solid #26262e; overflow: hidden"><img src="/site/dark/send.jpg" alt="The Amount screen with 25 USDC typed on the keypad" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; object-position: 50% 16%; display: block"></div>
-<div style="padding: 24px; display: flex; flex-direction: column; gap: 10px">
-<span class="tnum" style="font-size: 12px; font-weight: 700; color: #c9a35f">01</span>
-<h3 style="margin: 0; font-size: 20px; font-weight: 700">Amount</h3>
-<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #8b8b94">Pick a token and type the amount on the keypad, or tap a quick share of your balance.</p>
+<div class="howgrid">
+<div class="steps" role="tablist" aria-label="How a payment works">
+<button class="stp on" role="tab" aria-selected="true" data-i="0"><span class="num">01</span><span class="txt"><b>Amount</b><span>Pick a token and type the amount on the keypad, or tap a quick share of your balance.</span></span><i class="bar"><i></i></i></button>
+<button class="stp" role="tab" aria-selected="false" data-i="1"><span class="num">02</span><span class="txt"><b>Confirm</b><span>A PIN sheet slides up over your wallet. Your six digits are checked on the server before anything moves.</span></span><i class="bar"><i></i></i></button>
+<button class="stp" role="tab" aria-selected="false" data-i="2"><span class="num">03</span><span class="txt"><b>Done</b><span>Arc confirms in moments. You get a receipt with the transaction hash to share or check.</span></span><i class="bar"><i></i></i></button>
+<button class="stp" role="tab" aria-selected="false" data-i="3"><span class="num">04</span><span class="txt"><b>History</b><span>Activity is read straight from the chain, grouped by day, filterable by type and date.</span></span><i class="bar"><i></i></i></button>
 </div>
-</article>
-
-<article class="reveal" style="display: flex; flex-direction: column; border: 1px solid #26262e; border-radius: 16px; background: #17171c; overflow: hidden">
-<div style="height: 200px; background: #0c0c10; border-bottom: 1px solid #26262e; overflow: hidden"><img src="/site/dark/pin.jpg" alt="The PIN sheet: Send 25 USDC to @an, three of six digits entered" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; object-position: 50% 66%; display: block"></div>
-<div style="padding: 24px; display: flex; flex-direction: column; gap: 10px">
-<span class="tnum" style="font-size: 12px; font-weight: 700; color: #c9a35f">02</span>
-<h3 style="margin: 0; font-size: 20px; font-weight: 700">Confirm</h3>
-<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #8b8b94">A PIN sheet slides up. Your six digits are checked on the server before anything moves.</p>
+<div class="howphone reveal">
+<div class="glow sm" aria-hidden="true"></div>
+<div style="position: relative; width: 340px; max-width: 80vw; padding: 10px; border-radius: 50px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 60px 120px -30px rgba(201,163,95,0.22), 0 30px 60px -20px rgba(0,0,0,.7)">
+<div class="screens" style="position: relative; border-radius: 42px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844">
+<img class="scr on" src="/site/dark/send.jpg" alt="Amount: 25 USDC typed on the keypad">
+<img class="scr" src="/site/dark/pin.jpg" alt="Confirm: the PIN sheet over the wallet, Send 25 USDC to @an" loading="lazy">
+<img class="scr" src="/site/dark/done.jpg" alt="Done: a gold tick on the PIN sheet" loading="lazy">
+<img class="scr" src="/site/dark/activity.jpg" alt="History: Activity grouped by day" loading="lazy">
 </div>
-</article>
-
-<article class="reveal" style="display: flex; flex-direction: column; border: 1px solid #26262e; border-radius: 16px; background: #17171c; overflow: hidden">
-<div style="height: 200px; background: #0c0c10; border-bottom: 1px solid #26262e; overflow: hidden"><img src="/site/dark/done.jpg" alt="The PIN sheet showing a gold tick and Done" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; object-position: 50% 74%; display: block"></div>
-<div style="padding: 24px; display: flex; flex-direction: column; gap: 10px">
-<span class="tnum" style="font-size: 12px; font-weight: 700; color: #c9a35f">03</span>
-<h3 style="margin: 0; font-size: 20px; font-weight: 700">Done</h3>
-<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #8b8b94">Arc confirms in moments. You get a receipt with the transaction hash to share or check.</p>
 </div>
-</article>
-
-<article class="reveal" style="display: flex; flex-direction: column; border: 1px solid #26262e; border-radius: 16px; background: #17171c; overflow: hidden">
-<div style="height: 200px; background: #0c0c10; border-bottom: 1px solid #26262e; overflow: hidden"><img src="/site/dark/activity.jpg" alt="Activity grouped by day with filters" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; object-position: 50% 10%; display: block"></div>
-<div style="padding: 24px; display: flex; flex-direction: column; gap: 10px">
-<span class="tnum" style="font-size: 12px; font-weight: 700; color: #c9a35f">04</span>
-<h3 style="margin: 0; font-size: 20px; font-weight: 700">History</h3>
-<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #8b8b94">Activity is read straight from the chain, grouped by day, filterable by type and date.</p>
 </div>
-</article>
 </div>
 </section>
 
@@ -166,16 +208,16 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 <h2 class="reveal" style="margin: 0; font-size: clamp(34px, 4vw, 52px); line-height: 1.04; font-weight: 700; letter-spacing: -1.6px">Show a code.<br><em style="color: #8b8b94">Get paid in USDC.</em></h2>
 <p style="margin: 0; max-width: 460px; font-size: 15px; line-height: 1.6; color: #8b8b94">Turn on Store, enter an amount and show the QR. Customers pay from MironPay or any Arc wallet, and the order flips to Paid on its own.</p>
 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 520px">
-<div style="padding: 18px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 4px"><span class="tnum" style="font-size: 30px; font-weight: 700; letter-spacing: -0.8px">0.1%</span><span style="font-size: 12.5px; color: #8b8b94">fee per order</span></div>
-<div style="padding: 18px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 4px"><span class="tnum" style="font-size: 30px; font-weight: 700; letter-spacing: -0.8px">15 min</span><span style="font-size: 12.5px; color: #8b8b94">payment window</span></div>
+<div style="padding: 18px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 4px"><span class="tnum count" data-to="0.1" data-dec="1" data-suffix="%" style="font-size: 30px; font-weight: 700; letter-spacing: -0.8px">0.1%</span><span style="font-size: 12.5px; color: #8b8b94">fee per order</span></div>
+<div style="padding: 18px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 4px"><span class="tnum count" data-to="15" data-dec="0" data-suffix=" min" style="font-size: 30px; font-weight: 700; letter-spacing: -0.8px">15 min</span><span style="font-size: 12.5px; color: #8b8b94">payment window</span></div>
 <div style="padding: 18px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 30px; font-weight: 700; letter-spacing: -0.8px">1 tap</span><span style="font-size: 12.5px; color: #8b8b94">refunds for overpayment</span></div>
 <div style="padding: 18px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 30px; font-weight: 700; letter-spacing: -0.8px">Unique</span><span style="font-size: 12.5px; color: #8b8b94">address for every order</span></div>
 </div>
 </div>
-<div style="flex: 1 1 320px; display: flex; justify-content: center">
-<div class="" style="position: relative; width: 320px; max-width: 82vw; padding: 10px; border-radius: 48px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 50px 120px -30px rgba(201,163,95,0.22)">
-<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/orders.jpg" alt="The Store orders grid: Bean &amp; Leaf Café with paid, pending and cancelled orders" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
-</div>
+<div class="duo" style="flex: 1 1 360px; display: flex; justify-content: center; gap: 18px; position: relative">
+<div class="glow sm" aria-hidden="true"></div>
+<div class="par" data-speed="-0.06" style="position: relative; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/charge.jpg" alt="Charge: 12.50 USDC on the keypad" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
+<div class="par" data-speed="0.06" style="position: relative; margin-top: 72px; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/orders.jpg" alt="Orders: paid, pending and cancelled orders" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
 </div>
 </div>
 </section>
@@ -248,5 +290,82 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </div>
 </footer>
 </div>
+
+<script>
+(function () {
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.documentElement.classList.add('js');
+
+  // Reveal on scroll, staggered within a section.
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      var sibs = e.target.parentElement ? e.target.parentElement.querySelectorAll(':scope > .reveal') : [];
+      var i = Array.prototype.indexOf.call(sibs, e.target);
+      e.target.style.transitionDelay = (Math.max(i, 0) * 90) + 'ms';
+      e.target.classList.add('in'); io.unobserve(e.target);
+    });
+  }, { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  // Hero: tilt toward the pointer.
+  var tilt = document.getElementById('tilt');
+  if (tilt && !reduce && matchMedia('(pointer: fine)').matches) {
+    addEventListener('pointermove', function (ev) {
+      var x = ev.clientX / innerWidth - 0.5, y = ev.clientY / innerHeight - 0.5;
+      tilt.style.transform = 'perspective(1200px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 8) + 'deg)';
+    }, { passive: true });
+  }
+
+  // Hero: payments arriving one after another.
+  var toasts = document.querySelectorAll('.toast'), t = 0;
+  function nextToast() {
+    toasts.forEach(function (el, i) { el.classList.toggle('show', i === t); el.classList.toggle('out', i === (t + toasts.length - 1) % toasts.length); });
+    t = (t + 1) % toasts.length;
+  }
+  if (toasts.length) { setTimeout(function () { nextToast(); if (!reduce) setInterval(nextToast, 3200); }, 1500); }
+
+  // How it works: auto-advancing steps, one big phone.
+  var steps = document.querySelectorAll('.stp'), scr = document.querySelectorAll('.screens .scr'), wrap = document.querySelector('.steps');
+  var cur = 0, timer = null, DUR = 4500;
+  function show(i) {
+    cur = i;
+    steps.forEach(function (s, k) { s.classList.toggle('on', k === i); s.setAttribute('aria-selected', k === i ? 'true' : 'false'); var b = s.querySelector('.bar i'); if (b) { b.style.animation = 'none'; b.offsetWidth; b.style.animation = ''; } });
+    scr.forEach(function (im, k) { im.classList.toggle('on', k === i); });
+  }
+  function play() { clearInterval(timer); if (!reduce) timer = setInterval(function () { show((cur + 1) % steps.length); }, DUR); }
+  steps.forEach(function (s, k) { s.addEventListener('click', function () { show(k); play(); }); });
+  if (wrap) {
+    wrap.style.setProperty('--dur', DUR + 'ms');
+    wrap.addEventListener('mouseenter', function () { clearInterval(timer); wrap.classList.add('paused'); });
+    wrap.addEventListener('mouseleave', function () { wrap.classList.remove('paused'); play(); });
+    // start when the section comes into view
+    var so = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { show(0); play(); so.disconnect(); } }); }, { threshold: 0.35 });
+    so.observe(wrap);
+  }
+
+  // Shops: count the numbers up, phones drift apart on scroll.
+  var cio = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return; cio.unobserve(e.target);
+      var el = e.target, to = parseFloat(el.dataset.to), dec = +el.dataset.dec, suf = el.dataset.suffix || '', t0 = performance.now();
+      if (reduce) return;
+      (function tick(now) { var p = Math.min(1, (now - t0) / 1100), v = to * (1 - Math.pow(1 - p, 3)); el.textContent = v.toFixed(dec) + suf; if (p < 1) requestAnimationFrame(tick); })(t0);
+    });
+  }, { threshold: 0.6 });
+  document.querySelectorAll('.count').forEach(function (el) { cio.observe(el); });
+  var pars = document.querySelectorAll('.par');
+  if (pars.length && !reduce) {
+    var raf = 0;
+    addEventListener('scroll', function () {
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = 0;
+        pars.forEach(function (el) { var r = el.getBoundingClientRect(), mid = r.top + r.height / 2 - innerHeight / 2; el.style.transform = 'translateY(' + (mid * parseFloat(el.dataset.speed)) + 'px)'; });
+      });
+    }, { passive: true });
+  }
+})();
+</script>
 </body>
 </html>
