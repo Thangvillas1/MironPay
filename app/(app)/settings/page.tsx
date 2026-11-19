@@ -80,8 +80,8 @@ export default function SettingsPage() {
   useEffect(() => {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.replace('/'); return }
-      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/'); return }
+      if (!session) { router.replace('/signin'); return }
+      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/signin'); return }
       setAccessToken(session.access_token)
       if (!user) setUser(session.user)
       const { data: profile } = await supabase.from('profiles').select('pin_hash, username').eq('id', session.user.id).single()
@@ -105,7 +105,7 @@ export default function SettingsPage() {
     setTokenList([])
     setWalletAddress(null)
     setLastFetched(0)
-    router.replace('/')
+    router.replace('/signin')
   }
 
   async function handleStartPinRecovery() {

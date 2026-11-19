@@ -192,7 +192,7 @@ export default function Sidebar() {
     setTokenList([])
     setWalletAddress(null)
     setLastFetched(0)
-    router.replace('/')
+    router.replace('/signin')
   }
 
   const handle = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'User'

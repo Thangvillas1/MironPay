@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security — MironPay</title>
+<meta name="description" content="How MironPay protects your wallet: Circle-held keys, server-checked PIN, 2FA, and safe dapp connections.">
+<meta name="theme-color" content="#f5f4f2">
+<meta property="og:title" content="Security — MironPay">
+<meta property="og:description" content="How MironPay protects your wallet: Circle-held keys, server-checked PIN, 2FA, and safe dapp connections.">
+<meta property="og:image" content="https://mironpay.xyz/site/mironpay-lockup.png">
+<link rel="icon" href="/site/mi-mark.png">
+<link rel="stylesheet" href="/site/tokens.css">
+<style>
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--gold)}a:hover{color:var(--tx)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+*:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-width: 820px){
+  [style*="grid-template-columns: repeat("]{grid-template-columns:1fr !important}
+  h1{font-size:40px !important;letter-spacing:-1px !important}
+  h2{font-size:26px !important}
+  nav > div{justify-content:flex-start !important;order:3;width:100%}
+}</style>
+</head>
+<body>
+<div style="min-height: 100vh; background: var(--bg); color: var(--tx); font-family: var(--font-sans);">
+
+  <header style="border-bottom: 1px solid var(--line2); background: var(--bg);">
+    <nav aria-label="Main" style="max-width: 1120px; margin: 0 auto; padding: 18px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px;">
+      <a href="/" style="display: flex; align-items: center;"><img src="/site/mironpay-lockup.png" alt="MironPay" style="height: 34px; width: auto;"></a>
+      <div style="display: flex; flex-wrap: wrap; gap: 28px; flex-grow: 1; justify-content: center; font-size: 14px; font-weight: 600;">
+        <a href="/docs" style="color: var(--tx); text-decoration: none;">Docs</a>
+        <a href="/security" style="color: var(--gold); text-decoration: none;">Security</a>
+        <a href="/contracts" style="color: var(--tx); text-decoration: none;">Smart contracts</a>
+      </div>
+      <a href="https://mironpay.xyz/app" style="background: var(--gold); color: var(--goldT); text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 22px; border-radius: 999px;">Open app</a>
+    </nav>
+  </header>
+
+  <main style="max-width: 1120px; margin: 0 auto; padding: 64px 24px 96px; display: flex; flex-direction: column; gap: 56px;">
+    <div style="display: flex; flex-direction: column; gap: 14px; max-width: 760px;">
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">SECURITY</span>
+      <h1 style="margin: 0; font-size: 48px; letter-spacing: -1.5px; line-height: 1.05;">How MironPay protects your wallet</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--mut);">MironPay is a custodial wallet: your keys are held by Circle, and nothing moves without your PIN. Here is exactly how that works — and what it means for you.</p>
+    </div>
+
+    <section aria-labelledby="custody-title" style="border: 1px solid var(--line); border-radius: 16px; background: var(--bg2); padding: 32px; display: flex; flex-wrap: wrap; gap: 32px;">
+      <div style="flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px;">
+        <h2 id="custody-title" style="margin: 0; font-size: 24px; letter-spacing: -0.5px;">Who holds the keys</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Each MironPay wallet is a <strong>Circle developer-controlled wallet</strong>. Circle generates and stores the private keys in its own infrastructure; MironPay's server asks Circle to sign a transaction only after it has checked your PIN.</p>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">That's why there is no seed phrase to lose — and also why you should treat your Google account and PIN as the keys to your money.</p>
+      </div>
+      <ol style="flex: 1 1 380px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px;">
+        <li style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex: 0 0 30px; height: 30px; border-radius: 999px; background: var(--gold); color: var(--goldT); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">1</span><span style="font-size: 14px; line-height: 1.55;">You confirm a payment in the app and enter your PIN.</span></li>
+        <li style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex: 0 0 30px; height: 30px; border-radius: 999px; background: var(--gold); color: var(--goldT); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">2</span><span style="font-size: 14px; line-height: 1.55;">The PIN travels with the request to MironPay's server, which checks it against a salted scrypt hash and its attempt limit.</span></li>
+        <li style="display: flex; gap: 14px; align-items: flex-start;"><span style="flex: 0 0 30px; height: 30px; border-radius: 999px; background: var(--gold); color: var(--goldT); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">3</span><span style="font-size: 14px; line-height: 1.55;">Only then does the server ask Circle to sign and send the transaction on Arc.</span></li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="layers-title" style="display: flex; flex-direction: column; gap: 20px;">
+      <h2 id="layers-title" style="margin: 0; font-size: 28px; letter-spacing: -0.5px;">Layers of protection</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="margin: 0; font-size: 17px;">Google sign-in</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">No MironPay password to leak. Your session is signed by Supabase Auth and checked on every request.</p>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="margin: 0; font-size: 17px;">PIN checked on the server</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Every send, swap, store payment, refund and dapp transaction is refused without the right PIN. Repeated wrong PINs lock the PIN for a while.</p>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="margin: 0; font-size: 17px;">Two-factor sign-in (optional)</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Turn on 2FA in Profile › Security: after your PIN, the app asks for a code from your authenticator app.</p>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="margin: 0; font-size: 17px;">PIN reset by email</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Changing or resetting your PIN needs a fresh code sent to your email, so a stolen unlocked phone alone can't change it.</p>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="margin: 0; font-size: 17px;">Encrypted session on the phone</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">The Android and iPhone apps encrypt your session with a key kept in the phone's secure hardware (Keychain / Keystore), and exclude it from backups.</p>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="margin: 0; font-size: 17px;">Lock wallet now</h3>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">One tap in Profile › Security freezes the app behind your PIN. Login activity and trusted devices show where you're signed in.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="dapps-title" style="display: flex; flex-direction: column; gap: 16px; max-width: 760px;">
+      <h2 id="dapps-title" style="margin: 0; font-size: 28px; letter-spacing: -0.5px;">Dapps can't surprise you</h2>
+      <ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.6;">
+        <li>Only your main wallet, only on Arc Testnet, can be connected.</li>
+        <li>Each site is checked with WalletConnect Verify; known scam sites are blocked outright, unverified ones are labelled.</li>
+        <li>Requests are decoded into plain words. Unlimited token approvals and Permit signatures are marked as dangerous, and you can cap an approval before signing.</li>
+        <li>Transactions over 100 USDC need a second confirmation. Every dapp request is logged on our side.</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="stores-title" style="display: flex; flex-direction: column; gap: 16px; max-width: 760px;">
+      <h2 id="stores-title" style="margin: 0; font-size: 28px; letter-spacing: -0.5px;">Store payments</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.6;">Each order has its own deposit address computed by the MironPayment Router contract, so a payment can only settle the order it was made for. Payers can verify the address on-chain before paying. A shop's verified badge can only be granted by MironPay's review — never by the shop itself.</p>
+      <a href="/contracts" style="font-weight: 700; font-size: 14px;">See the contract →</a>
+    </section>
+
+    <section aria-labelledby="you-title" style="border: 1px solid var(--line); border-radius: 16px; background: var(--warnBg); padding: 28px 32px; display: flex; flex-direction: column; gap: 12px;">
+      <h2 id="you-title" style="margin: 0; font-size: 22px;">What you should know</h2>
+      <ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+        <li>MironPay currently runs on <strong>Arc Testnet</strong>. Balances are test tokens with no real value.</li>
+        <li>Because keys are held by Circle on MironPay's behalf, MironPay is custodial: protect your Google account with its own 2-step verification.</li>
+        <li>Never share your PIN or an email code. MironPay will never ask for them outside the app.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer style="border-top: 1px solid var(--line2);">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 32px 24px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; font-size: 13px; color: var(--mut);">
+      <span>© MironPay · Arc Testnet · test tokens only</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px;"><a href="/" style="color: var(--mut);">Home</a><a href="/docs" style="color: var(--mut);">Docs</a><a href="/contracts" style="color: var(--mut);">Smart contracts</a></div>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

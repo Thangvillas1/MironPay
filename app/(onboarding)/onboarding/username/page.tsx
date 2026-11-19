@@ -47,7 +47,7 @@ function UsernameContent() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) { router.replace('/'); return }
+      if (!data.session) { router.replace('/signin'); return }
       setUserId(data.session.user.id)
     })
   }, [router])

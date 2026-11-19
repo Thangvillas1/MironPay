@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs — MironPay</title>
+<meta name="description" content="How to use MironPay: create a wallet, send, receive, swap, scan to pay, accept store payments and connect dapps.">
+<meta name="theme-color" content="#f5f4f2">
+<meta property="og:title" content="Docs — MironPay">
+<meta property="og:description" content="How to use MironPay: create a wallet, send, receive, swap, scan to pay, accept store payments and connect dapps.">
+<meta property="og:image" content="https://mironpay.xyz/site/mironpay-lockup.png">
+<link rel="icon" href="/site/mi-mark.png">
+<link rel="stylesheet" href="/site/tokens.css">
+<style>
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--gold)}a:hover{color:var(--tx)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+*:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-width: 820px){
+  [style*="grid-template-columns: repeat("]{grid-template-columns:1fr !important}
+  h1{font-size:40px !important;letter-spacing:-1px !important}
+  h2{font-size:26px !important}
+  nav > div{justify-content:flex-start !important;order:3;width:100%}
+}</style>
+</head>
+<body>
+<div style="min-height: 100vh; background: var(--bg); color: var(--tx); font-family: var(--font-sans);">
+
+  <header style="border-bottom: 1px solid var(--line2); background: var(--bg);">
+    <nav aria-label="Main" style="max-width: 1120px; margin: 0 auto; padding: 18px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px;">
+      <a href="/" style="display: flex; align-items: center;"><img src="/site/mironpay-lockup.png" alt="MironPay" style="height: 34px; width: auto;"></a>
+      <div style="display: flex; flex-wrap: wrap; gap: 28px; flex-grow: 1; justify-content: center; font-size: 14px; font-weight: 600;">
+        <a href="/docs" style="color: var(--gold); text-decoration: none;">Docs</a>
+        <a href="/security" style="color: var(--tx); text-decoration: none;">Security</a>
+        <a href="/contracts" style="color: var(--tx); text-decoration: none;">Smart contracts</a>
+      </div>
+      <a href="https://mironpay.xyz/app" style="background: var(--gold); color: var(--goldT); text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 22px; border-radius: 999px;">Open app</a>
+    </nav>
+  </header>
+
+  <div style="max-width: 1120px; margin: 0 auto; padding: 48px 24px 96px; display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start;">
+
+    <aside aria-label="Docs sections" style="flex: 1 1 220px; max-width: 240px; display: flex; flex-direction: column; gap: 22px; font-size: 14px;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">GET STARTED</span>
+        <a href="#start" style="color: var(--gold); text-decoration: none; font-weight: 700;">Create your wallet</a>
+        <a href="#unlock" style="color: var(--tx); text-decoration: none;">PIN and unlocking</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">USE YOUR WALLET</span>
+        <a href="#send" style="color: var(--tx); text-decoration: none;">Send</a>
+        <a href="#receive" style="color: var(--tx); text-decoration: none;">Receive</a>
+        <a href="#swap" style="color: var(--tx); text-decoration: none;">Swap</a>
+        <a href="#scan" style="color: var(--tx); text-decoration: none;">Scan and pay</a>
+        <a href="#activity" style="color: var(--tx); text-decoration: none;">Activity</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">MERCHANTS</span>
+        <a href="#store" style="color: var(--tx); text-decoration: none;">Set up your Store</a>
+        <a href="#charge" style="color: var(--tx); text-decoration: none;">Take a payment</a>
+        <a href="#refund" style="color: var(--tx); text-decoration: none;">Over- and underpayments</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">DAPPS</span>
+        <a href="#walletconnect" style="color: var(--tx); text-decoration: none;">Connect with WalletConnect</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">DEVELOPERS</span>
+        <a href="#payment-links" style="color: var(--tx); text-decoration: none;">Payment links</a>
+        <a href="/contracts" style="color: var(--tx); text-decoration: none;">Smart contracts</a>
+      </div>
+    </aside>
+
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 56px; max-width: 720px;">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">DOCS</span>
+        <h1 style="margin: 0; font-size: 44px; letter-spacing: -1.5px; line-height: 1.05;">How to use MironPay</h1>
+        <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--mut);">Everything in the app, step by step. MironPay runs on Arc Testnet: all amounts are test tokens.</p>
+      </div>
+
+      <section id="start" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Create your wallet</h2>
+        <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li>Open <a href="https://mironpay.xyz/app">mironpay.xyz/app</a> and tap <strong>Launch App</strong>.</li>
+          <li>Sign in with Google.</li>
+          <li>Pick your @name — it's how people find you to send money.</li>
+          <li>Create a 6-digit PIN and enter it again to confirm.</li>
+          <li>MironPay creates two wallets: your main wallet, and a separate, limited wallet for your AI agent. Tap <strong>Enter MironPay</strong>.</li>
+        </ol>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">There is no seed phrase to write down. Your sign-in plus your PIN protect the wallet.</p>
+      </section>
+
+      <section id="unlock" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">PIN and unlocking</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Each time you open the app, enter your PIN on <strong>Welcome back</strong>. Every send, swap, payment, refund and dapp request asks for it again.</p>
+        <ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li>Too many wrong PINs lock the PIN for a while; the screen shows how long.</li>
+          <li>Forgot it? Tap <strong>Forgot PIN?</strong>, enter the code we email you, and set a new one.</li>
+          <li>Change it any time in <strong>Profile › Security › Change PIN</strong>.</li>
+        </ul>
+      </section>
+
+      <section id="send" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Send</h2>
+        <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li>On <strong>Wallet</strong>, tap a token, then <strong>Send</strong>.</li>
+          <li>Enter an @name, a wallet address, or pick a contact.</li>
+          <li>Type the amount on the keypad (or tap 10%, 25%, 50%, All), then <strong>Continue</strong>.</li>
+          <li>Check the review — recipient, network, fee, total — add a memo if you want, and tap <strong>Confirm &amp; send</strong>.</li>
+          <li>Enter your PIN. You'll see "Sending on Arc…", a tick, then the receipt.</li>
+        </ol>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">Network fees on Arc are paid in USDC, so "All" keeps 0.01 USDC aside for the fee.</p>
+      </section>
+
+      <section id="receive" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Receive</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Tap the round button in the middle of the tab bar, then <strong>My code</strong>. Show the QR, or tap the address to copy it. To ask for an exact amount, pick the token and type the amount under the code — the QR updates to include it.</p>
+      </section>
+
+      <section id="swap" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Swap</h2>
+        <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li>Tap a token, then <strong>Swap</strong>. Pick what you pay (From) and what you get (To).</li>
+          <li>Type the amount. You'll see the quote, the market rate beside it, the minimum you'll receive, and fees.</li>
+          <li>Choose a slippage limit (Auto, 2% or 5%) and tap <strong>Swap now</strong>; the quote refreshes once more, then confirm with your PIN.</li>
+        </ol>
+      </section>
+
+      <section id="scan" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Scan and pay</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Tap the round button: the camera opens full screen. Line the QR up in the square.</p>
+        <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 16px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <thead><tr style="background: var(--bg2); text-align: left;"><th style="padding: 12px 16px;">You scan</th><th style="padding: 12px 16px;">MironPay opens</th></tr></thead>
+            <tbody>
+              <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 16px;">A MironPay store order</td><td style="padding: 12px 16px;">Pay order: store, amount, time left → Confirm payment → PIN</td></tr>
+              <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 16px;">A wallet address or payment request</td><td style="padding: 12px 16px;">Send, with the recipient and amount filled in</td></tr>
+              <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 16px;">A WalletConnect code</td><td style="padding: 12px 16px;">Connect app (see Dapps)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="activity" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Activity</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Every transaction, read from the chain and grouped by day. Filter by type — Transfers, Payments, Swaps, Dapps — and by date: Today, 7 days, 30 days, or pick days on the calendar. Tap a row for details, the transaction hash and a downloadable receipt.</p>
+      </section>
+
+      <section id="store" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Set up your Store</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Open the <strong>Store</strong> tab and name your shop. You can ask MironPay to verify it; only MironPay can grant the verified badge, and renaming the shop removes it.</p>
+      </section>
+
+      <section id="charge" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Take a payment</h2>
+        <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li>In Store, tap <strong>Charge</strong> (or the + button), type the amount, add a note if you like, and tap <strong>Create payment code</strong>.</li>
+          <li>Show the QR. It stays valid for 15 minutes; you can cancel the order.</li>
+          <li>When the customer pays, the screen switches to <strong>Paid</strong> and the order turns Paid in your grid.</li>
+          <li><strong>Orders</strong> shows every order as a tile; search by order number, note or amount, and filter Open, Paid, Refunded or Closed. <strong>Revenue</strong> charts your sales by day, month or year.</li>
+        </ol>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">MironPay keeps 0.1% of each order as its fee.</p>
+      </section>
+
+      <section id="refund" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Over- and underpayments</h2>
+        <ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li><strong>Paid too little:</strong> the order stays open and the QR now asks only for what's left.</li>
+          <li><strong>Paid too much:</strong> the order is Paid for its amount; the extra is held. Tap <strong>Refund extra</strong>, choose the address that paid (or type one), and confirm with your PIN.</li>
+        </ul>
+      </section>
+
+      <section id="walletconnect" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Connect with WalletConnect</h2>
+        <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li>On the dapp, choose <strong>Connect wallet › WalletConnect</strong> and scan its QR with MironPay.</li>
+          <li>Check the site: <em>Domain verified</em>, <em>not verified</em>, <em>does not match</em>, or <em>Known scam</em> (blocked). Tap <strong>Connect</strong>.</li>
+          <li>When the dapp asks you to sign or send, MironPay shows what the request does. Risky ones — unlimited token approvals, Permit signatures — are marked in red, and you can lower an approval to a set amount.</li>
+          <li>Transactions over 100 USDC ask you to confirm twice.</li>
+          <li>See and disconnect apps in <strong>Profile › Connected apps</strong>.</li>
+        </ol>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">MironPay connects your main wallet on Arc Testnet only. A dapp that only supports Arc mainnet or other chains can't connect yet.</p>
+      </section>
+
+      <section id="payment-links" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Payment links (developers)</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">MironPay QR codes are standard EIP-681 payment requests pinned to Arc Testnet (chain ID 5042002), so any wallet can read them. USDC is Arc's native currency, so a USDC request carries a native value with 18 decimals; EURC and cirBTC use the token's transfer form with the token's own decimals.</p>
+        <pre style="margin: 0; padding: 16px 18px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; line-height: 1.6; overflow-x: auto; white-space: pre;">10 USDC   ethereum:0xRECIPIENT@5042002?value=10000000000000000000
+10 EURC   ethereum:0x89b50855aa3be2f677cd6303cec089b5f319d72a@5042002/transfer?address=0xRECIPIENT&amp;uint256=10000000
+Address   ethereum:0xRECIPIENT@5042002</pre>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">Store orders pay through the MironPayment Router — see <a href="/contracts">Smart contracts</a>.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer style="border-top: 1px solid var(--line2);">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 32px 24px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; font-size: 13px; color: var(--mut);">
+      <span>© MironPay · Arc Testnet · test tokens only</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px;"><a href="/" style="color: var(--mut);">Home</a><a href="/security" style="color: var(--mut);">Security</a><a href="/contracts" style="color: var(--mut);">Smart contracts</a></div>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

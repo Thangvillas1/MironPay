@@ -35,7 +35,7 @@ export default function StorePage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       const session = data.session
-      if (!session) { router.replace('/'); return }
+      if (!session) { router.replace('/signin'); return }
       const { data: profile } = await supabase
         .from('merchant_profiles')
         .select('store_name')

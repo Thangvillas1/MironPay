@@ -17,14 +17,25 @@ const nextConfig: NextConfig = {
   // /app/<route> that isn't a real file falls back to its index.html.
   // (Plain-array rewrites run after static files, so assets still win.)
   async rewrites() {
-    return [
-      { source: '/app', destination: '/app/index.html' },
-      { source: '/app/:path*', destination: '/app/index.html' },
-    ];
+    return {
+      // Public site (static pages in public/site, built from the MironPay
+      // Website design): the homepage, docs, security and contracts.
+      beforeFiles: [
+        { source: '/', destination: '/site/index.html' },
+        { source: '/docs', destination: '/site/docs.html' },
+        { source: '/security', destination: '/site/security.html' },
+        { source: '/contracts', destination: '/site/contracts.html' },
+      ],
+      afterFiles: [
+        { source: '/app', destination: '/app/index.html' },
+        { source: '/app/:path*', destination: '/app/index.html' },
+      ],
+      fallback: [],
+    };
   },
   async redirects() {
     return [
-      { source: '/login', destination: '/', permanent: true },
+      { source: '/login', destination: '/signin', permanent: true },
       // Store is temporarily off while Store v2 is rebuilt — remove these two to bring it back.
       { source: '/store', destination: '/dashboard', permanent: false },
       { source: '/store/:path*', destination: '/dashboard', permanent: false },

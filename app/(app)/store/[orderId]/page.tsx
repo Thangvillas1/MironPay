@@ -34,7 +34,7 @@ export default function StoreOrderPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       const session = data.session
-      if (!session) { router.replace('/'); return }
+      if (!session) { router.replace('/signin'); return }
       setAccessToken(session.access_token)
       await load(session.access_token)
     })

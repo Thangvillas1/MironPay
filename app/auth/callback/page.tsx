@@ -131,7 +131,7 @@ function CallbackHandler() {
         </p>
         <button
           type="button"
-          onClick={() => router.replace('/')}
+          onClick={() => router.replace('/signin')}
           className="mp-btn-ghost w-full"
           style={{
             marginTop: 22,

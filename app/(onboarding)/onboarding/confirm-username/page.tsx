@@ -14,7 +14,7 @@ function ConfirmUsernameContent() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) { router.replace('/'); return }
+      if (!data.session) { router.replace('/signin'); return }
       if (!username) router.replace('/onboarding/username')
     })
   }, [router, username])

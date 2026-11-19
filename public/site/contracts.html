@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart contracts — MironPay</title>
+<meta name="description" content="The MironPayment Router on Arc Testnet: address, functions, fees and supported tokens.">
+<meta name="theme-color" content="#f5f4f2">
+<meta property="og:title" content="Smart contracts — MironPay">
+<meta property="og:description" content="The MironPayment Router on Arc Testnet: address, functions, fees and supported tokens.">
+<meta property="og:image" content="https://mironpay.xyz/site/mironpay-lockup.png">
+<link rel="icon" href="/site/mi-mark.png">
+<link rel="stylesheet" href="/site/tokens.css">
+<style>
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+a{color:var(--gold)}a:hover{color:var(--tx)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+*:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-width: 820px){
+  [style*="grid-template-columns: repeat("]{grid-template-columns:1fr !important}
+  h1{font-size:40px !important;letter-spacing:-1px !important}
+  h2{font-size:26px !important}
+  nav > div{justify-content:flex-start !important;order:3;width:100%}
+}</style>
+</head>
+<body>
+<div style="min-height: 100vh; background: var(--bg); color: var(--tx); font-family: var(--font-sans);">
+
+  <header style="border-bottom: 1px solid var(--line2); background: var(--bg);">
+    <nav aria-label="Main" style="max-width: 1120px; margin: 0 auto; padding: 18px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px;">
+      <a href="/" style="display: flex; align-items: center;"><img src="/site/mironpay-lockup.png" alt="MironPay" style="height: 34px; width: auto;"></a>
+      <div style="display: flex; flex-wrap: wrap; gap: 28px; flex-grow: 1; justify-content: center; font-size: 14px; font-weight: 600;">
+        <a href="/docs" style="color: var(--tx); text-decoration: none;">Docs</a>
+        <a href="/security" style="color: var(--tx); text-decoration: none;">Security</a>
+        <a href="/contracts" style="color: var(--gold); text-decoration: none;">Smart contracts</a>
+      </div>
+      <a href="https://mironpay.xyz/app" style="background: var(--gold); color: var(--goldT); text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 22px; border-radius: 999px;">Open app</a>
+    </nav>
+  </header>
+
+  <main style="max-width: 1120px; margin: 0 auto; padding: 64px 24px 96px; display: flex; flex-direction: column; gap: 52px;">
+    <div style="display: flex; flex-direction: column; gap: 14px; max-width: 760px;">
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">SMART CONTRACTS · ARC TESTNET</span>
+      <h1 style="margin: 0; font-size: 48px; letter-spacing: -1.5px; line-height: 1.05;">MironPayment Router</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 1.6; color: var(--mut);">Store payments settle through one verified contract with no owner, no pause switch and no upgrades. Each order gets its own deposit address, and anyone can check an order's status on-chain.</p>
+    </div>
+
+    <section aria-labelledby="deploy-title" style="display: flex; flex-direction: column; gap: 16px;">
+      <h2 id="deploy-title" style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Deployment</h2>
+      <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tbody>
+            <tr><th scope="row" style="text-align: left; padding: 14px 18px; width: 220px; background: var(--bg2); color: var(--mut); font-weight: 600;">Network</th><td style="padding: 14px 18px;">Arc Testnet · chain ID 5042002</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><th scope="row" style="text-align: left; padding: 14px 18px; background: var(--bg2); color: var(--mut); font-weight: 600;">Router</th><td style="padding: 14px 18px; font-family: ui-monospace, monospace; word-break: break-all;"><a href="https://explorer.testnet.arc.io/address/0x5717F0965Bb12b7B05BD914D8C9530e80f8BeD1a">0x5717F0965Bb12b7B05BD914D8C9530e80f8BeD1a</a></td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><th scope="row" style="text-align: left; padding: 14px 18px; background: var(--bg2); color: var(--mut); font-weight: 600;">Source</th><td style="padding: 14px 18px;">Verified on the Arc explorer · solc 0.8.28, optimizer 200 runs, EVM cancun</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><th scope="row" style="text-align: left; padding: 14px 18px; background: var(--bg2); color: var(--mut); font-weight: 600;">Deployed</th><td style="padding: 14px 18px;">Block 71910573</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><th scope="row" style="text-align: left; padding: 14px 18px; background: var(--bg2); color: var(--mut); font-weight: 600;">Fee</th><td style="padding: 14px 18px;">0.1% of each settled order (<code>FEE_BPS = 10</code>, a constant)</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><th scope="row" style="text-align: left; padding: 14px 18px; background: var(--bg2); color: var(--mut); font-weight: 600;">Fee recipient</th><td style="padding: 14px 18px; font-family: ui-monospace, monospace; word-break: break-all;">0x7A3Bc75Bbc8D7022897a11632F7a7B90567a004E <span style="font-family: var(--font-sans); color: var(--mut);">(changeable only by a two-step propose / accept)</span></td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><th scope="row" style="text-align: left; padding: 14px 18px; background: var(--bg2); color: var(--mut); font-weight: 600;">Deposit box code hash</th><td style="padding: 14px 18px; font-family: ui-monospace, monospace; word-break: break-all;">0x1bc85e97b2c1d9c94a362038fd8c19334a0cda15488cb5d3d11c198501d5afd7</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="flow-title" style="display: flex; flex-direction: column; gap: 18px;">
+      <h2 id="flow-title" style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">How an order is paid</h2>
+      <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
+        <li style="border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: var(--bg2); display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--gold);">1 · ORDER</span>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55;">The merchant's app builds an order: id, merchant, token (USDC), amount, expiry (15 minutes).</p>
+        </li>
+        <li style="border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: var(--bg2); display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--gold);">2 · DEPOSIT ADDRESS</span>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55;"><code>computeDepositAddress(order)</code> gives a CREATE2 address unique to that order. The QR points there.</p>
+        </li>
+        <li style="border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: var(--bg2); display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--gold);">3 · PAY</span>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55;">MironPay calls <code>pay(order)</code> with native USDC (refuses overpayment and expired orders). Any wallet can also send USDC to the address directly.</p>
+        </li>
+        <li style="border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: var(--bg2); display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--gold);">4 · SETTLE</span>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55;">Anyone may call <code>settle(order)</code>: it credits up to the order amount, sends 0.1% to the fee recipient and the rest to the merchant, and holds any excess.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="fn-title" style="display: flex; flex-direction: column; gap: 16px;">
+      <h2 id="fn-title" style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Functions</h2>
+      <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <thead><tr style="background: var(--bg2); text-align: left;"><th style="padding: 12px 18px;">Function</th><th style="padding: 12px 18px;">Who</th><th style="padding: 12px 18px;">What it does</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-family: ui-monospace, monospace;">pay(order)</td><td style="padding: 12px 18px;">Payer</td><td style="padding: 12px 18px;">Pays an order in native USDC; reverts on overpayment or after expiry.</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-family: ui-monospace, monospace;">settle(order)</td><td style="padding: 12px 18px;">Anyone</td><td style="padding: 12px 18px;">Sweeps the deposit box, credits up to the amount, pays fee and merchant, holds the excess.</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-family: ui-monospace, monospace;">refundExcess(order, to, amount)</td><td style="padding: 12px 18px;">Merchant only</td><td style="padding: 12px 18px;">Returns held overpayment to an address.</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-family: ui-monospace, monospace;">getOrderStatuses(orders[])</td><td style="padding: 12px 18px;">Read</td><td style="padding: 12px 18px;">Status (none, underpaid, paid, overpaid), credited, pending, excess and deposit address for each order.</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-family: ui-monospace, monospace;">computeDepositAddress(order)</td><td style="padding: 12px 18px;">Read</td><td style="padding: 12px 18px;">The order's deposit address — check it matches the QR before paying.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">Events: <code>Paid</code>, <code>Settled</code>, <code>ExcessRefunded</code>, <code>FeeRecipientProposed</code>, <code>FeeRecipientChanged</code>.</p>
+    </section>
+
+    <section aria-labelledby="tokens-title" style="display: flex; flex-direction: column; gap: 16px;">
+      <h2 id="tokens-title" style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Tokens MironPay supports</h2>
+      <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 16px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <thead><tr style="background: var(--bg2); text-align: left;"><th style="padding: 12px 18px;">Token</th><th style="padding: 12px 18px;">Address (Arc Testnet)</th><th style="padding: 12px 18px;">Decimals</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-weight: 700;">USDC</td><td style="padding: 12px 18px; font-family: ui-monospace, monospace; word-break: break-all;">0x3600000000000000000000000000000000000000</td><td style="padding: 12px 18px;">18 native · 6 ERC-20</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-weight: 700;">EURC</td><td style="padding: 12px 18px; font-family: ui-monospace, monospace; word-break: break-all;">0x89b50855aa3be2f677cd6303cec089b5f319d72a</td><td style="padding: 12px 18px;">6</td></tr>
+            <tr style="border-top: 1px solid var(--line2);"><td style="padding: 12px 18px; font-weight: 700;">cirBTC</td><td style="padding: 12px 18px; font-family: ui-monospace, monospace; word-break: break-all;">0xf0c4a4ce82a5746abaad9425360ab04fbba432bf</td><td style="padding: 12px 18px;">8</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="review-title" style="border: 1px solid var(--line); border-radius: 16px; background: var(--warnBg); padding: 28px 32px; display: flex; flex-direction: column; gap: 10px;">
+      <h2 id="review-title" style="margin: 0; font-size: 22px;">Review status</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.6;">Revision 2 of the router had a best-effort internal review ("no material findings" in the final round). It has not had an independent third-party audit yet; one is required before any mainnet deployment.</p>
+    </section>
+  </main>
+
+  <footer style="border-top: 1px solid var(--line2);">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 32px 24px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; font-size: 13px; color: var(--mut);">
+      <span>© MironPay · Arc Testnet · test tokens only</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px;"><a href="/" style="color: var(--mut);">Home</a><a href="/docs" style="color: var(--mut);">Docs</a><a href="/security" style="color: var(--mut);">Security</a></div>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

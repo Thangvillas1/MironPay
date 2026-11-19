@@ -512,8 +512,8 @@ export default function DashboardPage() {
   useEffect(() => {
     async function init() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.replace('/'); return }
-      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/'); return }
+      if (!session) { router.replace('/signin'); return }
+      if (!(await isOnboardingComplete(session.user.id))) { router.replace('/signin'); return }
       if (!user) setUser(session.user)
       setAccessToken(session.access_token)
 

@@ -731,8 +731,8 @@ export default function AgentPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) { router.replace('/'); return }
-      if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/'); return }
+      if (!data.session) { router.replace('/signin'); return }
+      if (!(await isOnboardingComplete(data.session.user.id))) { router.replace('/signin'); return }
       setAccessToken(data.session.access_token)
       setUserId(data.session.user.id)
       // Independent of each other — no reason to make history wait on the

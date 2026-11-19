@@ -1,0 +1,68 @@
+/* MironPay Design System — generated from tokens.json */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root, [data-theme="light"] {
+  --bg: #f5f4f2;
+  --bg2: #ffffff;
+  --bg3: #f5f4f2;
+  --line: #e5e2dc;
+  --line2: #ecebe7;
+  --tx: #17161a;
+  --mut: #7d7a74;
+  --gold: #b68235;
+  --goldT: #ffffff;
+  --up: #0f9d63;
+  --dn: #d64530;
+  --upBg: #e2f4ea;
+  --dnBg: #fbe7e1;
+  --warn: #b5831f;
+  --warnBg: #f7edd6;
+  --tab: #ffffff;
+}
+[data-theme="dark"] {
+  --bg: #101014;
+  --bg2: #17171c;
+  --bg3: #0c0c10;
+  --line: #26262e;
+  --line2: #1e1e25;
+  --tx: #f2f2f4;
+  --mut: #8b8b94;
+  --gold: #c9a35f;
+  --goldT: #15120b;
+  --up: #34c98e;
+  --dn: #ff7a6b;
+  --upBg: #123527;
+  --dnBg: #3a1d18;
+  --warn: #e2b25a;
+  --warnBg: #3a2f16;
+  --tab: #0c0c10;
+}
+:root {
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --radius-sm: 8px;
+  --radius-key: 12px;
+  --radius-card: 16px;
+  --radius-sheet: 18px;
+  --radius-pill: 999px;
+  --button-height: 50px;
+  --key-height: 52px;
+  --back-button: 34px;
+  --content-max: 480px;
+  --font-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
+}
+.balance-integer { font-family: var(--font-sans); font-size: 44px; font-weight: 700; letter-spacing: -1.5px; }
+.balance-decimal { font-family: var(--font-sans); font-size: 26px; font-weight: 700; }
+.amount-entry { font-family: var(--font-sans); font-size: 50px; font-weight: 700; letter-spacing: -1.5px; }
+.hero-amount { font-family: var(--font-sans); font-size: 40px; font-weight: 700; letter-spacing: -0.8px; }
+.tab-title { font-family: var(--font-sans); font-size: 19px; font-weight: 700; }
+.screen-title { font-family: var(--font-sans); font-size: 16px; font-weight: 700; }
+.row-title { font-family: var(--font-sans); font-size: 13.5px; font-weight: 700; }
+.body { font-family: var(--font-sans); font-size: 13px; font-weight: 400; }
+.caption { font-family: var(--font-sans); font-size: 11.5px; font-weight: 400; }
+.meta { font-family: var(--font-sans); font-size: 10.5px; font-weight: 400; }
+.micro-label { font-family: var(--font-sans); font-size: 10px; font-weight: 600; letter-spacing: 1.4px; }

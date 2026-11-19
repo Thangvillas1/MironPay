@@ -15,7 +15,7 @@ export default function StoreSetupPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       const session = data.session
-      if (!session) { router.replace('/'); return }
+      if (!session) { router.replace('/signin'); return }
       setAccessToken(session.access_token)
       // Already set up — skip straight to the POS.
       const { data: profile } = await supabase
