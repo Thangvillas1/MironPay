@@ -4,199 +4,327 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MironPay — Stablecoin wallet and payments on Arc</title>
-<meta name="description" content="Pay and get paid in USDC in seconds. Sign in with Google, no seed phrase. Send, swap, scan to pay and accept payments on Arc.">
+<meta name="description" content="A USDC wallet that feels like a messaging app. Send to an @name, confirm with your PIN, take payments at your shop. Built on Arc.">
 <meta name="theme-color" content="#f5f4f2">
-<meta property="og:title" content="MironPay — Stablecoin wallet and payments on Arc">
-<meta property="og:description" content="Pay and get paid in USDC in seconds. Sign in with Google, no seed phrase. Send, swap, scan to pay and accept payments on Arc.">
-<meta property="og:image" content="https://mironpay.xyz/site/mironpay-lockup.png">
+<meta property="og:title" content="MironPay — Your money, one tap away">
+<meta property="og:description" content="A USDC wallet that feels like a messaging app. Built on Arc.">
+<meta property="og:image" content="https://mironpay.xyz/site/screens/home.jpg">
 <link rel="icon" href="/site/mi-mark.png">
-<link rel="stylesheet" href="/site/tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
-a{color:var(--gold)}a:hover{color:var(--tx)}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
-*:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-@media (max-width: 820px){
-  [style*="grid-template-columns: repeat("]{grid-template-columns:1fr !important}
-  h1{font-size:40px !important;letter-spacing:-1px !important}
-  h2{font-size:26px !important}
-  nav > div{justify-content:flex-start !important;order:3;width:100%}
-}</style>
+:root{
+  --bg:#f5f4f2; --bg2:#ffffff; --line:#e5e2dc; --line2:#ecebe7; --tx:#17161a; --mut:#6d6a64;
+  --gold:#b68235; --gold-hi:#c9a35f; --ink:#101014; --ink2:#17171c; --ink-line:#26262e; --ink-tx:#f2f2f4; --ink-mut:#8b8b94;
+  --font:"Space Grotesk",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:inherit}
+img{display:block;max-width:100%}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* header */
+.top{position:sticky;top:0;z-index:20;background:rgba(245,244,242,.82);backdrop-filter:saturate(1.6) blur(14px);-webkit-backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid transparent;transition:border-color .2s}
+.top.scrolled{border-bottom-color:var(--line2)}
+.top .wrap{display:flex;align-items:center;gap:28px;height:68px}
+.top img{height:30px;width:auto}
+.top nav{display:flex;gap:26px;margin-left:auto;font-size:14px;font-weight:600}
+.top nav a{text-decoration:none;color:var(--mut)}
+.top nav a:hover{color:var(--tx)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;font-weight:700;text-decoration:none;white-space:nowrap;transition:transform .15s ease, background .15s}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:var(--gold);color:#fff;padding:12px 22px;font-size:14px}
+.btn-gold:hover{background:#a47430}
+.btn-big{padding:18px 32px;font-size:16px}
+.btn-ghost{border:1px solid var(--line);background:var(--bg2);color:var(--tx);padding:17px 31px;font-size:16px}
+
+/* phone */
+.phone{position:relative;width:min(330px,78vw);aspect-ratio:390/844;border-radius:56px;padding:12px;background:#0d0d10;box-shadow:0 2px 0 1px #2a2a30 inset,0 50px 100px -20px rgba(23,22,26,.35),0 30px 60px -30px rgba(23,22,26,.45)}
+.phone::before{content:"";position:absolute;top:22px;left:50%;transform:translateX(-50%);width:96px;height:28px;border-radius:999px;background:#0d0d10;z-index:2}
+.phone .screen{position:relative;width:100%;height:100%;border-radius:44px;overflow:hidden;background:var(--bg)}
+/* status-bar band under the island, so it never covers the app's own header */
+.phone .screen::before{content:"9:41";position:absolute;left:0;right:0;top:0;height:46px;padding:15px 0 0 30px;font-size:13px;font-weight:700;color:var(--tx);background:var(--bg);z-index:1}
+.phone .screen img{position:absolute;left:0;right:0;bottom:0;top:46px;width:100%;height:calc(100% - 46px);object-fit:cover;object-position:top;transition:opacity .5s ease}
+.phone.sm{width:min(250px,60vw);border-radius:44px;padding:10px}
+.phone.sm::before{top:17px;width:72px;height:21px}
+.phone.sm .screen{border-radius:34px}
+.phone.sm .screen::before{height:34px;padding:10px 0 0 22px;font-size:10px}
+.phone.sm .screen img{top:34px;height:calc(100% - 34px)}
+
+/* hero */
+.hero{text-align:center;padding:84px 0 0;overflow:hidden}
+.kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:1.6px;color:var(--mut);text-transform:uppercase}
+.kicker i{width:7px;height:7px;border-radius:99px;background:#0f9d63;display:inline-block}
+.hero h1{margin:22px auto 0;font-size:clamp(46px,8.4vw,104px);line-height:.96;letter-spacing:-.045em;font-weight:700;max-width:12ch}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p.lead{margin:26px auto 0;max-width:560px;font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--mut)}
+.hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+.stage{position:relative;margin-top:72px;height:min(640px,128vw);display:flex;justify-content:center;align-items:flex-start;gap:36px}
+.stage::before{content:"";position:absolute;left:50%;top:40px;transform:translateX(-50%);width:min(900px,120vw);height:640px;background:radial-gradient(closest-side,rgba(201,163,95,.42),rgba(201,163,95,0) 70%);z-index:0}
+.stage .phone{z-index:1}
+.stage .side{margin-top:120px;opacity:.96}
+.stage .left{transform:rotate(-6deg)}
+.stage .right{transform:rotate(6deg)}
+
+/* trust strip */
+.strip{border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);background:var(--bg2);position:relative;z-index:2}
+.strip .wrap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;padding-top:34px;padding-bottom:34px}
+.strip b{display:block;font-size:22px;letter-spacing:-.02em}
+.strip span{font-size:14px;color:var(--mut)}
+
+/* story (sticky phone) */
+.story{padding:120px 0 40px}
+.story h2,.dark h2,.final h2{font-size:clamp(36px,5.4vw,64px);line-height:1;letter-spacing:-.04em;margin:0}
+.story-head{max-width:720px;margin-bottom:40px}
+.story-head p{font-size:19px;color:var(--mut);line-height:1.5;margin:18px 0 0}
+.story-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:64px}
+.steps{display:flex;flex-direction:column}
+.step{min-height:78vh;display:flex;flex-direction:column;justify-content:center;max-width:460px;opacity:.28;transition:opacity .4s}
+.step.on{opacity:1}
+.step .n{font-size:13px;font-weight:700;letter-spacing:1.6px;color:var(--gold)}
+.step h3{font-size:clamp(30px,3.6vw,44px);line-height:1.04;letter-spacing:-.035em;margin:12px 0 14px}
+.step p{font-size:18px;line-height:1.55;color:var(--mut);margin:0}
+.step .inline{display:none;margin-top:28px}
+.pin-col{position:relative}
+.pin-col .sticky{position:sticky;top:calc(50vh - 340px);display:flex;justify-content:center}
+
+/* dark merchant section */
+.dark{background:var(--ink);color:var(--ink-tx);padding:120px 0;overflow:hidden}
+.dark .kicker{color:var(--ink-mut)}
+.dark .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center}
+.dark p.lead{font-size:19px;line-height:1.55;color:var(--ink-mut);margin:20px 0 0;max-width:480px}
+.dark h2 em{font-style:normal;color:var(--gold-hi)}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:36px}
+.fact{border:1px solid var(--ink-line);border-radius:18px;padding:18px 20px;background:var(--ink2)}
+.fact b{display:block;font-size:24px;letter-spacing:-.02em;color:var(--gold-hi)}
+.fact span{font-size:14px;color:var(--ink-mut)}
+.duo{display:flex;justify-content:center;gap:22px;position:relative}
+.duo::before{content:"";position:absolute;inset:-60px;background:radial-gradient(closest-side,rgba(201,163,95,.25),rgba(201,163,95,0) 70%)}
+.duo .phone{box-shadow:0 2px 0 1px #2a2a30 inset,0 40px 90px -10px rgba(0,0,0,.6)}
+.duo .phone:last-child{margin-top:70px}
+
+/* dapps */
+.dapps{padding:120px 0}
+.dapps .grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:56px;align-items:center}
+.dapps ul{list-style:none;padding:0;margin:30px 0 0;display:flex;flex-direction:column;gap:14px}
+.dapps li{display:flex;gap:14px;align-items:flex-start;font-size:17px;line-height:1.45}
+.dapps li i{flex:0 0 26px;height:26px;border-radius:99px;background:rgba(182,130,53,.14);color:var(--gold);display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:700;font-size:14px}
+.dapps .lead{font-size:19px;line-height:1.55;color:var(--mut);margin:18px 0 0}
+
+/* final */
+.final{text-align:center;padding:110px 0 120px;background:linear-gradient(180deg,var(--bg) 0%,#efe6d6 100%)}
+.final p{font-size:19px;color:var(--mut);margin:18px auto 0;max-width:560px;line-height:1.5}
+.ways{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:900px;margin:44px auto 0;text-align:left}
+.way{background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:22px}
+.way b{font-size:17px}
+.way p{font-size:14px;color:var(--mut);margin:8px 0 0;line-height:1.5;max-width:none}
+.way .tag{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:var(--gold);text-decoration:none}
+
+footer{border-top:1px solid var(--line2);background:var(--bg)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;padding-top:30px;padding-bottom:30px;font-size:13px;color:var(--mut)}
+footer img{height:24px;width:auto}
+footer nav{display:flex;gap:20px}
+footer a{color:var(--mut);text-decoration:none}
+footer a:hover{color:var(--tx)}
+
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+
+@media (max-width: 900px){
+  .top nav{display:none}
+  .stage{height:auto;padding-bottom:56px}
+  .stage .side{display:none}
+  .strip .wrap{grid-template-columns:1fr}
+  .story-grid{grid-template-columns:1fr}
+  .pin-col{display:none}
+  .step{min-height:auto;opacity:1;padding:36px 0;max-width:none}
+  .step .inline{display:flex;justify-content:center}
+  .dark .grid,.dapps .grid{grid-template-columns:1fr}
+  .duo .phone.sm{width:min(200px,42vw)}
+  .ways{grid-template-columns:1fr}
+  .facts{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .phone .screen img{transition:none}
+}
+</style>
 </head>
 <body>
-<div style="min-height: 100vh; background: var(--bg); color: var(--tx); font-family: var(--font-sans);">
 
-  <header style="border-bottom: 1px solid var(--line2); background: var(--bg);">
-    <nav aria-label="Main" style="max-width: 1120px; margin: 0 auto; padding: 18px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px;">
-      <a href="/" style="display: flex; align-items: center;"><img src="/site/mironpay-lockup.png" alt="MironPay" style="height: 34px; width: auto;"></a>
-      <div style="display: flex; flex-wrap: wrap; gap: 28px; flex-grow: 1; justify-content: center; font-size: 14px; font-weight: 600;">
-        <a href="/docs" style="color: var(--tx); text-decoration: none;">Docs</a>
-        <a href="/security" style="color: var(--tx); text-decoration: none;">Security</a>
-        <a href="/contracts" style="color: var(--tx); text-decoration: none;">Smart contracts</a>
-        <a href="#store" style="color: var(--tx); text-decoration: none;">For merchants</a>
-      </div>
-      <a href="https://mironpay.xyz/app" style="background: var(--gold); color: var(--goldT); text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 22px; border-radius: 999px;">Open app</a>
+<header class="top" id="top">
+  <div class="wrap">
+    <a href="/" aria-label="MironPay home"><img src="/site/mironpay-lockup.png" alt="MironPay"></a>
+    <nav aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#merchants">For shops</a>
+      <a href="/docs">Docs</a>
+      <a href="/security">Security</a>
     </nav>
-  </header>
+    <a class="btn btn-gold" href="/app">Open app</a>
+  </div>
+</header>
 
-  <div style="background: var(--warnBg); color: var(--tx); text-align: center; font-size: 13px; padding: 10px 24px;">MironPay runs on <strong>Arc Testnet</strong>: balances and payments use test tokens with no real value.</div>
-
-  <section aria-labelledby="hero-title" style="max-width: 1120px; margin: 0 auto; padding: 88px 24px 72px; display: flex; flex-wrap: wrap; gap: 56px; align-items: center;">
-    <div style="flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 22px;">
-      <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">STABLECOIN WALLET · ARC</span>
-      <h1 id="hero-title" style="margin: 0; font-size: 60px; line-height: 1.02; letter-spacing: -2px; font-weight: 700;">Pay and get paid in <span style="color: var(--gold);">USDC</span>, in seconds.</h1>
-      <p style="margin: 0; font-size: 18px; line-height: 1.55; color: var(--mut); max-width: 520px;">Sign in with Google, set a 6-digit PIN, and you have a wallet. No seed phrase, no gas token to buy. Send to an @name, scan a QR at a shop, swap between USDC, EURC and cirBTC.</p>
-      <div style="display: flex; flex-wrap: wrap; gap: 12px;">
-        <a href="https://mironpay.xyz/app" style="background: var(--gold); color: var(--goldT); text-decoration: none; font-weight: 700; font-size: 15px; padding: 16px 28px; border-radius: 999px;">Open MironPay</a>
-        <a href="#get-the-app" style="border: 1px solid var(--line); color: var(--tx); text-decoration: none; font-weight: 700; font-size: 15px; padding: 15px 27px; border-radius: 999px; background: var(--bg2);">Get the app</a>
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <span class="kicker reveal"><i></i> Live on Arc Testnet</span>
+      <h1 class="reveal">Your money, <em>one tap</em> away.</h1>
+      <p class="lead reveal">A USDC wallet that feels like a messaging app. Send to an @name, confirm with your PIN, done. No seed phrase, no gas token.</p>
+      <div class="cta reveal">
+        <a class="btn btn-gold btn-big" href="/app">Open MironPay</a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
       </div>
-      <p style="margin: 0; font-size: 13px; color: var(--mut);">Works in any phone browser — add it to your home screen. Android app available as an APK.</p>
     </div>
-
-    <div aria-label="MironPay wallet screen" role="img" style="flex: 0 1 340px; margin: 0 auto; width: 320px; border-radius: 40px; border: 1px solid var(--line); background: var(--bg); padding: 22px 20px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; overflow: hidden;">
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <img src="/site/mironpay-lockup.png" alt="" style="height: 22px; width: auto;">
-        <span style="width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--line);"></span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
-        <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">TOTAL ASSETS</span>
-        <span style="font-size: 11px; font-weight: 700; color: var(--up); background: var(--upBg); border-radius: 999px; padding: 3px 9px;">▲ 0.05% today</span>
-      </div>
-      <div style="font-size: 44px; font-weight: 700; letter-spacing: -1.5px;">$1,250<span style="font-size: 26px; color: var(--mut);">.00</span></div>
-      <span style="align-self: flex-start; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600;">USD ▾</span>
-      <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut); margin-top: 6px;">ASSETS</span>
-      <div style="display: flex; flex-direction: column;">
-        <div style="display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line2);">
-          <span style="width: 30px; height: 30px; border-radius: 999px; background: #2775ca;"></span>
-          <div style="flex-grow: 1;"><div style="font-weight: 700; font-size: 14px;">USDC</div><div style="font-size: 11px; color: var(--mut);">900.00 USDC</div></div>
-          <div style="font-weight: 700; font-size: 14px;">$900.00</div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line2);">
-          <span style="width: 30px; height: 30px; border-radius: 999px; background: #3b82f6;"></span>
-          <div style="flex-grow: 1;"><div style="font-weight: 700; font-size: 14px;">EURC</div><div style="font-size: 11px; color: var(--mut);">318.18 EURC</div></div>
-          <div style="font-weight: 700; font-size: 14px;">$350.00</div>
-        </div>
-      </div>
-      <div style="margin: 18px -20px 0; border-top: 1px solid var(--line2); background: var(--tab); display: flex; justify-content: space-around; align-items: center; padding: 10px 0 16px; font-size: 10px; font-weight: 700; color: var(--mut);">
-        <span style="color: var(--gold);">Wallet</span><span>Activity</span>
-        <span style="width: 46px; height: 46px; border-radius: 999px; background: var(--gold); margin-top: -26px; border: 4px solid var(--tab);"></span>
-        <span>Store</span><span>Profile</span>
-      </div>
+    <div class="stage" aria-hidden="true">
+      <div class="phone sm side left"><div class="screen"><img src="/site/screens/activity.jpg" alt="" loading="lazy"></div></div>
+      <div class="phone"><div class="screen"><img src="/site/screens/home.jpg" alt="MironPay wallet showing a total of $2,658.33 across USDC, EURC and cirBTC"></div></div>
+      <div class="phone sm side right"><div class="screen"><img src="/site/screens/orders.jpg" alt="" loading="lazy"></div></div>
     </div>
   </section>
 
-  <section aria-labelledby="features-title" style="background: var(--bg2); border-top: 1px solid var(--line2); border-bottom: 1px solid var(--line2);">
-    <div style="max-width: 1120px; margin: 0 auto; padding: 80px 24px; display: flex; flex-direction: column; gap: 36px;">
-      <div style="display: flex; flex-direction: column; gap: 10px; max-width: 640px;">
-        <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">WHAT YOU CAN DO</span>
-        <h2 id="features-title" style="margin: 0; font-size: 36px; letter-spacing: -1px;">One wallet for paying, getting paid and using dapps.</h2>
+  <section class="strip" aria-label="Built on">
+    <div class="wrap">
+      <div><b>Arc</b><span>Circle's chain for stablecoins — fees paid in USDC</span></div>
+      <div><b>USDC · EURC · cirBTC</b><span>Hold, send and swap all three</span></div>
+      <div><b>Google + PIN</b><span>Sign in in seconds, no seed phrase to lose</span></div>
+    </div>
+  </section>
+
+  <section class="story" id="how">
+    <div class="wrap">
+      <div class="story-head reveal">
+        <span class="kicker">How it works</span>
+        <h2 style="margin-top:14px">Sending money should take less time than reading this.</h2>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
-        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg); display: flex; flex-direction: column; gap: 10px;">
-          <h3 style="margin: 0; font-size: 17px;">Send to anyone</h3>
-          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Type an @name, a wallet address, or scan a payment QR. Confirm with your PIN; it lands on Arc in seconds.</p>
+      <div class="story-grid">
+        <div class="steps">
+          <article class="step" data-screen="send">
+            <span class="n">01 — AMOUNT</span>
+            <h3>Type it on a real keypad.</h3>
+            <p>Pick USDC, EURC or cirBTC, tap the amount, or jump to 10%, 25%, 50% or all of it. Your balance is right there.</p>
+            <div class="inline"><div class="phone sm"><div class="screen"><img src="/site/screens/send.jpg" alt="Amount screen with 25 USDC typed on the keypad" loading="lazy"></div></div></div>
+          </article>
+          <article class="step" data-screen="pin">
+            <span class="n">02 — CONFIRM</span>
+            <h3>One PIN. Every time.</h3>
+            <p>A sheet slides up over your wallet. Six digits, checked on our server — nothing moves without them.</p>
+            <div class="inline"><div class="phone sm"><div class="screen"><img src="/site/screens/pin.jpg" alt="PIN sheet: Send 25 USDC to @an" loading="lazy"></div></div></div>
+          </article>
+          <article class="step" data-screen="done">
+            <span class="n">03 — DONE</span>
+            <h3>Sent. On-chain.</h3>
+            <p>Arc confirms in under a second, so the tick usually appears a moment later. You get a receipt with the transaction hash.</p>
+            <div class="inline"><div class="phone sm"><div class="screen"><img src="/site/screens/done.jpg" alt="The PIN sheet showing a gold tick and Done" loading="lazy"></div></div></div>
+          </article>
+          <article class="step" data-screen="activity">
+            <span class="n">04 — HISTORY</span>
+            <h3>Every payment, in one list.</h3>
+            <p>Read straight from the chain and grouped by day. Filter transfers, payments, swaps and dapps, or jump to any date.</p>
+            <div class="inline"><div class="phone sm"><div class="screen"><img src="/site/screens/activity.jpg" alt="Activity list grouped by day" loading="lazy"></div></div></div>
+          </article>
         </div>
-        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg); display: flex; flex-direction: column; gap: 10px;">
-          <h3 style="margin: 0; font-size: 17px;">Swap stablecoins</h3>
-          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Move between USDC, EURC and cirBTC with a live quote, the market rate beside it, and your slippage limit.</p>
-        </div>
-        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg); display: flex; flex-direction: column; gap: 10px;">
-          <h3 style="margin: 0; font-size: 17px;">Take payments</h3>
-          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Turn on Store, type an amount, show the QR. Customers pay from MironPay or any wallet; you see it the moment it arrives.</p>
-        </div>
-        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg); display: flex; flex-direction: column; gap: 10px;">
-          <h3 style="margin: 0; font-size: 17px;">Connect to dapps</h3>
-          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Scan a WalletConnect code to use Arc apps. Every request shows what it does, flags risky approvals, and needs your PIN.</p>
-        </div>
-        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg); display: flex; flex-direction: column; gap: 10px;">
-          <h3 style="margin: 0; font-size: 17px;">See every transaction</h3>
-          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Activity reads straight from the chain, grouped by day, filterable by transfers, payments, swaps and dapps.</p>
-        </div>
-        <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg); display: flex; flex-direction: column; gap: 10px;">
-          <h3 style="margin: 0; font-size: 17px;">Earn points</h3>
-          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Every dollar you pay with MironPay earns a point. Climb from Newcomer to Elite on the leaderboard.</p>
+        <div class="pin-col" aria-hidden="true">
+          <div class="sticky">
+            <div class="phone" id="storyPhone"><div class="screen">
+              <img data-k="send" src="/site/screens/send.jpg" alt="" style="opacity:1">
+              <img data-k="pin" src="/site/screens/pin.jpg" alt="" style="opacity:0">
+              <img data-k="done" src="/site/screens/done.jpg" alt="" style="opacity:0">
+              <img data-k="activity" src="/site/screens/activity.jpg" alt="" style="opacity:0">
+            </div></div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="store" aria-labelledby="store-title" style="max-width: 1120px; margin: 0 auto; padding: 88px 24px; display: flex; flex-direction: column; gap: 36px;">
-    <div style="display: flex; flex-direction: column; gap: 10px; max-width: 640px;">
-      <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">FOR MERCHANTS</span>
-      <h2 id="store-title" style="margin: 0; font-size: 36px; letter-spacing: -1px;">Accept USDC at the counter in three steps.</h2>
-      <p style="margin: 0; font-size: 16px; line-height: 1.55; color: var(--mut);">Payments go through MironPay's payment contract on Arc: each order gets its own deposit address, so a payment can't be mixed up with another. Fee: 0.1% per order.</p>
-    </div>
-    <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
-      <li style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 10px;">
-        <span style="width: 34px; height: 34px; border-radius: 999px; background: var(--gold); color: var(--goldT); display: flex; align-items: center; justify-content: center; font-weight: 700;">1</span>
-        <h3 style="margin: 0; font-size: 17px;">Charge</h3>
-        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Type the amount on the keypad, add a note if you like. The QR appears instantly.</p>
-      </li>
-      <li style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 10px;">
-        <span style="width: 34px; height: 34px; border-radius: 999px; background: var(--gold); color: var(--goldT); display: flex; align-items: center; justify-content: center; font-weight: 700;">2</span>
-        <h3 style="margin: 0; font-size: 17px;">Customer scans</h3>
-        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">They pay from MironPay or any Arc wallet. Paid too little? The QR asks only for what's left.</p>
-      </li>
-      <li style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 10px;">
-        <span style="width: 34px; height: 34px; border-radius: 999px; background: var(--gold); color: var(--goldT); display: flex; align-items: center; justify-content: center; font-weight: 700;">3</span>
-        <h3 style="margin: 0; font-size: 17px;">Paid</h3>
-        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">The order turns Paid on your grid. Paid too much? Refund the extra in one tap. Track it all in Revenue.</p>
-      </li>
-    </ol>
-  </section>
-
-  <section aria-labelledby="trust-title" style="background: var(--bg2); border-top: 1px solid var(--line2); border-bottom: 1px solid var(--line2);">
-    <div style="max-width: 1120px; margin: 0 auto; padding: 80px 24px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start;">
-      <div style="flex: 1 1 360px; display: flex; flex-direction: column; gap: 12px;">
-        <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">BUILT ON</span>
-        <h2 id="trust-title" style="margin: 0; font-size: 32px; letter-spacing: -1px;">Arc, USDC and Circle Wallets.</h2>
-        <p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--mut);">Arc is Circle's blockchain for stablecoin finance: fees are paid in USDC and transactions confirm in under a second. Your wallet is a Circle developer-controlled wallet; MironPay never shows you a seed phrase to lose.</p>
-        <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; font-weight: 600;">
-          <a href="/security">How MironPay keeps your wallet safe →</a>
-          <a href="/contracts">Contract addresses →</a>
+  <section class="dark" id="merchants">
+    <div class="wrap grid">
+      <div class="reveal">
+        <span class="kicker">For shops</span>
+        <h2 style="margin-top:14px">Your counter, now taking <em>USDC</em>.</h2>
+        <p class="lead">Turn on Store, type the amount, show the QR. Customers pay from MironPay or any Arc wallet, and the order turns Paid on your screen.</p>
+        <div class="facts">
+          <div class="fact"><b>0.1%</b><span>fee per order</span></div>
+          <div class="fact"><b>15 min</b><span>for the customer to pay</span></div>
+          <div class="fact"><b>1 tap</b><span>to refund an overpayment</span></div>
+          <div class="fact"><b>1 address</b><span>per order — never mixed up</span></div>
         </div>
       </div>
-      <ul style="flex: 1 1 420px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px;">
-        <li style="border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; background: var(--bg);"><strong>PIN checked on our server</strong><div style="font-size: 13px; color: var(--mut); margin-top: 4px;">Every send, swap, payment and dapp request; wrong guesses lock the PIN for a while.</div></li>
-        <li style="border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; background: var(--bg);"><strong>Optional 2-factor sign-in</strong><div style="font-size: 13px; color: var(--mut); margin-top: 4px;">A code from your authenticator app on top of Google sign-in.</div></li>
-        <li style="border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; background: var(--bg);"><strong>Readable dapp requests</strong><div style="font-size: 13px; color: var(--mut); margin-top: 4px;">Unlimited approvals and Permit signatures are flagged; known scam sites are blocked.</div></li>
-      </ul>
-    </div>
-  </section>
-
-  <section id="get-the-app" aria-labelledby="get-title" style="max-width: 1120px; margin: 0 auto; padding: 88px 24px; display: flex; flex-direction: column; gap: 28px;">
-    <h2 id="get-title" style="margin: 0; font-size: 36px; letter-spacing: -1px;">Get MironPay.</h2>
-    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
-      <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 12px;">
-        <h3 style="margin: 0; font-size: 17px;">Any phone · web app</h3>
-        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Open mironpay.xyz/app. iPhone: Safari › Share › Add to Home Screen. Android: Chrome › Install app.</p>
-        <a href="https://mironpay.xyz/app" style="align-self: flex-start; background: var(--gold); color: var(--goldT); text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 22px; border-radius: 999px;">Open web app</a>
-      </div>
-      <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 12px;">
-        <h3 style="margin: 0; font-size: 17px;">Android · APK</h3>
-        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Download and install the Android app directly. Your phone will ask to allow installs from this source.</p>
-        <span style="align-self: flex-start; border: 1px solid var(--line); color: var(--mut); font-weight: 700; font-size: 14px; padding: 11px 21px; border-radius: 999px;">APK link coming soon</span>
-      </div>
-      <div style="border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--bg2); display: flex; flex-direction: column; gap: 12px;">
-        <h3 style="margin: 0; font-size: 17px;">App Store · Google Play</h3>
-        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: var(--mut);">Coming later. Until then, the web app has every feature.</p>
+      <div class="duo reveal" aria-hidden="true">
+        <div class="phone sm"><div class="screen"><img src="/site/screens/charge.jpg" alt="" loading="lazy"></div></div>
+        <div class="phone sm"><div class="screen"><img src="/site/screens/orders.jpg" alt="" loading="lazy"></div></div>
       </div>
     </div>
   </section>
 
-  <footer style="border-top: 1px solid var(--line2); background: var(--bg);">
-    <div style="max-width: 1120px; margin: 0 auto; padding: 36px 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between; font-size: 13px; color: var(--mut);">
-      <img src="/site/mironpay-lockup.png" alt="MironPay" style="height: 26px; width: auto;">
-      <div style="display: flex; flex-wrap: wrap; gap: 20px;">
-        <a href="/docs" style="color: var(--mut);">Docs</a>
-        <a href="/security" style="color: var(--mut);">Security</a>
-        <a href="/contracts" style="color: var(--mut);">Smart contracts</a>
-        
-        
+  <section class="dapps">
+    <div class="wrap grid">
+      <div class="reveal" style="display:flex;justify-content:center"><div class="phone"><div class="screen"><img src="/site/screens/connect.jpg" alt="Connect app screen: Arc Mint, domain verified, Connect button" loading="lazy"></div></div></div>
+      <div class="reveal">
+        <span class="kicker">Dapps</span>
+        <h2 style="margin-top:14px">Use Arc apps without the fear.</h2>
+        <p class="lead">Scan a WalletConnect code and MironPay tells you who's asking and what they want — in plain words.</p>
+        <ul>
+          <li><i>✓</i><span>Every site checked: verified, unverified, or a known scam (blocked).</span></li>
+          <li><i>✓</i><span>Unlimited approvals and Permit signatures flagged in red — cap them before you sign.</span></li>
+          <li><i>✓</i><span>Big transactions ask twice. Every request needs your PIN.</span></li>
+        </ul>
       </div>
-      <span>Arc Testnet · test tokens only</span>
     </div>
-  </footer>
-</div>
+  </section>
+
+  <section class="final" id="get">
+    <div class="wrap">
+      <h2 class="reveal">Try it in ten seconds.</h2>
+      <p class="reveal">It runs in your phone's browser — add it to your home screen and it opens like an app. MironPay is on Arc Testnet, so everything uses test tokens.</p>
+      <div class="cta reveal" style="display:flex;justify-content:center;margin-top:32px"><a class="btn btn-gold btn-big" href="/app">Open MironPay</a></div>
+      <div class="ways">
+        <div class="way reveal"><b>iPhone</b><p>Open mironpay.xyz/app in Safari › Share › Add to Home Screen.</p></div>
+        <div class="way reveal"><b>Android</b><p>Open it in Chrome › Install app. An APK is coming soon.</p></div>
+        <div class="way reveal"><b>App stores</b><p>Coming later. The web app already has every feature.</p><a class="tag" href="/docs">Read the docs →</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <img src="/site/mironpay-lockup.png" alt="MironPay">
+    <nav aria-label="Footer"><a href="/docs">Docs</a><a href="/security">Security</a><a href="/contracts">Smart contracts</a><a href="/signin">Web sign-in</a></nav>
+    <span>Arc Testnet · test tokens only</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var top = document.getElementById('top');
+  addEventListener('scroll', function () { top.classList.toggle('scrolled', scrollY > 8); }, { passive: true });
+
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -10% 0px' });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  // Story: the step in the middle of the screen picks the phone's screen.
+  var imgs = document.querySelectorAll('#storyPhone img');
+  var steps = document.querySelectorAll('.step');
+  var so = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      steps.forEach(function (s) { s.classList.toggle('on', s === e.target); });
+      var k = e.target.getAttribute('data-screen');
+      imgs.forEach(function (im) { im.style.opacity = im.getAttribute('data-k') === k ? '1' : '0'; });
+    });
+  }, { rootMargin: '-45% 0px -45% 0px' });
+  steps.forEach(function (s) { so.observe(s); });
+  if (steps[0]) steps[0].classList.add('on');
+})();
+</script>
 </body>
 </html>
