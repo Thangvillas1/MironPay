@@ -8,6 +8,8 @@ function isPublicPath(pathname: string) {
     PUBLIC_PATHS.has(pathname) ||
     pathname.startsWith('/invoice/') ||
     pathname.startsWith('/m/') ||
+    // Static files for the public website pages (CSS/JS aren't excluded by the matcher).
+    pathname.startsWith('/site/') ||
     // The PWA (Expo web build in public/app) signs in on its own, client-side.
     pathname === '/app' ||
     pathname.startsWith('/app/')
