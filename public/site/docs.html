@@ -55,16 +55,24 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
         <a href="#swap" style="color: var(--tx); text-decoration: none;">Swap</a>
         <a href="#scan" style="color: var(--tx); text-decoration: none;">Scan and pay</a>
         <a href="#activity" style="color: var(--tx); text-decoration: none;">Activity</a>
+        <a href="#wallet-extras" style="color: var(--tx); text-decoration: none;">Pay Mode, currency, tokens</a>
       </div>
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">MERCHANTS</span>
         <a href="#store" style="color: var(--tx); text-decoration: none;">Set up your Store</a>
+        <a href="#products" style="color: var(--tx); text-decoration: none;">Products</a>
         <a href="#charge" style="color: var(--tx); text-decoration: none;">Take a payment</a>
         <a href="#refund" style="color: var(--tx); text-decoration: none;">Over- and underpayments</a>
+        <a href="#revenue" style="color: var(--tx); text-decoration: none;">Revenue</a>
       </div>
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">DAPPS</span>
         <a href="#walletconnect" style="color: var(--tx); text-decoration: none;">Connect with WalletConnect</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">PROFILE</span>
+        <a href="#points" style="color: var(--tx); text-decoration: none;">Points and leaderboard</a>
+        <a href="#security" style="color: var(--tx); text-decoration: none;">Security settings</a>
       </div>
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--mut);">DEVELOPERS</span>
@@ -83,11 +91,12 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
       <section id="start" style="display: flex; flex-direction: column; gap: 14px;">
         <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Create your wallet</h2>
         <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
-          <li>Open <a href="https://mironpay.xyz/app">mironpay.xyz/app</a> and tap <strong>Launch App</strong>.</li>
+          <li>On your phone, open <a href="https://mironpay.xyz/app">mironpay.xyz/app</a>. The page shows how to add MironPay to your Home Screen — iPhone: <strong>Share › Add to Home Screen</strong> in Safari or Chrome; Android: <strong>Install app</strong> in Chrome.</li>
+          <li>Open MironPay from your Home Screen and tap <strong>Launch App</strong>. (MironPay only runs as an installed app, not in a browser tab.)</li>
           <li>Sign in with Google.</li>
-          <li>Pick your @name — it's how people find you to send money.</li>
+          <li>Pick your @handle — it's how people find you to send money, and it can't be changed later.</li>
           <li>Create a 6-digit PIN and enter it again to confirm.</li>
-          <li>MironPay creates two wallets: your main wallet, and a separate, limited wallet for your AI agent. Tap <strong>Enter MironPay</strong>.</li>
+          <li>MironPay sets up your wallet on Arc. Tap <strong>Enter MironPay</strong>.</li>
         </ol>
         <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">There is no seed phrase to write down. Your sign-in plus your PIN protect the wallet.</p>
       </section>
@@ -106,9 +115,9 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
         <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Send</h2>
         <ol style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
           <li>On <strong>Wallet</strong>, tap a token, then <strong>Send</strong>.</li>
-          <li>Enter an @name, a wallet address, or pick a contact.</li>
+          <li>Type a name, an @handle or a wallet address, or pick one of your contacts. Save people as contacts and mark favorites to find them faster.</li>
           <li>Type the amount on the keypad (or tap 10%, 25%, 50%, All), then <strong>Continue</strong>.</li>
-          <li>Check the review — recipient, network, fee, total — add a memo if you want, and tap <strong>Confirm &amp; send</strong>.</li>
+          <li>Check the review — recipient, network, fee, total. Circle checks the address, your balance and the fee before you can send. Add a memo if you want, and tap <strong>Confirm &amp; send</strong>.</li>
           <li>Enter your PIN. You'll see "Sending on Arc…", a tick, then the receipt.</li>
         </ol>
         <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">Network fees on Arc are paid in USDC, so "All" keeps 0.01 USDC aside for the fee.</p>
@@ -148,9 +157,25 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
         <p style="margin: 0; font-size: 15px; line-height: 1.6;">Every transaction, read from the chain and grouped by day. Filter by type — Transfers, Payments, Swaps, Dapps — and by date: Today, 7 days, 30 days, or pick days on the calendar. Tap a row for details, the transaction hash and a downloadable receipt.</p>
       </section>
 
+<section id="wallet-extras" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Pay Mode, currency and token pages</h2>
+        <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li><strong>Pay Mode</strong> (Profile): a payments-only home screen. It hides tokens, charts and swap; turn it off to get the full wallet back.</li>
+          <li><strong>Conversion currency</strong> (Profile): show balances in USD, EUR, GBP, JPY, SGD or VND, at live exchange rates.</li>
+          <li><strong>Token pages</strong>: tap a token on Wallet to see its price chart, your balance, that token's activity and a link to the Arc explorer.</li>
+          <li><strong>Appearance</strong> (Profile): light or dark.</li>
+        </ul>
+      </section>
+
       <section id="store" style="display: flex; flex-direction: column; gap: 14px;">
         <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Set up your Store</h2>
-        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Open the <strong>Store</strong> tab and name your shop. You can ask MironPay to verify it; only MironPay can grant the verified badge, and renaming the shop removes it.</p>
+                <p style="margin: 0; font-size: 15px; line-height: 1.6;">Open the <strong>Store</strong> tab and tap <strong>Activate store mode</strong>. Give your shop a name and, if you like, a logo. Payments go to your MironPay wallet.</p>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">Want the gold badge? In store settings, choose <strong>Get the gold badge</strong> and pick a document type (ID card, passport or business licence). MironPay reviews the request by hand. Renaming the shop removes the badge until you verify again.</p>
+      </section>
+
+<section id="products" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Products</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">In Store, open <strong>Products</strong> and tap <strong>Add</strong>: a name, a price in USDC and an optional product code. Tap a product to charge it straight from the keypad screen.</p>
       </section>
 
       <section id="charge" style="display: flex; flex-direction: column; gap: 14px;">
@@ -159,7 +184,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
           <li>In Store, tap <strong>Charge</strong> (or the + button), type the amount, add a note if you like, and tap <strong>Create payment code</strong>.</li>
           <li>Show the QR. It stays valid for 15 minutes; you can cancel the order.</li>
           <li>When the customer pays, the screen switches to <strong>Paid</strong> and the order turns Paid in your grid.</li>
-          <li><strong>Orders</strong> shows every order as a tile; search by order number, note or amount, and filter Open, Paid, Refunded or Closed. <strong>Revenue</strong> charts your sales by day, month or year.</li>
+          <li><strong>Orders</strong> shows every order as a tile; search by order number, note or amount, and filter Open, Paid, Refunded or Closed. Tap an order for its details, the payer, the transaction hash and a downloadable receipt.</li>
         </ol>
         <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">MironPay keeps 0.1% of each order as its fee.</p>
       </section>
@@ -167,9 +192,14 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
       <section id="refund" style="display: flex; flex-direction: column; gap: 14px;">
         <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Over- and underpayments</h2>
         <ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
-          <li><strong>Paid too little:</strong> the order stays open and the QR now asks only for what's left.</li>
+          <li><strong>Paid too little:</strong> the order stays open and the QR now asks only for what's left. If the money came from another wallet, you can tap <strong>Collect now</strong> to accept what arrived.</li>
           <li><strong>Paid too much:</strong> the order is Paid for its amount; the extra is held. Tap <strong>Refund extra</strong>, choose the address that paid (or type one), and confirm with your PIN.</li>
         </ul>
+      </section>
+
+<section id="revenue" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Revenue</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;"><strong>Revenue</strong> shows what you received for Today, Yesterday, 7 days, 30 days or dates you pick, with a chart by day, month or year. It breaks out the number of orders, the MironPay fee (0.1%), network fees and any extra you refunded, next to your wallet balance.</p>
       </section>
 
       <section id="walletconnect" style="display: flex; flex-direction: column; gap: 14px;">
@@ -182,6 +212,22 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
           <li>See and disconnect apps in <strong>Profile › Connected apps</strong>.</li>
         </ol>
         <p style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--mut);">MironPay connects your main wallet on Arc Testnet only. A dapp that only supports Arc mainnet or other chains can't connect yet.</p>
+      </section>
+
+<section id="points" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Points and leaderboard</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Sends and swaps earn <strong>MironPay Points</strong>. Your tier — Newcomer, Builder, Trader, Elite — and progress to the next one are on Profile. <strong>Leaderboard</strong> shows the top 10 and your own rank.</p>
+      </section>
+
+<section id="security" style="display: flex; flex-direction: column; gap: 14px;">
+        <h2 style="margin: 0; font-size: 26px; letter-spacing: -0.5px;">Security settings</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6;">Profile › <strong>Security</strong>:</p>
+        <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.6;">
+          <li><strong>Change PIN</strong> — needs your current PIN and a code sent to your email.</li>
+          <li><strong>Two-factor authentication</strong> — add an authenticator app; after your PIN, sign-in asks for its code.</li>
+          <li><strong>Lock wallet now</strong> — freezes Send and Swap until you unlock with your PIN.</li>
+          <li><strong>Trusted devices</strong> and <strong>Login activity</strong> — where your account is signed in, and recent sign-ins.</li>
+        </ul>
       </section>
 
       <section id="payment-links" style="display: flex; flex-direction: column; gap: 14px;">

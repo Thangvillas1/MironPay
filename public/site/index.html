@@ -113,6 +113,11 @@ img{max-width:100%}
 .reveal.in .chk path{stroke-dashoffset:0}
 
 /* cursor spotlight on cards */
+.featgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.fic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#c9a35f;background:rgba(201,163,95,.1);border:1px solid rgba(201,163,95,.25);transition:transform .5s cubic-bezier(.3,1.6,.5,1),background .3s}
+.feat:hover .fic{transform:rotate(-8deg) scale(1.12);background:rgba(201,163,95,.2)}
+.js .feat.reveal{transform:translateY(36px) scale(.96)}
+.js .feat.reveal.in{transform:none}
 .spot{position:relative;overflow:hidden}
 .spot::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%),rgba(201,163,95,.14),transparent 60%)}
 .spot:hover::after{opacity:1}
@@ -178,6 +183,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 <a href="#top" style="display: flex; align-items: center"><img src="/site/mironpay-lockup-dark.png" alt="MironPay" style="height: 26px; width: auto; display: block"></a>
 <nav aria-label="Main" style="display: flex; flex-wrap: wrap; align-items: center; gap: 28px; font-size: 13.5px; font-weight: 500">
 <a href="#how" style="color: #8b8b94">How it works</a>
+<a href="#features" style="color: #8b8b94">Features</a>
 <a href="#shops" style="color: #8b8b94">For shops</a>
 <a href="/security" style="color: #8b8b94">Security</a>
 <a href="/docs" style="color: #8b8b94">Docs</a>
@@ -270,7 +276,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </div>
 </div>
 <div class="callouts" aria-hidden="true">
-<div class="co" data-i="0" style="top: 30%; transition-delay: 0ms"><span class="dot"></span>Quick picks <b>25% · 50% · Max</b></div>
+<div class="co" data-i="0" style="top: 30%; transition-delay: 0ms"><span class="dot"></span>Quick picks <b>10% · 25% · 50% · All</b></div>
 <div class="co" data-i="0" style="top: 52%; transition-delay: 140ms"><span class="dot"></span>Network fee <b>paid in USDC</b></div>
 <div class="co" data-i="1" style="top: 30%; transition-delay: 0ms"><span class="dot"></span>6-digit PIN <b>checked server-side</b></div>
 <div class="co" data-i="1" style="top: 52%; transition-delay: 140ms"><span class="dot"></span>Nothing moves <b>until you confirm</b></div>
@@ -328,27 +334,101 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </div>
 </section>
 
+<!-- EVERYTHING IN THE APP -->
+<section id="features" style="max-width: 1200px; margin: 0 auto; padding: 100px 24px 40px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 40px">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: #c9a35f">EVERYTHING IN THE APP</span>
+<h2 class="reveal clip" style="margin: 0; font-size: clamp(34px, 4vw, 52px); line-height: 1.04; font-weight: 700; letter-spacing: -1.6px">Small things<br><em style="color: #8b8b94">that add up.</em></h2>
+</div>
+<p style="margin: 0; max-width: 380px; font-size: 15px; line-height: 1.55; color: #8b8b94">All of this is in MironPay today, on your phone.</p>
+</div>
+<div class="featgrid">
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v10H3z"/><path d="M7 12h4"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">WALLET</span></div>
+<span style="font-size: 18px; font-weight: 700">Pay Mode</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">A payments-only home screen. Hides tokens, charts and swap until you switch back.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">WALLET</span></div>
+<span style="font-size: 18px; font-weight: 700">Contacts & @handles</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Find people by @handle, save contacts and favorites. Circle checks the address before you send.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h11l-3-3"/><path d="M20 17H9l3 3"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">WALLET</span></div>
+<span style="font-size: 18px; font-weight: 700">Your currency</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Show balances in USD, EUR, GBP, JPY, SGD or VND at live rates.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="m5 15 4-5 4 3 6-8"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">WALLET</span></div>
+<span style="font-size: 18px; font-weight: 700">Token pages</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Price chart, your balance and that token’s own activity, with a link to the Arc explorer.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M4 12h16"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">WALLET</span></div>
+<span style="font-size: 18px; font-weight: 700">One scanner</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">The camera reads payment QRs, store orders and WalletConnect codes, and opens the right screen.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">WALLET</span></div>
+<span style="font-size: 18px; font-weight: 700">Receipts</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Save a receipt image for any transaction or store order.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">STORE</span></div>
+<span style="font-size: 18px; font-weight: 700">Products</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Save items with a price and code. Tap one to charge it straight away.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">STORE</span></div>
+<span style="font-size: 18px; font-weight: 700">Revenue</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Today, 7 days, 30 days or your own range, with the 0.1% fee, network fees and refunds broken out.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">REWARDS</span></div>
+<span style="font-size: 18px; font-weight: 700">Points & leaderboard</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Sends and swaps earn MironPay Points. Climb from Newcomer to Builder, Trader and Elite.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">SECURITY</span></div>
+<span style="font-size: 18px; font-weight: 700">Lock wallet now</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">One tap freezes Send and Swap until you unlock with your PIN.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">SECURITY</span></div>
+<span style="font-size: 18px; font-weight: 700">2FA, devices, sign-ins</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Add an authenticator code at sign-in, and see every device and recent sign-in.</span>
+</div>
+<div class="reveal spot feat" style="padding: 24px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between"><span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg></span><span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #5b5b63">APP</span></div>
+<span style="font-size: 18px; font-weight: 700">Light & dark</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Pick the look you like in Profile.</span>
+</div>
+</div>
+</section>
+
 <!-- GET STARTED -->
 <section id="docs" style="max-width: 1200px; margin: 0 auto; padding: 100px 24px 40px">
 <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px">
 <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.4px; color: #c9a35f">GET STARTED</span>
-<h2 class="reveal clip" style="margin: 0; font-size: clamp(34px, 4vw, 52px); line-height: 1.04; font-weight: 700; letter-spacing: -1.6px">No store. <em style="color: #8b8b94">Just your browser.</em></h2>
+<h2 class="reveal clip" style="margin: 0; font-size: clamp(34px, 4vw, 52px); line-height: 1.04; font-weight: 700; letter-spacing: -1.6px">Add it to your Home Screen. <em style="color: #8b8b94">No app store.</em></h2>
+<p style="margin: 0; max-width: 560px; font-size: 15px; line-height: 1.6; color: #8b8b94">MironPay runs only as an installed app. Open mironpay.xyz/app on your phone and it shows you how to install it — then open MironPay from your Home Screen.</p>
 </div>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px">
 <div class="reveal spot" style="padding: 28px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 14px">
 <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #8b8b94">IPHONE</span>
 <span style="font-size: 20px; font-weight: 700">Safari or Chrome</span>
-<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Open mironpay.xyz/app in Safari or Chrome, tap Share, then Add to Home Screen.</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Tap Share, then Add to Home Screen, then Add.</span>
 </div>
 <div class="reveal spot" style="padding: 28px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 14px">
 <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #8b8b94">ANDROID</span>
 <span style="font-size: 20px; font-weight: 700">Chrome</span>
-<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Open mironpay.xyz/app and tap Install app. An APK is coming soon.</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Tap Install MironPay on the page, or open the ⋮ menu and choose Install app.</span>
 </div>
-<div class="reveal spot" style="padding: 28px; border: 1px dashed #26262e; border-radius: 16px; display: flex; flex-direction: column; gap: 14px">
-<span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #8b8b94">LATER</span>
-<span style="font-size: 20px; font-weight: 700">App stores</span>
-<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Native apps are planned. Until then the web app does everything.</span>
+<div class="reveal spot" style="padding: 28px; border: 1px solid #26262e; border-radius: 16px; background: #17171c; display: flex; flex-direction: column; gap: 14px">
+<span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #8b8b94">THEN</span>
+<span style="font-size: 20px; font-weight: 700">Sign in and set a PIN</span>
+<span style="font-size: 14px; line-height: 1.55; color: #8b8b94">Sign in with Google, pick your @handle and create a 6-digit PIN. Your wallet on Arc is ready.</span>
 </div>
 </div>
 </section>
@@ -371,7 +451,6 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 <a href="/docs" style="color: #8b8b94">Docs</a>
 <a href="/security" style="color: #8b8b94">Security</a>
 <a href="/contracts" style="color: #8b8b94">Smart contracts</a>
-<a href="/signin" style="color: #8b8b94">Web sign-in</a>
 </nav>
 </div>
 </footer>
@@ -388,7 +467,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
       if (!e.isIntersecting) return;
       var sibs = e.target.parentElement ? e.target.parentElement.querySelectorAll(':scope > .reveal') : [];
       var i = Array.prototype.indexOf.call(sibs, e.target);
-      e.target.style.transitionDelay = (Math.max(i, 0) * 90) + 'ms';
+      e.target.style.transitionDelay = (Math.min(Math.max(i, 0), 8) * 70) + 'ms';
       e.target.classList.add('in'); io.unobserve(e.target);
     });
   }, { rootMargin: '0px 0px -8% 0px' });
