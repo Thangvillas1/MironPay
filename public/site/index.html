@@ -146,12 +146,12 @@ img{max-width:100%}
   .howphone{order:-1}
   .toasts{left:-6px;bottom:84px;width:270px}
 }
+/* Reduced motion (often on by default on Windows): keep fades and highlights,
+   drop only large movement — floating, tilting, parallax, sliding. */
 @media (prefers-reduced-motion: reduce){
-  .float,.glow{animation:none!important}
-  .js .reveal{opacity:1;transform:none}
-  .js .reveal.clip{clip-path:none}
-  .statement .w{opacity:1}
-  .story{height:auto}.story-sticky{position:relative;height:auto}
+  .float{animation:phoneIn 1000ms ease 260ms both!important}
+  .glow{animation:none!important}
+  .js .reveal,.js .feat.reveal,.panel,.panel.past{transform:none!important}
 }
 
 body{margin:0;background:#101014}
@@ -170,7 +170,6 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 .tx-in{animation:rowin 420ms cubic-bezier(.2,.8,.2,1) 1500ms both}
 .live{animation:live 1.6s ease-out infinite}
 
-@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -488,7 +487,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
     toasts.forEach(function (el, i) { el.classList.toggle('show', i === t); el.classList.toggle('out', i === (t + toasts.length - 1) % toasts.length); });
     t = (t + 1) % toasts.length;
   }
-  if (toasts.length) { setTimeout(function () { nextToast(); if (!reduce) setInterval(nextToast, 3200); }, 1500); }
+  if (toasts.length) { setTimeout(function () { nextToast(); setInterval(nextToast, 3200); }, 1500); }
 
   // Scroll engine: one rAF loop drives every scroll-linked effect.
   var bar = document.querySelector('.progress'), nav = document.querySelector('.topnav');
@@ -508,11 +507,10 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
     var vh = innerHeight, y = scrollY;
     if (bar) bar.style.transform = 'scaleX(' + clamp(y / (document.documentElement.scrollHeight - vh)) + ')';
     if (nav) nav.classList.toggle('scrolled', y > 8);
-    if (reduce) { setStep(0); words.forEach(function (w) { w.classList.add('on'); }); return; }
     // hero drifts up, blurs and fades as you leave it
     var hp = clamp(y / (vh * 0.8));
-    if (heroCopy) { heroCopy.style.opacity = 1 - hp * 0.9; heroCopy.style.transform = 'translateY(' + (-hp * 80) + 'px)'; heroCopy.style.filter = 'blur(' + (hp * 6) + 'px)'; }
-    if (heroStage) heroStage.style.transform = 'translateY(' + (hp * 60) + 'px) scale(' + (1 - hp * 0.12) + ') rotate(' + (hp * -4) + 'deg)';
+    if (heroCopy) { heroCopy.style.opacity = 1 - hp * 0.9; heroCopy.style.filter = 'blur(' + (hp * 6) + 'px)'; if (!reduce) heroCopy.style.transform = 'translateY(' + (-hp * 80) + 'px)'; }
+    if (heroStage && !reduce) heroStage.style.transform = 'translateY(' + (hp * 60) + 'px) scale(' + (1 - hp * 0.12) + ') rotate(' + (hp * -4) + 'deg)';
     // statement words light up one by one
     if (stmt) {
       var r = stmt.getBoundingClientRect(), sp = clamp((vh * 0.82 - r.top) / (r.height + vh * 0.25));
@@ -525,13 +523,13 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
       var f = p * panels.length, i = Math.min(panels.length - 1, Math.floor(f));
       setStep(i);
       rails.forEach(function (b, k) { b.style.setProperty('--f', clamp(f - k)); });
-      if (sphone) {
+      if (sphone && !reduce) {
         var local = f - i, wob = Math.sin(local * Math.PI);
         sphone.style.transform = 'perspective(1400px) rotateY(' + ((i % 2 ? 1 : -1) * wob * 8) + 'deg) translateY(' + (-wob * 10) + 'px)';
       }
       if (sheen) sheen.style.setProperty('--sheen', (100 - (f % 1) * 100) + '%');
     }
-    pars.forEach(function (el) { var r2 = el.getBoundingClientRect(), mid = r2.top + r2.height / 2 - vh / 2; el.style.transform = 'translateY(' + (mid * parseFloat(el.dataset.speed)) + 'px)'; });
+    if (!reduce) pars.forEach(function (el) { var r2 = el.getBoundingClientRect(), mid = r2.top + r2.height / 2 - vh / 2; el.style.transform = 'translateY(' + (mid * parseFloat(el.dataset.speed)) + 'px)'; });
   }
   var ticking = false;
   function onScroll() { if (ticking) return; ticking = true; requestAnimationFrame(function () { ticking = false; frame(); }); }
@@ -549,7 +547,6 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
     es.forEach(function (e) {
       if (!e.isIntersecting) return; cio.unobserve(e.target);
       var el = e.target, to = parseFloat(el.dataset.to), dec = +el.dataset.dec, suf = el.dataset.suffix || '', t0 = performance.now();
-      if (reduce) return;
       (function tick(now) { var p = Math.min(1, (now - t0) / 1100), v = to * (1 - Math.pow(1 - p, 3)); el.textContent = v.toFixed(dec) + suf; if (p < 1) requestAnimationFrame(tick); })(t0);
     });
   }, { threshold: 0.6 });

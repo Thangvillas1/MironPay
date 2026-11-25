@@ -1,5 +1,4 @@
 (function () {
-  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.documentElement.classList.add('js');
   var bar = document.querySelector('.progress'), nav = document.querySelector('.topnav');
   // Sections and cards fade up as they scroll into view.
@@ -7,7 +6,7 @@
   var io = new IntersectionObserver(function (es) {
     es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
   }, { rootMargin: '0px 0px -8% 0px' });
-  targets.forEach(function (el) { if (!reduce) { el.classList.add('rv'); io.observe(el); } });
+  targets.forEach(function (el) { el.classList.add('rv'); io.observe(el); });
   // Cursor spotlight on bordered cards.
   document.querySelectorAll('[style*="border-radius: 16px"],[style*="border-radius: 14px"],[style*="border-radius: 12px"]').forEach(function (el) {
     if (el.tagName === 'A' || el.closest('header')) return;
