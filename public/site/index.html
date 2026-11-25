@@ -59,6 +59,13 @@ img{max-width:100%}
 .screens .scr{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:translateY(18px) scale(1.02);transition:opacity .55s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
 .screens .scr.on{opacity:1;transform:none}
 .par{will-change:transform}
+/* iPhone status bar above every app screenshot, so frames read as real phones */
+.scrn{position:relative;aspect-ratio:390/890!important;padding-top:11.8%;container-type:inline-size}
+.scrn > img{height:auto!important;aspect-ratio:390/844}
+.sb{position:absolute;left:0;right:0;top:0;aspect-ratio:390/46;display:flex;align-items:center;justify-content:space-between;padding:0 7.5cqw 0 9cqw;background:#101014;z-index:3}
+.sbt{color:#f2f2f4;font:600 3.9cqw/1 -apple-system,'SF Pro Text','Space Grotesk',system-ui,sans-serif;letter-spacing:-.02em}
+.isl{position:absolute;left:50%;top:50%;width:30%;height:62%;transform:translate(-50%,-38%);border-radius:999px;background:#000}
+.sbi{width:16.5cqw;height:auto}
 /* reveal fallback (Safari / iPhone): scripts add .in */
 .js .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1)}
 .js .reveal.in{opacity:1;transform:none}
@@ -85,9 +92,9 @@ img{max-width:100%}
 .panel .big{font-size:clamp(64px,8vw,112px);line-height:.9;font-weight:700;letter-spacing:-4px;color:transparent;-webkit-text-stroke:1px #3a3a44}
 .panel h3{margin:0;font-size:clamp(30px,3.4vw,44px);letter-spacing:-1.2px;line-height:1.05}
 .panel p{margin:0;max-width:380px;font-size:16px;line-height:1.6;color:#8b8b94}
-.sphone{position:relative;height:min(74vh,700px);aspect-ratio:390/844;padding:10px;border-radius:50px;border:1px solid #26262e;background:#0c0c10;box-shadow:0 60px 120px -30px rgba(201,163,95,.25),0 30px 60px -20px rgba(0,0,0,.7);will-change:transform}
-.sphone .screens{position:relative;height:100%;border-radius:42px;border:1px solid #1e1e25;overflow:hidden;background:#101014}
-.sphone .scr{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.03);transition:opacity .5s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
+.sphone{position:relative;width:calc(min(74vh,700px) * 0.438);padding:10px;border-radius:50px;border:1px solid #26262e;background:#0c0c10;box-shadow:0 60px 120px -30px rgba(201,163,95,.25),0 30px 60px -20px rgba(0,0,0,.7);will-change:transform}
+.sphone .screens{position:relative;aspect-ratio:390/890;padding-top:11.8%;container-type:inline-size;border-radius:42px;border:1px solid #1e1e25;overflow:hidden;background:#101014}
+.sphone .scr{position:absolute;top:auto;left:0;right:0;bottom:0;width:100%;height:auto;aspect-ratio:390/844;object-fit:cover;opacity:0;transform:scale(1.03);transition:opacity .5s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
 .sphone .scr.on{opacity:1;transform:none}
 .sheen{position:absolute;inset:0;border-radius:42px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.07) 45%,transparent 60%);background-size:250% 100%;background-position:var(--sheen,100%) 0}
 .callouts{position:relative;height:100%}
@@ -152,7 +159,7 @@ img{max-width:100%}
   .panel{justify-content:flex-start;gap:6px;text-align:center;align-items:center}
   .panel .big{display:none}
   .panel h3{font-size:26px}.panel p{font-size:14px;max-width:340px}
-  .sphone{order:1;height:min(62svh,600px);border-radius:42px;padding:8px}
+  .sphone{order:1;width:calc(min(64svh,620px) * 0.438);border-radius:42px;padding:8px}
   .sphone .screens,.sheen{border-radius:35px}
   .rail{position:absolute;left:50%;right:auto;top:auto;bottom:16px;transform:translateX(-50%);flex-direction:row;gap:8px}
   .rail i{width:30px;height:3px}
@@ -251,7 +258,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 <div class="glow" aria-hidden="true"></div>
 <div class="tilt" id="tilt">
 <div class="phone-in float" style="position: relative; width: 320px; max-width: 78vw; padding: 10px; border-radius: 48px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 60px 120px -30px rgba(201,163,95,0.28), 0 30px 60px -20px rgba(0,0,0,.7)">
-<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/home.jpg?v=2" alt="The MironPay wallet: total assets $2,658.33 in USDC, EURC and cirBTC" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+<div class="scrn" style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><div class="sb" aria-hidden="true"><span class="sbt">9:41</span><i class="isl"></i><svg class="sbi" viewBox="0 0 66 14" fill="#f2f2f4"><rect x="0" y="9" width="3" height="4" rx="1"/><rect x="5" y="7" width="3" height="6" rx="1"/><rect x="10" y="4.5" width="3" height="8.5" rx="1"/><rect x="15" y="2" width="3" height="11" rx="1"/><path d="M31 12.6a1.6 1.6 0 1 0 0.01 0zM26.4 8.6a6.6 6.6 0 0 1 9.2 0l-1.3 1.3a4.8 4.8 0 0 0-6.6 0zM23.6 5.8a10.6 10.6 0 0 1 14.8 0l-1.3 1.3a8.8 8.8 0 0 0-12.2 0z"/><rect x="42.5" y="1.5" width="19" height="11" rx="3.2" fill="none" stroke="#8b8b94" stroke-width="1"/><rect x="44.5" y="3.5" width="13" height="7" rx="1.6"/><rect x="62.6" y="5" width="1.6" height="4" rx="0.8" fill="#8b8b94"/></svg></div><img src="/site/dark/home.jpg?v=2" alt="The MironPay wallet: total assets $2,658.33 in USDC, EURC and cirBTC" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
 </div>
 </div>
 <div class="toasts" aria-hidden="true">
@@ -299,6 +306,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </div>
 <div class="sphone" id="sphone">
 <div class="screens">
+<div class="sb" aria-hidden="true"><span class="sbt">9:41</span><i class="isl"></i><svg class="sbi" viewBox="0 0 66 14" fill="#f2f2f4"><rect x="0" y="9" width="3" height="4" rx="1"/><rect x="5" y="7" width="3" height="6" rx="1"/><rect x="10" y="4.5" width="3" height="8.5" rx="1"/><rect x="15" y="2" width="3" height="11" rx="1"/><path d="M31 12.6a1.6 1.6 0 1 0 0.01 0zM26.4 8.6a6.6 6.6 0 0 1 9.2 0l-1.3 1.3a4.8 4.8 0 0 0-6.6 0zM23.6 5.8a10.6 10.6 0 0 1 14.8 0l-1.3 1.3a8.8 8.8 0 0 0-12.2 0z"/><rect x="42.5" y="1.5" width="19" height="11" rx="3.2" fill="none" stroke="#8b8b94" stroke-width="1"/><rect x="44.5" y="3.5" width="13" height="7" rx="1.6"/><rect x="62.6" y="5" width="1.6" height="4" rx="0.8" fill="#8b8b94"/></svg></div>
 <img class="scr on" src="/site/dark/send.jpg?v=2" alt="Amount: 25 USDC typed on the keypad">
 <img class="scr" src="/site/dark/pin.jpg?v=2" alt="Confirm: the PIN sheet over the wallet, Send 25 USDC to @an" loading="lazy">
 <img class="scr" src="/site/dark/done.jpg?v=2" alt="Done: a gold tick on the PIN sheet" loading="lazy">
@@ -336,8 +344,8 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </div>
 <div class="duo" style="flex: 1 1 360px; display: flex; justify-content: center; gap: 18px; position: relative">
 <div class="glow sm" aria-hidden="true"></div>
-<div class="par" data-speed="-0.06" style="position: relative; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/charge.jpg?v=2" alt="Charge: 12.50 USDC on the keypad" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
-<div class="par" data-speed="0.06" style="position: relative; margin-top: 72px; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/orders.jpg?v=2" alt="Orders: paid, pending and cancelled orders" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
+<div class="par" data-speed="-0.06" style="position: relative; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div class="scrn" style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><div class="sb" aria-hidden="true"><span class="sbt">9:41</span><i class="isl"></i><svg class="sbi" viewBox="0 0 66 14" fill="#f2f2f4"><rect x="0" y="9" width="3" height="4" rx="1"/><rect x="5" y="7" width="3" height="6" rx="1"/><rect x="10" y="4.5" width="3" height="8.5" rx="1"/><rect x="15" y="2" width="3" height="11" rx="1"/><path d="M31 12.6a1.6 1.6 0 1 0 0.01 0zM26.4 8.6a6.6 6.6 0 0 1 9.2 0l-1.3 1.3a4.8 4.8 0 0 0-6.6 0zM23.6 5.8a10.6 10.6 0 0 1 14.8 0l-1.3 1.3a8.8 8.8 0 0 0-12.2 0z"/><rect x="42.5" y="1.5" width="19" height="11" rx="3.2" fill="none" stroke="#8b8b94" stroke-width="1"/><rect x="44.5" y="3.5" width="13" height="7" rx="1.6"/><rect x="62.6" y="5" width="1.6" height="4" rx="0.8" fill="#8b8b94"/></svg></div><img src="/site/dark/charge.jpg?v=2" alt="Charge: 12.50 USDC on the keypad" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
+<div class="par" data-speed="0.06" style="position: relative; margin-top: 72px; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div class="scrn" style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><div class="sb" aria-hidden="true"><span class="sbt">9:41</span><i class="isl"></i><svg class="sbi" viewBox="0 0 66 14" fill="#f2f2f4"><rect x="0" y="9" width="3" height="4" rx="1"/><rect x="5" y="7" width="3" height="6" rx="1"/><rect x="10" y="4.5" width="3" height="8.5" rx="1"/><rect x="15" y="2" width="3" height="11" rx="1"/><path d="M31 12.6a1.6 1.6 0 1 0 0.01 0zM26.4 8.6a6.6 6.6 0 0 1 9.2 0l-1.3 1.3a4.8 4.8 0 0 0-6.6 0zM23.6 5.8a10.6 10.6 0 0 1 14.8 0l-1.3 1.3a8.8 8.8 0 0 0-12.2 0z"/><rect x="42.5" y="1.5" width="19" height="11" rx="3.2" fill="none" stroke="#8b8b94" stroke-width="1"/><rect x="44.5" y="3.5" width="13" height="7" rx="1.6"/><rect x="62.6" y="5" width="1.6" height="4" rx="0.8" fill="#8b8b94"/></svg></div><img src="/site/dark/orders.jpg?v=2" alt="Orders: paid, pending and cancelled orders" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
 </div>
 </div>
 </section>
@@ -346,7 +354,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 <section id="dapps" style="max-width: 1200px; margin: 0 auto; padding: 100px 24px 40px; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
 <div style="flex: 1 1 340px; display: flex; justify-content: center">
 <div class="reveal scanbox" style="position: relative; width: 320px; max-width: 82vw; padding: 10px; border-radius: 48px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 50px 120px -30px rgba(201,163,95,0.22)">
-<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/connect.jpg?v=2" alt="The Connect app screen: Arc Mint, domain verified, Reject and Connect" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+<div class="scrn" style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><div class="sb" aria-hidden="true"><span class="sbt">9:41</span><i class="isl"></i><svg class="sbi" viewBox="0 0 66 14" fill="#f2f2f4"><rect x="0" y="9" width="3" height="4" rx="1"/><rect x="5" y="7" width="3" height="6" rx="1"/><rect x="10" y="4.5" width="3" height="8.5" rx="1"/><rect x="15" y="2" width="3" height="11" rx="1"/><path d="M31 12.6a1.6 1.6 0 1 0 0.01 0zM26.4 8.6a6.6 6.6 0 0 1 9.2 0l-1.3 1.3a4.8 4.8 0 0 0-6.6 0zM23.6 5.8a10.6 10.6 0 0 1 14.8 0l-1.3 1.3a8.8 8.8 0 0 0-12.2 0z"/><rect x="42.5" y="1.5" width="19" height="11" rx="3.2" fill="none" stroke="#8b8b94" stroke-width="1"/><rect x="44.5" y="3.5" width="13" height="7" rx="1.6"/><rect x="62.6" y="5" width="1.6" height="4" rx="0.8" fill="#8b8b94"/></svg></div><img src="/site/dark/connect.jpg?v=2" alt="The Connect app screen: Arc Mint, domain verified, Reject and Connect" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
 <span class="scanline" aria-hidden="true"></span>
 <span class="badge" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Domain verified</span>
 <span class="badge warn" aria-hidden="true">⚠ Scam sites blocked</span>
@@ -556,7 +564,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
       var f = p * panels.length, i = Math.min(panels.length - 1, Math.floor(f));
       setStep(i);
       rails.forEach(function (b, k) { b.style.setProperty('--f', clamp(f - k)); });
-      if (sphone && !reduce) {
+      if (sphone && !calm) {
         var local = f - i, wob = Math.sin(local * Math.PI);
         sphone.style.transform = 'perspective(1400px) rotateY(' + ((i % 2 ? 1 : -1) * wob * 8) + 'deg) translateY(' + (-wob * 10) + 'px)';
       }
