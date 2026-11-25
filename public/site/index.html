@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0c0c10">
 <meta property="og:title" content="MironPay — Your money, one tap away">
 <meta property="og:description" content="A USDC wallet that works like a messaging app. Built on Arc.">
-<meta property="og:image" content="https://mironpay.xyz/site/dark/home.jpg">
+<meta property="og:image" content="https://mironpay.xyz/site/dark/home.jpg?v=2">
 <link rel="icon" href="/site/mi-mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,8 +87,8 @@ img{max-width:100%}
 .panel p{margin:0;max-width:380px;font-size:16px;line-height:1.6;color:#8b8b94}
 .sphone{position:relative;height:min(74vh,700px);aspect-ratio:390/844;padding:10px;border-radius:50px;border:1px solid #26262e;background:#0c0c10;box-shadow:0 60px 120px -30px rgba(201,163,95,.25),0 30px 60px -20px rgba(0,0,0,.7);will-change:transform}
 .sphone .screens{position:relative;height:100%;border-radius:42px;border:1px solid #1e1e25;overflow:hidden;background:#101014}
-.sphone .scr{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.06);filter:blur(8px);transition:opacity .6s ease,transform .9s cubic-bezier(.2,.8,.2,1),filter .6s}
-.sphone .scr.on{opacity:1;transform:none;filter:none}
+.sphone .scr{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.03);transition:opacity .5s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
+.sphone .scr.on{opacity:1;transform:none}
 .sheen{position:absolute;inset:0;border-radius:42px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.07) 45%,transparent 60%);background-size:250% 100%;background-position:var(--sheen,100%) 0}
 .callouts{position:relative;height:100%}
 .co{position:absolute;left:0;display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid #26262e;border-radius:16px;background:rgba(23,23,28,.9);backdrop-filter:blur(8px);font-size:14px;white-space:nowrap;opacity:0;transform:translateX(-30px) scale(.94);transition:opacity .5s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
@@ -103,12 +103,12 @@ img{max-width:100%}
 /* dapps: scan line + verified badge + ticks that draw */
 .scanbox{position:relative}
 .scanline{position:absolute;left:16px;right:16px;top:12%;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,#c9a35f,transparent);box-shadow:0 0 18px 2px rgba(201,163,95,.6);opacity:0}
-.scanbox.in .scanline{animation:scan 2.4s cubic-bezier(.45,0,.55,1) .4s 2 both}
+.scanbox.in .scanline{animation:scan 1.6s cubic-bezier(.45,0,.55,1) .3s 1 both}
 @keyframes scan{0%{top:10%;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:88%;opacity:0}}
-.badge{position:absolute;right:-28px;top:22%;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid rgba(52,201,142,.4);background:rgba(16,40,30,.92);color:#34c98e;font-size:13px;font-weight:700;opacity:0;transform:scale(.6) rotate(-8deg);transition:opacity .4s,transform .6s cubic-bezier(.3,1.6,.5,1)}
-.scanbox.in .badge{opacity:1;transform:none;transition-delay:5.2s}
-.badge.warn{top:auto;bottom:26%;left:-36px;right:auto;border-color:rgba(232,93,93,.4);background:rgba(44,16,16,.92);color:#e85d5d}
-.scanbox.in .badge.warn{transition-delay:5.7s}
+.badge{position:absolute;right:-28px;top:50%;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid rgba(52,201,142,.4);background:rgba(16,40,30,.92);color:#34c98e;font-size:13px;font-weight:700;opacity:0;transform:scale(.6) rotate(-8deg);transition:opacity .4s,transform .6s cubic-bezier(.3,1.6,.5,1)}
+.scanbox.in .badge{opacity:1;transform:none;transition-delay:1.3s}
+.badge.warn{top:auto;bottom:24%;left:-36px;right:auto;border-color:rgba(232,93,93,.4);background:rgba(44,16,16,.92);color:#e85d5d}
+.scanbox.in .badge.warn{transition-delay:1.8s}
 .chk path{stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset .6s ease .3s}
 .reveal.in .chk path{stroke-dashoffset:0}
 
@@ -131,20 +131,52 @@ img{max-width:100%}
 @media (max-width: 860px){
   .topnav nav,.topnav .chip{display:none!important}
   .topnav > div{padding:12px 20px!important}
-  .story{height:420vh}
-  .story-sticky{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:12px;padding:76px 20px 16px;justify-items:center}
-  .story-head,.callouts,.rail{display:none}
-  .story-text{order:2;width:100%;height:170px}
-  .panel{justify-content:flex-start;gap:8px}
+  /* hero: phone right under the buttons, no scroll-out spin */
+  .hero-wrap{padding:44px 20px 40px!important;gap:28px!important}
+  .hero-stage{padding:88px 0 8px}
+  .hero-stage .float{width:270px!important}
+  .toasts{left:50%;top:0;bottom:auto;width:260px;margin-left:-130px;z-index:2}
+  .glow{width:380px;height:380px}
+  /* highlights: one clean column */
+  .hl > div{grid-template-columns:1fr!important;padding:0 20px!important}
+  .hl > div > div{padding:22px 0!important;border-right:0!important;border-bottom:1px solid #1e1e25}
+  .hl > div > div:last-child{border-bottom:0}
+  /* tighter sections */
+  .statement{padding:72px 20px;letter-spacing:-1px}
+  #shops,#dapps,#features,#docs{padding-top:64px!important;padding-left:20px!important;padding-right:20px!important}
+  /* pinned story: big phone, short scroll, step dots */
+  .story{height:300vh}
+  .story-sticky{grid-template-columns:1fr;grid-template-rows:auto auto;align-content:center;gap:16px;padding:70px 20px 34px;justify-items:center}
+  .story-head,.callouts{display:none}
+  .story-text{order:2;width:100%;height:118px}
+  .panel{justify-content:flex-start;gap:6px;text-align:center;align-items:center}
   .panel .big{display:none}
-  .panel h3{font-size:28px}.panel p{font-size:14.5px}
-  .sphone{order:1;height:min(56svh,560px)}
-  .badge{right:-6px}.badge.warn{left:-6px}
+  .panel h3{font-size:26px}.panel p{font-size:14px;max-width:340px}
+  .sphone{order:1;height:min(62svh,600px);border-radius:42px;padding:8px}
+  .sphone .screens,.sheen{border-radius:35px}
+  .rail{position:absolute;left:50%;right:auto;top:auto;bottom:16px;transform:translateX(-50%);flex-direction:row;gap:8px}
+  .rail i{width:30px;height:3px}
+  .rail i b{transform-origin:0 50%;transform:scaleX(var(--f,0))}
+  /* shops: two phones that fit the card */
+  .duo{gap:12px!important}
+  .duo .par{width:44%!important;max-width:170px!important;padding:5px!important;border-radius:26px!important;transform:none!important}
+  .duo .par > div{border-radius:21px!important}
+  .duo .par:nth-of-type(3){margin-top:40px!important}
+  #shops > .reveal{padding:26px 18px!important;gap:32px!important}
+  /* dapps */
+  .scanbox{width:280px!important}
+  .badge{right:-10px}.badge.warn{left:-10px}
+  /* features: two columns, compact */
+  .featgrid{grid-template-columns:1fr 1fr;gap:10px}
+  .feat{padding:16px!important;gap:8px!important}
+  .feat > div > span:last-child{display:none}
+  .feat .fic{width:34px;height:34px;border-radius:10px}
+  .feat > span:nth-of-type(1){font-size:15px!important;line-height:1.25}
+  .feat > span:nth-of-type(2){font-size:12.5px!important;line-height:1.45!important}
 }
 @media (max-width: 860px){
   .howgrid{grid-template-columns:1fr;gap:36px}
   .howphone{order:-1}
-  .toasts{left:-6px;bottom:84px;width:270px}
 }
 /* Reduced motion (often on by default on Windows): keep fades and highlights,
    drop only large movement — floating, tilting, parallax, sliding. */
@@ -196,7 +228,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 
 <!-- HERO -->
 <section id="top" class="dots" style="border-bottom: 1px solid #1e1e25">
-<div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 88px; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
+<div class="hero-wrap" style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 88px; display: flex; flex-wrap: wrap; align-items: center; gap: 64px">
 <div class="hero-copy" style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
 <span class="rise d1" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #c9a35f; border-radius: 999px; background: rgba(201,163,95,0.13); color: #c9a35f; font-size: 11.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase"><span style="width: 6px; height: 6px; border-radius: 999px; background: #c9a35f"></span>Live on Arc Testnet</span>
 <h1 class="rise d2" style="margin: 0; font-size: clamp(48px, 7vw, 92px); line-height: 0.98; font-weight: 700; letter-spacing: -3px">Your money,<br><em style="font-style: italic; color: #c9a35f">one tap</em> away.</h1>
@@ -219,7 +251,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 <div class="glow" aria-hidden="true"></div>
 <div class="tilt" id="tilt">
 <div class="phone-in float" style="position: relative; width: 320px; max-width: 78vw; padding: 10px; border-radius: 48px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 60px 120px -30px rgba(201,163,95,0.28), 0 30px 60px -20px rgba(0,0,0,.7)">
-<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/home.jpg" alt="The MironPay wallet: total assets $2,658.33 in USDC, EURC and cirBTC" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/home.jpg?v=2" alt="The MironPay wallet: total assets $2,658.33 in USDC, EURC and cirBTC" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
 </div>
 </div>
 <div class="toasts" aria-hidden="true">
@@ -233,7 +265,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </section>
 
 <!-- TOKEN STRIP -->
-<section aria-label="Highlights" style="border-bottom: 1px solid #1e1e25; background: #0c0c10">
+<section class="hl" aria-label="Highlights" style="border-bottom: 1px solid #1e1e25; background: #0c0c10">
 <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))">
 <div style="padding: 36px 28px 36px 0; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #1e1e25">
 <span style="font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #8b8b94">NETWORK</span>
@@ -267,10 +299,10 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </div>
 <div class="sphone" id="sphone">
 <div class="screens">
-<img class="scr on" src="/site/dark/send.jpg" alt="Amount: 25 USDC typed on the keypad">
-<img class="scr" src="/site/dark/pin.jpg" alt="Confirm: the PIN sheet over the wallet, Send 25 USDC to @an" loading="lazy">
-<img class="scr" src="/site/dark/done.jpg" alt="Done: a gold tick on the PIN sheet" loading="lazy">
-<img class="scr" src="/site/dark/activity.jpg" alt="History: Activity grouped by day" loading="lazy">
+<img class="scr on" src="/site/dark/send.jpg?v=2" alt="Amount: 25 USDC typed on the keypad">
+<img class="scr" src="/site/dark/pin.jpg?v=2" alt="Confirm: the PIN sheet over the wallet, Send 25 USDC to @an" loading="lazy">
+<img class="scr" src="/site/dark/done.jpg?v=2" alt="Done: a gold tick on the PIN sheet" loading="lazy">
+<img class="scr" src="/site/dark/activity.jpg?v=2" alt="History: Activity grouped by day" loading="lazy">
 <div class="sheen" aria-hidden="true"></div>
 </div>
 </div>
@@ -304,8 +336,8 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 </div>
 <div class="duo" style="flex: 1 1 360px; display: flex; justify-content: center; gap: 18px; position: relative">
 <div class="glow sm" aria-hidden="true"></div>
-<div class="par" data-speed="-0.06" style="position: relative; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/charge.jpg" alt="Charge: 12.50 USDC on the keypad" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
-<div class="par" data-speed="0.06" style="position: relative; margin-top: 72px; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/orders.jpg" alt="Orders: paid, pending and cancelled orders" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
+<div class="par" data-speed="-0.06" style="position: relative; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/charge.jpg?v=2" alt="Charge: 12.50 USDC on the keypad" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
+<div class="par" data-speed="0.06" style="position: relative; margin-top: 72px; width: 210px; max-width: 42vw; padding: 7px; border-radius: 34px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 40px 80px -20px rgba(0,0,0,.7)"><div style="border-radius: 28px; overflow: hidden; aspect-ratio: 390 / 844; background: #101014"><img src="/site/dark/orders.jpg?v=2" alt="Orders: paid, pending and cancelled orders" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block"></div></div>
 </div>
 </div>
 </section>
@@ -314,7 +346,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
 <section id="dapps" style="max-width: 1200px; margin: 0 auto; padding: 100px 24px 40px; display: flex; flex-wrap: wrap; gap: 56px; align-items: center">
 <div style="flex: 1 1 340px; display: flex; justify-content: center">
 <div class="reveal scanbox" style="position: relative; width: 320px; max-width: 82vw; padding: 10px; border-radius: 48px; border: 1px solid #26262e; background: #0c0c10; box-shadow: 0 50px 120px -30px rgba(201,163,95,0.22)">
-<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/connect.jpg" alt="The Connect app screen: Arc Mint, domain verified, Reject and Connect" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+<div style="border-radius: 40px; border: 1px solid #1e1e25; overflow: hidden; background: #101014; aspect-ratio: 390 / 844"><img src="/site/dark/connect.jpg?v=2" alt="The Connect app screen: Arc Mint, domain verified, Reject and Connect" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
 <span class="scanline" aria-hidden="true"></span>
 <span class="badge" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Domain verified</span>
 <span class="badge warn" aria-hidden="true">⚠ Scam sites blocked</span>
@@ -503,14 +535,15 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
     scr.forEach(function (im, k) { im.classList.toggle('on', k === i); });
     cos.forEach(function (c) { c.classList.toggle('on', +c.dataset.i === i); });
   }
+  var small = matchMedia('(max-width: 860px)');
   function frame() {
-    var vh = innerHeight, y = scrollY;
+    var vh = innerHeight, y = scrollY, calm = reduce || small.matches;
     if (bar) bar.style.transform = 'scaleX(' + clamp(y / (document.documentElement.scrollHeight - vh)) + ')';
     if (nav) nav.classList.toggle('scrolled', y > 8);
     // hero drifts up, blurs and fades as you leave it
     var hp = clamp(y / (vh * 0.8));
-    if (heroCopy) { heroCopy.style.opacity = 1 - hp * 0.9; heroCopy.style.filter = 'blur(' + (hp * 6) + 'px)'; if (!reduce) heroCopy.style.transform = 'translateY(' + (-hp * 80) + 'px)'; }
-    if (heroStage && !reduce) heroStage.style.transform = 'translateY(' + (hp * 60) + 'px) scale(' + (1 - hp * 0.12) + ') rotate(' + (hp * -4) + 'deg)';
+    if (heroCopy) { heroCopy.style.opacity = 1 - hp * 0.9; heroCopy.style.filter = 'blur(' + (hp * 6) + 'px)'; if (!calm) heroCopy.style.transform = 'translateY(' + (-hp * 80) + 'px)'; }
+    if (heroStage && !calm) heroStage.style.transform = 'translateY(' + (hp * 60) + 'px) scale(' + (1 - hp * 0.12) + ') rotate(' + (hp * -4) + 'deg)';
     // statement words light up one by one
     if (stmt) {
       var r = stmt.getBoundingClientRect(), sp = clamp((vh * 0.82 - r.top) / (r.height + vh * 0.25));
@@ -529,7 +562,7 @@ a,button{transition:color .2s,background-color .2s,border-color .2s,opacity .2s}
       }
       if (sheen) sheen.style.setProperty('--sheen', (100 - (f % 1) * 100) + '%');
     }
-    if (!reduce) pars.forEach(function (el) { var r2 = el.getBoundingClientRect(), mid = r2.top + r2.height / 2 - vh / 2; el.style.transform = 'translateY(' + (mid * parseFloat(el.dataset.speed)) + 'px)'; });
+    if (!calm) pars.forEach(function (el) { var r2 = el.getBoundingClientRect(), mid = r2.top + r2.height / 2 - vh / 2; el.style.transform = 'translateY(' + (mid * parseFloat(el.dataset.speed)) + 'px)'; });
   }
   var ticking = false;
   function onScroll() { if (ticking) return; ticking = true; requestAnimationFrame(function () { ticking = false; frame(); }); }
