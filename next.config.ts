@@ -29,6 +29,9 @@ const nextConfig: NextConfig = {
       afterFiles: [
         { source: '/app', destination: '/app/index.html' },
         { source: '/app/:path*', destination: '/app/index.html' },
+        // Beta build of the PWA (separate install, same API) for trying changes safely.
+        { source: '/app-beta', destination: '/app-beta/index.html' },
+        { source: '/app-beta/:path*', destination: '/app-beta/index.html' },
       ],
       fallback: [],
     };

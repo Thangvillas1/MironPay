@@ -1,0 +1,32 @@
+{
+  "name": "MironPay Beta",
+  "short_name": "MP Beta",
+  "description": "Stablecoin wallet and payments on Arc",
+  "id": "/app-beta",
+  "start_url": "/app-beta",
+  "scope": "/app-beta",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F3F1",
+  "theme_color": "#F4F3F1",
+  "icons": [
+    {
+      "src": "/app-beta/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-beta/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-beta/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

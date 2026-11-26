@@ -12,7 +12,9 @@ function isPublicPath(pathname: string) {
     pathname.startsWith('/site/') ||
     // The PWA (Expo web build in public/app) signs in on its own, client-side.
     pathname === '/app' ||
-    pathname.startsWith('/app/')
+    pathname.startsWith('/app/') ||
+    pathname === '/app-beta' ||
+    pathname.startsWith('/app-beta/')
   )
 }
 
